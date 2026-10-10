@@ -258,9 +258,10 @@ let LIB=null,DB=[];
 let doc={name:null,comps:[],outline:null,tracks:[],links:[],jumpers:[],tears:false,plane:null};
 let trackSel=null, trackDraw=null, linkFrom=null, hoverPad=null, linkSel=null, copperMenu=null;
 // selección: componentes (sel), pistas (selT) y puentes (selJ). sel.clear() limpia las tres.
-let selT=new Set(),selJ=new Set();
-class SelSet extends Set{clear(){super.clear();selT.clear();selJ.clear()}}
-function newSel(ids){selT.clear();selJ.clear();return new SelSet(ids)}
+// el contorno (selO) y los agujeros movidos a mano (selH) también entran en la selección y en los grupos
+let selT=new Set(),selJ=new Set(),selH=new Set(),selO=false;
+class SelSet extends Set{clear(){super.clear();selT.clear();selJ.clear();selH.clear();selO=false}}
+function newSel(ids){selT.clear();selJ.clear();selH.clear();selO=false;return new SelSet(ids)}
 let sel=new SelSet(); let outlineSel=false;
 let tool='select', placing=null, view='arriba', mirC=0;
 let undo=[],redo=[];
@@ -533,7 +534,7 @@ function drawOutline(o,live){
   const pr=view==='plancha';
   worldT();
   if(!pr){ctx.fillStyle=C['ws-board'];ctx.fillRect(o.x,o.y,o.w,o.h)}
-  ctx.strokeStyle=pr?C.toner:(outlineSel||live?C.sel:C['ws-edge']);ctx.lineWidth=Math.max(.3,1.5/scale);
+  ctx.strokeStyle=pr?C.toner:(outlineSel||selO||live?C.sel:C['ws-edge']);ctx.lineWidth=Math.max(.3,1.5/scale);
   ctx.setLineDash(live?[1.5,1]:[]);ctx.strokeRect(o.x,o.y,o.w,o.h);ctx.setLineDash([]);
   if(!pr&&(live||outlineSel)){
     const [ax,ay]=toS(o.x,o.y),[bx,by]=toS(o.x+o.w,o.y+o.h);
@@ -703,7 +704,8 @@ cv.addEventListener('pointerdown',e=>{
   if(c){outlineSel=false;
     if(e.shiftKey){sel.has(c.id)?sel.delete(c.id):sel.add(c.id)}else if(!sel.has(c.id)){sel=newSel([c.id]);expandGroups()}
     drag={type:'move',w0:[wx,wy],...moveStart(),prim:sel.has(c.id)?c:null,moved:false};
-  }else if(hitOutline(wx,wy)){sel.clear();outlineSel=true;drag={type:'moveOutline',w0:[wx,wy],o0:{...doc.outline},moved:false}}
+  }else if(hitOutline(wx,wy)&&(doc.outline.group||selO&&selCount()>1)){if(!selO){sel=newSel([]);selO=true;expandGroups()}outlineSel=false;trackSel=null;drag={type:'move',w0:[wx,wy],...moveStart(),prim:null,moved:false}}
+  else if(hitOutline(wx,wy)){sel.clear();outlineSel=true;drag={type:'moveOutline',w0:[wx,wy],o0:{...doc.outline},moved:false}}
   else{if(!e.shiftKey){sel.clear();outlineSel=false}drag={type:'marquee',s0:[sx,sy],sr:[sx,sy,sx,sy]}}
   refreshUI();draw();
 });
@@ -724,7 +726,8 @@ cv.addEventListener('pointermove',e=>{
       if(p){const [px0,py0]=drag.start.get(p.id);p.x=px0+dx;p.y=py0+dy;const bx=p.x,by=p.y;snapComp(p);ax=p.x-bx;ay=p.y-by}
       else if(prefs.snap){ax=snapV(dx,prefs.grid)-dx;ay=snapV(dy,prefs.grid)-dy} // arrastrando desde una pista: de a un paso de grilla
       drag.tStart.forEach((pts,id)=>{const t=doc.tracks.find(x=>x.id===id);if(t)t.pts=pts.map(([x,y])=>[x+dx+ax,y+dy+ay])});
-      drag.jStart.forEach(([a,b],id)=>{const j=doc.jumpers.find(x=>x.id===id);if(j){j.a=[a[0]+dx+ax,a[1]+dy+ay];j.b=[b[0]+dx+ax,b[1]+dy+ay]}});geoVer++;drcDirty=true;
+      drag.jStart.forEach(([a,b],id)=>{const j=doc.jumpers.find(x=>x.id===id);if(j){j.a=[a[0]+dx+ax,a[1]+dy+ay];j.b=[b[0]+dx+ax,b[1]+dy+ay]}});
+      drag.hStart.forEach(([x,y],id)=>{const h=doc.holes.find(q=>q.id===id);if(h){h.x=x+dx+ax;h.y=y+dy+ay}});if(drag.oStart&&doc.outline){doc.outline.x=drag.oStart[0]+dx+ax;doc.outline.y=drag.oStart[1]+dy+ay}geoVer++;drcDirty=true;
       doc.comps.forEach(k=>{if(sel.has(k.id)&&k!==p){const s=drag.start.get(k.id);k.x=s[0]+dx+ax;k.y=s[1]+dy+ay}});
     }
     else if(drag.type==='hole'){const dx=wx-drag.w0[0],dy=wy-drag.w0[1];if(!drag.moved&&Math.hypot(dx,dy)*scale<3)return;
@@ -748,7 +751,8 @@ function endPointer(e){
     else draw();return}
   if(drag.type==='marquee'){const r=drag.sr;if(r[2]-r[0]>4||r[3]-r[1]>4){const [ax,ay]=toW(r[0],r[1]),[bx,by]=toW(r[2],r[3]);const x0=Math.min(ax,bx),x1=Math.max(ax,bx);
     doc.comps.forEach(c=>{const b=compBox(c);if(b[0]>=x0&&b[2]<=x1&&b[1]>=ay&&b[3]<=by)sel.add(c.id)});const inR=([x,y])=>x>=x0&&x<=x1&&y>=ay&&y<=by;
-    doc.tracks.forEach(t=>{if(t.pts.every(inR))selT.add(t.id)});(doc.jumpers||[]).forEach(j=>{if(inR(j.a)&&inR(j.b))selJ.add(j.id)});expandGroups()}}
+    doc.tracks.forEach(t=>{if(t.pts.every(inR))selT.add(t.id)});(doc.jumpers||[]).forEach(j=>{if(inR(j.a)&&inR(j.b))selJ.add(j.id)});
+    holeList().forEach(h=>{if(h.corner==null&&inR([h.x,h.y]))selH.add(h.id)});const o=doc.outline;if(o&&inR([o.x,o.y])&&inR([o.x+o.w,o.y+o.h]))selO=true;expandGroups()}}
   if((drag.type==='move'||drag.type==='hole')&&drag.moved){const bad=drag.type==='move'?anyBlocked():(()=>{const H=holeList().find(h=>h.src===drag.h);return H&&holeBlocked(H.x,H.y,H.keep,H.id)})();
     if(bad){drag=null;restore(undo.pop());toast(NO_DROP);return}}
   const was=drag;drag=null;
@@ -775,24 +779,29 @@ cv.addEventListener('dblclick',e=>{if(tool==='track'){finishTrack();return}const
 function selComps(){return doc.comps.filter(c=>sel.has(c.id))}
 function selTracks(){return doc.tracks.filter(t=>selT.has(t.id))}
 function selJumpers(){return (doc.jumpers||[]).filter(j=>selJ.has(j.id))}
-const selCount=()=>sel.size+selT.size+selJ.size;
+const selCount=()=>sel.size+selT.size+selJ.size+selH.size+(selO?1:0);
+const selHoles=()=>(doc.holes||[]).filter(h=>selH.has(h.id));
 function anyLockedSel(){return selComps().some(c=>c.lock)||selTracks().some(t=>t.lock)}
 // grupos: al tocar cualquier parte se selecciona todo el grupo
-function expandGroups(){const g=new Set([...selComps(),...selTracks(),...selJumpers()].map(o=>o.group).filter(Boolean));if(!g.size)return;
-  doc.comps.forEach(c=>{if(g.has(c.group))sel.add(c.id)});doc.tracks.forEach(t=>{if(g.has(t.group))selT.add(t.id)});(doc.jumpers||[]).forEach(j=>{if(g.has(j.group))selJ.add(j.id)})}
-function groupSel(){if(selCount()<2)return;const gid=uid();pushUndo();[...selComps(),...selTracks(),...selJumpers()].forEach(o=>o.group=gid);toast('Agrupado');changed()}
-function ungroupSel(){const all=[...selComps(),...selTracks(),...selJumpers()];if(!all.some(o=>o.group))return;pushUndo();all.forEach(o=>delete o.group);toast('Desagrupado');changed()}
-const selGrouped=()=>[...selComps(),...selTracks(),...selJumpers()].some(o=>o.group);
-function selName(){const n=sel.size,t=selT.size,j=selJ.size;return [n?`${n} componente${n>1?'s':''}`:'',t?`${t} pista${t>1?'s':''}`:'',j?`${j} puente${j>1?'s':''}`:''].filter(Boolean).join(' · ')}
-function moveStart(){return {start:new Map(doc.comps.filter(k=>sel.has(k.id)).map(k=>[k.id,[k.x,k.y]])),tStart:new Map(selTracks().map(t=>[t.id,t.pts.map(p=>[...p])])),jStart:new Map(selJumpers().map(j=>[j.id,[[...j.a],[...j.b]]]))}}
+const selObjs=()=>[...selComps(),...selTracks(),...selJumpers(),...selHoles(),...(selO&&doc.outline?[doc.outline]:[])];
+function expandGroups(){const g=new Set(selObjs().map(o=>o.group).filter(Boolean));if(!g.size)return;
+  doc.comps.forEach(c=>{if(g.has(c.group))sel.add(c.id)});doc.tracks.forEach(t=>{if(g.has(t.group))selT.add(t.id)});(doc.jumpers||[]).forEach(j=>{if(g.has(j.group))selJ.add(j.id)});
+  (doc.holes||[]).forEach(h=>{if(g.has(h.group))selH.add(h.id)});if(doc.outline&&g.has(doc.outline.group))selO=true}
+function groupSel(){if(selCount()<2)return;const gid=uid();pushUndo();selObjs().forEach(o=>o.group=gid);toast('Agrupado');changed()}
+function ungroupSel(){const all=selObjs();if(!all.some(o=>o.group))return;pushUndo();all.forEach(o=>delete o.group);toast('Desagrupado');changed()}
+const selGrouped=()=>selObjs().some(o=>o.group);
+function selName(){const n=sel.size,t=selT.size,j=selJ.size,h=selH.size;return [selO?'contorno':'',n?`${n} componente${n>1?'s':''}`:'',t?`${t} pista${t>1?'s':''}`:'',j?`${j} puente${j>1?'s':''}`:'',h?`${h} agujero${h>1?'s':''}`:''].filter(Boolean).join(' · ')}
+function moveStart(){return {start:new Map(doc.comps.filter(k=>sel.has(k.id)).map(k=>[k.id,[k.x,k.y]])),tStart:new Map(selTracks().map(t=>[t.id,t.pts.map(p=>[...p])])),jStart:new Map(selJumpers().map(j=>[j.id,[[...j.a],[...j.b]]])),
+  hStart:new Map(selHoles().map(h=>[h.id,[h.x,h.y]])),oStart:selO&&doc.outline?[doc.outline.x,doc.outline.y]:null}}
 function rotateSel(){
   if(placing){placing.c.rot=(placing.c.rot+1)%4;snapComp(placing.c);draw();return}
-  const s=selComps(),T=selTracks(),J=selJumpers();if(!s.length&&!T.length&&!J.length)return;if(anyLockedSel()){toast('Tiene candado: no se rota');return}pushUndo();
-  if(s.length===1&&!T.length&&!J.length){s[0].rot=(s[0].rot+1)%4;snapComp(s[0])}
-  else{const b=[...s.map(compBox),...T.flatMap(t=>t.pts.map(([x,y])=>[x,y,x,y])),...J.flatMap(j=>[j.a,j.b].map(([x,y])=>[x,y,x,y]))];
+  const s=selComps(),T=selTracks(),J=selJumpers(),Hs=selHoles(),O=selO&&doc.outline;if(!s.length&&!T.length&&!J.length&&!O&&!Hs.length)return;if(anyLockedSel()){toast('Tiene candado: no se rota');return}pushUndo();
+  if(s.length===1&&!T.length&&!J.length&&!O&&!Hs.length){s[0].rot=(s[0].rot+1)%4;snapComp(s[0])}
+  else{const b=[...s.map(compBox),...(O?[[O.x,O.y,O.x+O.w,O.y+O.h]]:[]),...Hs.map(h=>[h.x,h.y,h.x,h.y]),...T.flatMap(t=>t.pts.map(([x,y])=>[x,y,x,y])),...J.flatMap(j=>[j.a,j.b].map(([x,y])=>[x,y,x,y]))];
     const g=prefs.snap?prefs.grid:0.01,cx=snapV((Math.min(...b.map(q=>q[0]))+Math.max(...b.map(q=>q[2])))/2,g),cy=snapV((Math.min(...b.map(q=>q[1]))+Math.max(...b.map(q=>q[3])))/2,g);
     const R=([x0,y0])=>{const [x,y]=rot(x0-cx,y0-cy,1);return [cx+x,cy+y]}; // girar alrededor de un punto de grilla deja todo en grilla
-    s.forEach(c=>{[c.x,c.y]=R([c.x,c.y]);c.rot=(c.rot+1)%4});T.forEach(t=>t.pts=t.pts.map(R));J.forEach(j=>{j.a=R(j.a);j.b=R(j.b)})}
+    s.forEach(c=>{[c.x,c.y]=R([c.x,c.y]);c.rot=(c.rot+1)%4});T.forEach(t=>t.pts=t.pts.map(R));J.forEach(j=>{j.a=R(j.a);j.b=R(j.b)});Hs.forEach(h=>{[h.x,h.y]=R([h.x,h.y])});
+    if(O){const a=R([O.x,O.y]),b2=R([O.x+O.w,O.y+O.h]);Object.assign(O,{x:Math.min(a[0],b2[0]),y:Math.min(a[1],b2[1]),w:Math.abs(b2[0]-a[0]),h:Math.abs(b2[1]-a[1])})}}
   if(anyBlocked()){restore(undo.pop());toast('Así rotado queda encima de otro componente o de un agujero');return}
   changed();
 }
@@ -803,7 +812,7 @@ function deleteSel(){
   if(trackSel){pushUndo();doc.tracks=doc.tracks.filter(t=>t.id!==trackSel);trackSel=null;toast('Pista borrada');changed();return}
   if(outlineSel&&doc.outline){pushUndo();doc.outline=null;outlineSel=false;toast('Contorno borrado');changed();return}
   if(anyLockedSel()){toast('Tiene candado: no se borra');return}
-  if(!selCount())return;const n=sel.size,what=selName();pushUndo();doc.tracks=doc.tracks.filter(t=>!selT.has(t.id));doc.jumpers=(doc.jumpers||[]).filter(j=>!selJ.has(j.id));
+  if(!selCount())return;const n=sel.size,what=selName();pushUndo();doc.tracks=doc.tracks.filter(t=>!selT.has(t.id));doc.jumpers=(doc.jumpers||[]).filter(j=>!selJ.has(j.id));doc.holes=(doc.holes||[]).filter(h=>!selH.has(h.id));if(selO)doc.outline=null;
   if(!n){sel.clear();toast(`Borrado: ${what}`);changed();return}
   doc.comps=doc.comps.filter(c=>!sel.has(c.id));doc.links=doc.links.filter(l=>!sel.has(l.a.split(':')[0])&&!sel.has(l.b.split(':')[0]));sel.clear();toast(`Borrado: ${what}`);changed();
 }
@@ -1385,6 +1394,7 @@ cv.addEventListener('contextmenu',e=>{
       {t:nl?`Desconectar (${nl} conex.)`:'Desconectar',i:'link',d:()=>!nl,f:clearLinksOfSel},
       {t:'Duplicar',k:'Ctrl+D',f:duplicateSel},'-',
       {t:'Borrar',k:'Supr',i:'trash',danger:1,d:()=>anyL,f:deleteSel}]);return}
+  if(hitOutline(wx,wy)&&(doc.outline.group||selO&&selCount()>1)){if(!selO){sel=newSel([]);selO=true;expandGroups()}trackSel=null;linkSel=null;outlineSel=false;refreshUI();draw();selMenu(X,Y);return}
   if(hitOutline(wx,wy)){sel.clear();trackSel=null;linkSel=null;outlineSel=true;refreshUI();draw();
     showCtx(X,Y,`Contorno · ${cm(doc.outline.w)} × ${cm(doc.outline.h)} cm`,[
       {t:'Ajustar al mínimo',f:()=>{pushUndo();shrinkOutline();toast(`Placa de ${cm(doc.outline.w)} × ${cm(doc.outline.h)} cm`);changed()}},
