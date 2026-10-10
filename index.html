@@ -171,6 +171,27 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .dlg .field{display:flex;flex-direction:column;align-items:stretch;gap:6px}
 .dlg .field label{font-size:.85rem;width:auto}
 .tbspace{flex:1 1 auto;min-width:4px}
+/* cuadro del autorruteador: bloques con interruptores, botones unidos y listas */
+.dlg.wide{width:min(700px,100%)}
+.rgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:700px){.rgrid{grid-template-columns:1fr}}
+.rsec{border:1px solid var(--line);border-radius:12px;padding:10px 12px 8px;background:var(--panel2);display:flex;flex-direction:column;gap:4px;min-width:0}
+.rsec h4{margin:0 0 4px;font-size:.7rem;text-transform:uppercase;letter-spacing:.09em;color:var(--accent);font-family:var(--f-mono);font-weight:600}
+.rrow{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px}
+.rrow>span{font-size:.88rem;line-height:1.2}
+.rrow select{font:inherit;font-size:.85rem;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--ws-bg);color:var(--ink);flex:none}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:none;background:var(--ws-bg)}
+.seg button{border:0;border-left:1px solid var(--line);background:none;padding:4px 9px;font-size:.8rem;white-space:nowrap}
+.seg button:first-child{border-left:0}
+.seg button:hover{background:var(--accent-soft)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:700}
+.sw{width:40px;height:22px;border-radius:999px;border:1px solid var(--line);background:var(--line);position:relative;flex:none;padding:0;transition:background .15s}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--panel);box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s}
+.sw[aria-checked="true"]{background:var(--accent);border-color:var(--accent)}
+.sw[aria-checked="true"]::after{left:20px}
+.rsub{margin:0 0 4px 4px;padding-left:10px;border-left:2px solid var(--accent-soft);display:flex;flex-direction:column}
+.rsub[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){.sw,.sw::after{transition:none}}
 .tb .lbl{display:none} /* barra solo con íconos: el nombre sale al pasar el mouse (title) */
 
 @media (max-width:820px){
@@ -1081,30 +1102,42 @@ function routeDlg(){
   if(!doc.links.length&&!linksFromTracks(true).added){toast('Primero uní los pads con Conectar (C) o con una pista');return}
   const o=Object.assign({sigW:0.8,powW:1.5,powerFirst:true,keep:'all',comfort:true,effort:'normal',jumps:false,maxJ:2,jLen:'both',tears:!!doc.tears,plane:!!doc.plane,place:false,size:'none',std:'5x7',holes:hasHoles()},prefs.route||{});
   if(typeof o.keep!=='string')o.keep=o.keep?'all':'locked';o.tears=!!doc.tears;o.plane=!!doc.plane;o.holes=hasHoles();
-  const widths=[0.5,0.8,1,1.5,2,2.5].map(v=>`<button data-v="${v}">${f2(v)} mm</button>`).join('');
-  const rad=(id,label,opts)=>`<div class="field"><label>${label}</label><div class="radio" id="${id}">${opts.map(([v,t])=>`<button data-v="${v}">${t}</button>`).join('')}</div></div>`;
-  const yn=[['1','Sí'],['0','No']];
-  const ov=dialog('Autorruteador',`
-   <div class="field"><label>Ancho de señal</label><div class="radio" id="rs">${widths}</div></div>
-   <div class="field"><label>Ancho de alimentación y masa</label><div class="radio" id="rp">${widths}</div></div>
-   ${rad('rf','Rutear primero alimentación y masa',yn)}
-   ${rad('rc','Separación',[['1','0,8 mm donde entre'],['0','0,6 mm siempre']])}
-   ${rad('rk','Pistas que ya están dibujadas',[['all','Conservarlas'],['locked','Conservar solo las fijas']])}
-   ${rad('rj','Puentes de alambre',yn)}
-   <div id="rjo">${rad('rm','Máximo de puentes',[['1','1'],['2','2'],['3','3'],['5','5']])}${rad('rl','Largo del puente',[['7.62','7,62 mm'],['10.16','10,16 mm'],['both','Los dos']])}</div>
-   ${rad('rt','Lágrimas en los pads',yn)}
-   ${rad('rg','Plano de masa al terminar (con alivio térmico)',yn)}
-   ${rad('rh','Agujeros de fijación',yn)}
-   ${rad('ra','Reacomodar componentes antes de rutear',yn)}
-   ${rad('rz','Tamaño de la placa',[['none','No tocar el contorno'],['min','Ajustar al mínimo'],['std','Placa estándar']])}
-   <div id="rzo">${rad('rb','Placa estándar (cm)',Object.keys(STD_BOARDS).map(k=>[k,k.replace('.',',').replace('x',' × ')]))}</div>
-   ${rad('re','Esfuerzo',[['fast','Rápido'],['normal','Normal'],['deep','A fondo']])}`,
+  // controles: interruptor (sí/no), botones unidos (pocas opciones) y lista (anchos, placas)
+  const sw=(k,label)=>`<div class="rrow"><span>${label}</span><button class="sw" data-k="${k}" role="switch" aria-label="${label}"></button></div>`;
+  const seg=(k,label,opts)=>`<div class="rrow"><span>${label}</span><div class="seg" data-k="${k}">${opts.map(([v,t,tip])=>`<button data-v="${v}"${tip?` title="${tip}"`:''}>${t}</button>`).join('')}</div></div>`;
+  const sel=(k,label,opts)=>`<div class="rrow"><span>${label}</span><select data-k="${k}" aria-label="${label}">${opts.map(([v,t])=>`<option value="${v}">${t}</option>`).join('')}</select></div>`;
+  const W=[0.5,0.8,1,1.5,2,2.5].map(v=>[v,`${f2(v)} mm`]);
+  const ov=dialog('Autorruteador',`<div class="rgrid">
+    <section class="rsec"><h4>Pistas</h4>
+      ${sel('sigW','Ancho de señal',W)}${sel('powW','Alimentación y masa',W)}
+      ${seg('comfort','Separación',[['1','0,8 mm','0,8 mm donde entre; si no, 0,6 mm'],['0','0,6 mm','0,6 mm siempre']])}
+      ${sw('powerFirst','Primero alimentación y masa')}</section>
+    <section class="rsec"><h4>Puentes de alambre</h4>
+      ${sw('jumps','Usar puentes')}
+      <div class="rsub" data-if="jumps">${seg('maxJ','Máximo',[['1','1'],['2','2'],['3','3'],['5','5']])}${seg('jLen','Largo',[['7.62','7,62'],['10.16','10,16'],['both','Los dos']])}</div></section>
+    <section class="rsec"><h4>Placa</h4>
+      ${sw('place','Reacomodar componentes')}
+      ${seg('size','Tamaño',[['none','No tocar'],['min','Mínimo'],['std','Estándar']])}
+      <div class="rsub" data-if="std">${sel('std','Medida',Object.keys(STD_BOARDS).map(k=>[k,k.replace('.',',').replace('x',' × ')+' cm']))}</div>
+      ${sw('holes','Agujeros de fijación')}</section>
+    <section class="rsec"><h4>Terminación</h4>
+      ${sw('tears','Lágrimas en los pads')}${sw('plane','Plano de masa')}
+      ${seg('keep','Pistas dibujadas',[['all','Conservar','Conservar todas las pistas que ya dibujaste'],['locked','Solo fijas','Conservar solo las pistas con candado y rehacer el resto']])}
+      ${seg('effort','Esfuerzo',[['fast','Rápido'],['normal','Normal'],['deep','A fondo']])}</section>
+  </div>`,
    [{t:'Cancelar'},{t:'Rutear',pri:1,f:()=>{prefs.route=o;LS.set('pcb.prefs',prefs);toast('Ruteando…');setTimeout(()=>runRoute(o),30)}}]);
-  const bind=(id,k,kind)=>{const bs=ov.querySelectorAll(`#${id} button`),val=b=>kind==='n'?+b.dataset.v:kind==='b'?b.dataset.v==='1':b.dataset.v;
-    const mark=()=>{bs.forEach(b=>b.setAttribute('aria-pressed',String(val(b)===o[k])));ov.querySelector('#rjo').hidden=!o.jumps;ov.querySelector('#rzo').hidden=o.size!=='std'};
-    bs.forEach(b=>b.onclick=()=>{o[k]=val(b);mark()});mark()};
-  bind('rs','sigW','n');bind('rp','powW','n');bind('rf','powerFirst','b');bind('rc','comfort','b');bind('rk','keep','s');bind('rj','jumps','b');
-  bind('rm','maxJ','n');bind('rl','jLen','s');bind('rt','tears','b');bind('rg','plane','b');bind('ra','place','b');bind('rh','holes','b');bind('rz','size','s');bind('rb','std','s');bind('re','effort','s');
+  ov.querySelector('.dlg').classList.add('wide');
+  const NUM=new Set(['sigW','powW','maxJ']),BOOL=new Set(['comfort']);
+  const val=(k,v)=>NUM.has(k)?+v:BOOL.has(k)?v==='1':v;
+  const paint=()=>{
+    ov.querySelectorAll('.sw').forEach(b=>b.setAttribute('aria-checked',String(!!o[b.dataset.k])));
+    ov.querySelectorAll('.seg').forEach(g=>g.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(val(g.dataset.k,b.dataset.v)===o[g.dataset.k]))));
+    ov.querySelectorAll('select[data-k]').forEach(s=>s.value=String(o[s.dataset.k]));
+    ov.querySelector('[data-if="jumps"]').hidden=!o.jumps;ov.querySelector('[data-if="std"]').hidden=o.size!=='std'};
+  ov.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{o[b.dataset.k]=!o[b.dataset.k];paint()});
+  ov.querySelectorAll('.seg').forEach(g=>g.querySelectorAll('button').forEach(b=>b.onclick=()=>{o[g.dataset.k]=val(g.dataset.k,b.dataset.v);paint()}));
+  ov.querySelectorAll('select[data-k]').forEach(s=>s.onchange=()=>{o[s.dataset.k]=val(s.dataset.k,s.value);paint()});
+  paint();
 }
 function runRoute(o){
   pushUndo();linksFromTracks();trackSel=null;let extra='',pl=null;doc.holes=o.holes?(hasHoles()?doc.holes:cornerHoles()):[];
