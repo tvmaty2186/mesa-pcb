@@ -509,9 +509,9 @@ function drawOutline(o,live){
   ctx.setLineDash(live?[1.5,1]:[]);ctx.strokeRect(o.x,o.y,o.w,o.h);ctx.setLineDash([]);
   if(!pr&&(live||outlineSel)){
     const [ax,ay]=toS(o.x,o.y),[bx,by]=toS(o.x+o.w,o.y+o.h);
-    label(`${f2(o.w)} mm`,(ax+bx)/2,Math.min(ay,by)-16);
+    label(`${cm(o.w)} cm`,(ax+bx)/2,Math.min(ay,by)-16);
     const cy=(ay+by)/2;let cx=Math.max(ax,bx)+40;if(cx>W-40)cx=Math.min(ax,bx)-40;
-    label(`${f2(o.h)} mm`,cx,cy);
+    label(`${cm(o.h)} cm`,cx,cy);
   }
 }
 function draw(){
@@ -704,7 +704,7 @@ function endPointer(e){
   if(drag.type==='linkEnd'){const {l,end}=drag;drag=null;const other=end==='a'?l.b:l.a;
     if(hoverPad&&hoverPad.k!==other&&hoverPad.k!==l[end]){pushUndo();l[end]=hoverPad.k;toast('Conexión movida');hoverPad=null;changed()}else{hoverPad=null;draw()}return}
   if(drag.type==='outline'){const r=drag.rect;drag=null;
-    if(r&&r.w>=2&&r.h>=2){pushUndo();doc.outline=r;outlineSel=true;sel.clear();toast(`Contorno de ${f2(r.w)} × ${f2(r.h)} mm`);setTool('select');changed()}
+    if(r&&r.w>=2&&r.h>=2){pushUndo();doc.outline=r;outlineSel=true;sel.clear();toast(`Contorno de ${cm(r.w)} × ${cm(r.h)} cm`);setTool('select');changed()}
     else draw();return}
   if(drag.type==='marquee'){const r=drag.sr;if(r[2]-r[0]>4||r[3]-r[1]>4){const [ax,ay]=toW(r[0],r[1]),[bx,by]=toW(r[2],r[3]);const x0=Math.min(ax,bx),x1=Math.max(ax,bx);
     doc.comps.forEach(c=>{const b=compBox(c);if(b[0]>=x0&&b[2]<=x1&&b[1]>=ay&&b[3]<=by)sel.add(c.id)})}}
@@ -813,7 +813,7 @@ function prefsDlg(){
   ov.querySelectorAll('#pt button').forEach(b=>b.onclick=()=>{prefs.theme=b.dataset.v;LS.set('pcb.prefs',prefs);mark();applyTheme()});mark();
 }
 function keysDlg(){dialog('Atajos de teclado',`<table>${[['V','Seleccionar'],['H  /  Espacio','Mover la vista'],['B','Contorno de placa'],['M','Medir'],['C','Conectar pad con pad'],['T','Pista'],['Retroceso','Pista: borrar el último tramo'],['A','Autorruteador'],['D','Revisar reglas de diseño'],['Enter / doble clic','Pista: terminar'],['R','Rotar 90°'],['Supr','Borrar lo seleccionado'],['Ctrl + Z','Deshacer'],['Ctrl + Y','Rehacer'],['Ctrl + D','Duplicar'],['Ctrl + A','Seleccionar todo'],['Ctrl + S','Guardar'],['F','Ajustar a la pantalla'],['Rueda','Zoom'],['Shift + clic','Sumar a la selección'],['Shift al colocar','Colocar varios iguales'],['Esc','Cancelar']].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>`,[{t:'Cerrar',pri:1}])}
-function aboutDlg(){dialog('Mesa PCB',`<p class="muted">Primera versión de la mesa de trabajo. Diseño de plaquetas de una cara para hacer en casa con planchado y percloruro.</p><p class="muted">Biblioteca: ${DB.length} componentes de agujero pasante. Próximos pasos: reacomodar componentes, optimizar tamaño, impresión 1:1 y asistente con IA.</p>`,[{t:'Cerrar',pri:1}])}
+function aboutDlg(){dialog('Mesa PCB',`<p class="muted">Primera versión de la mesa de trabajo. Diseño de plaquetas de una cara para hacer en casa con planchado y percloruro.</p><p class="muted">Biblioteca: ${DB.length} componentes de agujero pasante. Próximos pasos: impresión 1:1 y asistente con IA.</p>`,[{t:'Cerrar',pri:1}])}
 
 /* ================= revisión de reglas (DRC) ================= */
 const DRC={gap:0.6,minW:0.5,edge:2};
@@ -991,7 +991,7 @@ function autoroute(opt){
 }
 function routeDlg(){
   if(!doc.links.length){toast('Primero uní los pads con Conectar (C)');return}
-  const o=Object.assign({sigW:0.8,powW:1.5,powerFirst:true,keep:'all',comfort:true,effort:'normal',jumps:false,maxJ:2,jLen:'both',tears:!!doc.tears,plane:!!doc.plane},prefs.route||{});
+  const o=Object.assign({sigW:0.8,powW:1.5,powerFirst:true,keep:'all',comfort:true,effort:'normal',jumps:false,maxJ:2,jLen:'both',tears:!!doc.tears,plane:!!doc.plane,place:false,size:'none',std:'5x7'},prefs.route||{});
   if(typeof o.keep!=='string')o.keep=o.keep?'all':'locked';o.tears=!!doc.tears;o.plane=!!doc.plane;
   const widths=[0.5,0.8,1,1.5,2,2.5].map(v=>`<button data-v="${v}">${f2(v)} mm</button>`).join('');
   const rad=(id,label,opts)=>`<div class="field"><label>${label}</label><div class="radio" id="${id}">${opts.map(([v,t])=>`<button data-v="${v}">${t}</button>`).join('')}</div></div>`;
@@ -1006,24 +1006,101 @@ function routeDlg(){
    <div id="rjo">${rad('rm','Máximo de puentes',[['1','1'],['2','2'],['3','3'],['5','5']])}${rad('rl','Largo del puente',[['7.62','7,62 mm'],['10.16','10,16 mm'],['both','Los dos']])}</div>
    ${rad('rt','Lágrimas en los pads',yn)}
    ${rad('rg','Plano de masa al terminar',yn)}
+   ${rad('ra','Reacomodar componentes antes de rutear',yn)}
+   ${rad('rz','Tamaño de la placa',[['none','No tocar el contorno'],['min','Ajustar al mínimo'],['std','Placa estándar']])}
+   <div id="rzo">${rad('rb','Placa estándar (cm)',Object.keys(STD_BOARDS).map(k=>[k,k.replace('.',',').replace('x',' × ')]))}</div>
    ${rad('re','Esfuerzo',[['fast','Rápido'],['normal','Normal'],['deep','A fondo']])}`,
    [{t:'Cancelar'},{t:'Rutear',pri:1,f:()=>{prefs.route=o;LS.set('pcb.prefs',prefs);toast('Ruteando…');setTimeout(()=>runRoute(o),30)}}]);
   const bind=(id,k,kind)=>{const bs=ov.querySelectorAll(`#${id} button`),val=b=>kind==='n'?+b.dataset.v:kind==='b'?b.dataset.v==='1':b.dataset.v;
-    const mark=()=>{bs.forEach(b=>b.setAttribute('aria-pressed',String(val(b)===o[k])));ov.querySelector('#rjo').hidden=!o.jumps};
+    const mark=()=>{bs.forEach(b=>b.setAttribute('aria-pressed',String(val(b)===o[k])));ov.querySelector('#rjo').hidden=!o.jumps;ov.querySelector('#rzo').hidden=o.size!=='std'};
     bs.forEach(b=>b.onclick=()=>{o[k]=val(b);mark()});mark()};
   bind('rs','sigW','n');bind('rp','powW','n');bind('rf','powerFirst','b');bind('rc','comfort','b');bind('rk','keep','s');bind('rj','jumps','b');
-  bind('rm','maxJ','n');bind('rl','jLen','s');bind('rt','tears','b');bind('rg','plane','b');bind('re','effort','s');
+  bind('rm','maxJ','n');bind('rl','jLen','s');bind('rt','tears','b');bind('rg','plane','b');bind('ra','place','b');bind('rz','size','s');bind('rb','std','s');bind('re','effort','s');
 }
 function runRoute(o){
-  const r=autoroute(o);pushUndo();doc.tracks=r.tracks;doc.jumpers=r.jumpers;doc.tears=o.tears;trackSel=null;
-  let extra='';
+  pushUndo();trackSel=null;let extra='',pl=null;
+  if(o.place){pl=placeComps(o);if(!pl.ok)extra+=' · Algunos componentes no entran bien: revisá la placa'}
+  else if(o.size==='std')doc.outline=stdRegion(o.std);
+  const r=autoroute(o);doc.tracks=r.tracks;doc.jumpers=r.jumpers;doc.tears=o.tears;
+  if(o.size==='min')shrinkOutline();
+  if(o.size!=='none'&&doc.outline)extra=` · Placa de ${cm(doc.outline.w)} × ${cm(doc.outline.h)} cm`+extra;
   if(o.plane){const k=gndKey();if(doc.outline&&k)doc.plane={key:k};else{doc.plane=null;extra=doc.outline?' · No encontré la masa (GND)':' · Plano de masa: falta el contorno'}}else doc.plane=null;
   changed();
   if(!r.total){toast('No había conexiones para rutear'+extra);return}
+  if(pl&&pl.moved)extra=` · ${pl.moved} componentes reacomodados`+extra;
   const pj=r.nj?` con ${r.nj} puente${r.nj>1?'s':''}`:'';
   if(r.done===r.total)toast(`Listo: ${r.done} de ${r.total} conexiones${pj}${extra}`);
   else dialog('Autorruteador',`<p>Se rutearon ${r.done} de ${r.total} conexiones${pj}. Las que faltan siguen como línea punteada.</p><p class="muted">Probá separar un poco los componentes, permitir más puentes o bajar el ancho de las pistas.${extra}</p>`,[{t:'Deshacer',f:doUndo},{t:'Cerrar',pri:1}]);
 }
+
+
+/* ================= reacomodar componentes y tamaño de placa ================= */
+// Recocido simulado sobre la grilla de 2,54 mm: mueve, rota e intercambia lo que no tiene candado.
+// Costo: largo de las conexiones, cruces entre líneas de aire (en una cara cada cruce es un puente),
+// superposición, salirse de la placa y reglas de electrónica (desacople junto al integrado,
+// reguladores y conectores al borde). Con "Ajustar al mínimo" también premia que quede compacto.
+const STD_BOARDS={'5x5':[50,50],'5x7':[70,50],'7x9':[90,70],'7.5x10':[100,75],'10x10':[100,100],'10x15':[150,100],'15x20':[200,150]};
+function contentBox(){const bs=doc.comps.map(compBox);if(!bs.length)return null;return [Math.min(...bs.map(b=>b[0])),Math.min(...bs.map(b=>b[1])),Math.max(...bs.map(b=>b[2])),Math.max(...bs.map(b=>b[3]))]}
+function stdRegion(key){const [w,h]=STD_BOARDS[key]||STD_BOARDS['5x7'];const b=contentBox()||[0,0,w,h];
+  const x=doc.outline?doc.outline.x:snapV((b[0]+b[2])/2-w/2,2.54),y=doc.outline?doc.outline.y:snapV((b[1]+b[3])/2-h/2,2.54);return {x,y,w,h}}
+function placeComps(o){
+  const fixed=new Set(doc.comps.filter(c=>c.lock).map(c=>c.id)),lockedT=doc.tracks.filter(t=>t.lock),pads=padsAll();
+  lockedT.forEach(t=>[t.pts[0],t.pts[t.pts.length-1]].forEach(([x,y])=>pads.forEach(q=>{if(Math.hypot(q.x-x,q.y-y)<=q.r+.01)fixed.add(q.c.id)}))); // lo unido a una pista fija tampoco se mueve
+  doc.tracks=lockedT;doc.jumpers=[];
+  const mov=doc.comps.filter(c=>!fixed.has(c.id)&&fpOf(c));if(!mov.length)return {moved:0,ok:true};
+  let R;const bb=contentBox();
+  if(o.size==='std')R=stdRegion(o.std);else if(doc.outline)R={...doc.outline};
+  else{const area=doc.comps.reduce((s,c)=>{const b=compBox(c);return s+(b[2]-b[0]+2)*(b[3]-b[1]+2)},0),side=Math.max(Math.sqrt(area*2.2),bb[2]-bb[0]+8,bb[3]-bb[1]+8);
+    R={x:snapV((bb[0]+bb[2])/2-side/2,2.54),y:snapV((bb[1]+bb[3])/2-side/2,2.54),w:side,h:side}}
+  const E=DRC.edge,ix0=R.x+E,iy0=R.y+E,ix1=R.x+R.w-E,iy1=R.y+R.h-E,GAP=1.0;
+  const info=c=>DB.find(d=>d.nombre===c.name)||{};
+  const NETS=nets().map(ks=>ks.map(k=>{const [cid,n]=k.split(':');const c=doc.comps.find(x=>x.id===cid);const fp=c&&fpOf(c);return fp?{c,p:fp.pads.find(q=>String(q.n)===n)}:null}).filter(x=>x&&x.p));
+  const isG=k=>/^(GND|VSS|0V)$/.test(pinName(k)),isV=k=>/^(VCC|VDD|\+VS|VS|V\+)$/.test(pinName(k));
+  const netKeys=nets(),netOfK=new Map();netKeys.forEach((g,i)=>g.forEach(k=>netOfK.set(k,i)));
+  const decoup=[];doc.comps.forEach(c=>{if(!/^C\d/.test(c.ref))return;const fp=fpOf(c);if(!fp||fp.pads.length!==2)return;
+    const n1=netOfK.get(pkey(c.id,fp.pads[0].n)),n2=netOfK.get(pkey(c.id,fp.pads[1].n));if(n1==null||n2==null)return;
+    for(const [a,b] of [[n1,n2],[n2,n1]])if(netKeys[a].some(isG)){const v=netKeys[b].find(isV);if(v){const [cid,n]=v.split(':');const ic=doc.comps.find(x=>x.id===cid);decoup.push({c,ic,p:fpOf(ic).pads.find(q=>String(q.n)===n)});break}}});
+  const edgeComps=doc.comps.filter(c=>/^Regulador/.test(c.name)||/bornera|jack/.test((info(c).alias||[]).join(' ')));
+  const segX=(a,b,c,d)=>segCross(a,b,c,d);
+  function cost(){
+    let W=0,X=0,O=0,B=0,Ru=0;const edges=[];
+    NETS.forEach((L,ni)=>{const P=L.map(({c,p})=>padWorld(c,p));if(P.length<2)return;const xs=P.map(p=>p[0]),ys=P.map(p=>p[1]);W+=Math.max(...xs)-Math.min(...xs)+Math.max(...ys)-Math.min(...ys);
+      const inT=[0],rest=P.map((_,i)=>i).slice(1);while(rest.length){let bd=1e9,bi=0,bj=0;inT.forEach(i=>rest.forEach((j,jj)=>{const d=Math.hypot(P[i][0]-P[j][0],P[i][1]-P[j][1]);if(d<bd){bd=d;bi=i;bj=jj}}));
+        const j=rest.splice(bj,1)[0];inT.push(j);edges.push([P[bi],P[j],ni])}});
+    for(let i=0;i<edges.length;i++)for(let j=i+1;j<edges.length;j++)if(edges[i][2]!==edges[j][2]&&segX(edges[i][0],edges[i][1],edges[j][0],edges[j][1]))X++;
+    const bx=doc.comps.map(compBox);
+    for(let i=0;i<bx.length;i++){const a=bx[i];
+      B+=Math.max(0,ix0-a[0])+Math.max(0,iy0-a[1])+Math.max(0,a[2]-ix1)+Math.max(0,a[3]-iy1);
+      for(let j=i+1;j<bx.length;j++){const b=bx[j],ox=Math.min(a[2],b[2])-Math.max(a[0],b[0])+GAP,oy=Math.min(a[3],b[3])-Math.max(a[1],b[1])+GAP;if(ox>0&&oy>0)O+=ox*oy+1}}
+    decoup.forEach(({c,ic,p})=>{const q=padWorld(ic,p),b=compBox(c);Ru+=2*Math.hypot((b[0]+b[2])/2-q[0],(b[1]+b[3])/2-q[1])});
+    edgeComps.forEach(c=>{const b=compBox(c);Ru+=1.2*Math.min(b[0]-ix0,b[1]-iy0,ix1-b[2],iy1-b[3])});
+    let K=0;if(o.size==='min'){const u=[Math.min(...bx.map(b=>b[0])),Math.min(...bx.map(b=>b[1])),Math.max(...bx.map(b=>b[2])),Math.max(...bx.map(b=>b[3]))];K=0.03*(u[2]-u[0])*(u[3]-u[1])}
+    return {t:W+12*X+60*O+60*B+Ru+K,O,B,X};
+  }
+  let seed=11;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  mov.forEach(c=>snapComp(c));
+  const save=()=>doc.comps.map(c=>[c.x,c.y,c.rot]),load=s=>doc.comps.forEach((c,i)=>{[c.x,c.y,c.rot]=s[i]});
+  let cur=cost(),best=cur,bestS=save();
+  const iters=({fast:4000,normal:15000,deep:45000}[o.effort]||15000)*Math.max(1,Math.min(3,mov.length/10));
+  const span=Math.max(R.w,R.h)/2.54,T0=Math.max(5,cur.t*0.05),T1=0.05;
+  for(let it=0;it<iters;it++){const T=T0*Math.pow(T1/T0,it/iters),c=mov[Math.floor(rnd()*mov.length)],old=[c.x,c.y,c.rot],m=rnd();let other=null,oo=null;
+    if(m<0.7){const k=Math.max(1,Math.round(span*0.5*T/T0));c.x+=Math.round((rnd()*2-1)*k)*2.54;c.y+=Math.round((rnd()*2-1)*k)*2.54}
+    else if(m<0.85){c.rot=(c.rot+(rnd()<.5?1:3))%4;snapComp(c)}
+    else{other=mov[Math.floor(rnd()*mov.length)];if(other===c)continue;oo=[other.x,other.y,other.rot];const ca=compBox(c),cb=compBox(other);
+      const dx=(cb[0]+cb[2]-ca[0]-ca[2])/2,dy=(cb[1]+cb[3]-ca[1]-ca[3])/2;c.x+=dx;c.y+=dy;other.x-=dx;other.y-=dy;snapComp(c);snapComp(other)}
+    const nw=cost(),d=nw.t-cur.t;
+    if(d<=0||rnd()<Math.exp(-d/T)){cur=nw;if(nw.t<best.t){best=nw;bestS=save()}}
+    else{[c.x,c.y,c.rot]=old;if(other)[other.x,other.y,other.rot]=oo}}
+  load(bestS);
+  if(o.size==='std'||!doc.outline)doc.outline=R;
+  return {moved:mov.length,ok:best.O===0&&best.B<1e-6,X:best.X};
+}
+function shrinkOutline(){ // contorno mínimo: todo el cobre y los cuerpos, más 2 mm libres de borde
+  const ph=physical(true),bs=[...copperItems(ph,{tears:true}).map(i=>i.b),...doc.comps.map(compBox)];if(!bs.length)return;
+  const e=DRC.edge,r=v=>Math.round(v*10)/10,x0=Math.floor((Math.min(...bs.map(b=>b[0]))-e)*10)/10,y0=Math.floor((Math.min(...bs.map(b=>b[1]))-e)*10)/10;
+  doc.outline={x:x0,y:y0,w:r(Math.ceil((Math.max(...bs.map(b=>b[2]))+e-x0)*10)/10),h:r(Math.ceil((Math.max(...bs.map(b=>b[3]))+e-y0)*10)/10)};
+}
+const cm=v=>f2(v/10);
 
 /* ================= cobre extra: puentes, lágrimas y plano de masa ================= */
 const JR=1.0,JDRILL=0.8; // pad de cada punta del puente
@@ -1231,14 +1308,14 @@ function buildProps(){
     document.getElementById('pLock').onclick=()=>{pushUndo();T.lock=!T.lock;toast(T.lock?'Pista fija':'Candado quitado');changed()};
     document.getElementById('pDel').onclick=deleteSel;document.getElementById('pClose').onclick=()=>{trackSel=null;refreshUI();draw()};return}
   if(outlineSel&&doc.outline){const o=doc.outline;
-    R.innerHTML=`<div class="pb-id"><span class="pname">Contorno de placa</span><small>mm</small></div><span class="pb-sep"></span>
-     <div class="field w-s"><label for="oW">Ancho</label><input id="oW" type="number" step="0.5" min="2" value="${num(o.w)}"></div>
-     <div class="field w-s"><label for="oH">Alto</label><input id="oH" type="number" step="0.5" min="2" value="${num(o.h)}"></div>
-     <div class="field w-s"><label for="oX">X</label><input id="oX" type="number" step="0.5" value="${num(o.x)}"></div>
-     <div class="field w-s"><label for="oY">Y</label><input id="oY" type="number" step="0.5" value="${num(o.y)}"></div>
+    R.innerHTML=`<div class="pb-id"><span class="pname">Contorno de placa</span><small>cm</small></div><span class="pb-sep"></span>
+     <div class="field w-s"><label for="oW">Ancho</label><input id="oW" inputmode="decimal" value="${cm(o.w)}"></div>
+     <div class="field w-s"><label for="oH">Alto</label><input id="oH" inputmode="decimal" value="${cm(o.h)}"></div>
+     <div class="field w-s"><label for="oX">X</label><input id="oX" inputmode="decimal" value="${cm(o.x)}"></div>
+     <div class="field w-s"><label for="oY">Y</label><input id="oY" inputmode="decimal" value="${cm(o.y)}"></div>
      <span class="pb-info">${f2(o.w*o.h/100)} cm²</span>
      <div class="pbtns"><button class="danger" id="pDel" title="Borrar (Supr)" aria-label="Borrar">${ico('trash')}</button>${close}</div>`;
-    [['oW','w'],['oH','h'],['oX','x'],['oY','y']].forEach(([id,k])=>document.getElementById(id).onchange=e=>{const v=parseFloat(e.target.value);if(isNaN(v)||((k==='w'||k==='h')&&v<2))return;pushUndo();doc.outline[k]=v;changed()});
+    [['oW','w'],['oH','h'],['oX','x'],['oY','y']].forEach(([id,k])=>document.getElementById(id).onchange=e=>{const v=parseFloat(e.target.value.replace(',','.'))*10;if(isNaN(v)||((k==='w'||k==='h')&&v<2)){e.target.value=cm(doc.outline[k]);return}pushUndo();doc.outline[k]=Math.round(v*100)/100;changed()});
   }
   else if(s.length===1){const c=s[0],fp=fpOf(c),comp=DB.find(d=>d.nombre===c.name);
     R.innerHTML=`<div class="pb-id"><span class="pname"></span><small></small></div><span class="pb-sep"></span>

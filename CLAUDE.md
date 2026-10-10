@@ -66,13 +66,17 @@ Hecho:
   - Lágrimas en los pads (`doc.tears`), plano de masa al terminar (`doc.plane={key}`), esfuerzo Rápido/Normal/A fondo (4/12/30 pasadas de arrancar y rerutear).
 - Candado: botón en la barra de propiedades para componentes (uno o varios) y pistas. Lo fijo no se mueve, no se rota ni se borra.
 - Lágrimas: se calculan al vuelo (`tearShapes`), solo si respetan 0,6 mm. También en Herramientas → Lágrimas en los pads.
-- Plano de masa: cobre en lo que sobra, a 0,8 mm de todo, unido a GND, sin islas ni tiras finas (grilla de 0,25 mm). Une las patas de masa que toca. Necesita contorno. También en Herramientas → Plano de masa. Sin alivios térmicos todavía.
+- Plano de masa: cobre en lo que sobra, a 0,8 mm de todo, unido a GND, sin islas ni tiras finas (grilla de 0,25 mm). Une las patas de masa que toca. Va atado al contorno: lo llena hasta 2 mm del borde y se recalcula solo si el contorno cambia. También en Herramientas → Plano de masa. Sin alivios térmicos todavía.
+- Reacomodar componentes (opción del autorruteador, `placeComps`): recocido simulado en grilla de 2,54 mm. Mueve, rota e intercambia lo que no tiene candado (ni lo unido a una pista fija). Costo: largo de conexiones, cruces de líneas de aire (cada cruce es un puente en una cara), superposición, salirse de la placa, capacitor de desacople cerca de la pata VCC del integrado, reguladores y borneras/jack al borde. Borra las pistas sin candado antes de reacomodar.
+- Tamaño de la placa (opción del autorruteador): No tocar el contorno / Ajustar al mínimo (achica el contorno a lo que ocupa todo + 2 mm, `shrinkOutline`) / Placa estándar 5×5, 5×7, 7×9, 7,5×10, 10×10, 10×15, 15×20 cm (`STD_BOARDS`).
+- Contorno en **centímetros con decimales** (barra de propiedades y etiquetas). Internamente sigue en mm.
 
 Próximos pasos, en este orden:
-1. **Autorruteador v2**: reacomodar componentes y optimizar tamaño.
-2. Ancho por corriente, pads más grandes donde sobre lugar, agujeros de fijación (**opcionales, se tienen que poder desactivar**: pedido de Matías), zonas prohibidas, varias alternativas para elegir.
-3. Imprimir / exportar PDF a escala 1:1 para planchar.
-4. Asistente con IA.
+1. Ancho por corriente, pads más grandes donde sobre lugar, agujeros de fijación (**opcionales, se tienen que poder desactivar**: pedido de Matías), zonas prohibidas, varias alternativas para elegir.
+2. Imprimir / exportar PDF a escala 1:1 para planchar.
+3. Asistente con IA.
+
+Pendiente de v2: "entrada de audio lejos de la salida" (falta saber qué pata es entrada/salida de audio en la biblioteca).
 
 ### Opciones del autorruteador
 - **v1:** incluir puentes (sí/no, máximo, largos 7,62 / 10,16 mm); optimizar recorrido; fijar componentes y pistas con candado; anchos de señal y potencia (o por corriente); rutear primero alimentación y masa; plano de masa al final (sí/no). Algoritmo: grilla de 0,635 mm, A* con costos (largo, quiebres, cercanía), solo direcciones a 45°, varias pasadas de arrancar y rerutear.
