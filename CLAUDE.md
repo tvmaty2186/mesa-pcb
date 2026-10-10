@@ -13,7 +13,12 @@ Este archivo es para que cualquier sesión de Claude retome el proyecto sin empe
 ## Próximos pasos (en este orden)
 
 1. **Pads más grandes donde sobre lugar** (más fáciles de soldar y agujerear a mano), **zonas prohibidas** (áreas donde no pasa ninguna pista, por ejemplo debajo de un disipador) y **varias alternativas de ruteo** para elegir.
-2. **Asistente con IA** (dictar "agregá un 555 y conectá la pata 3 al LED"), **pago por uso** (pedido de Matías). Falta decidir medio de pago y modelo de cobro; cobrar y llamar a la IA necesita un servidor (Firebase Functions, plan Blaze), porque la clave de la IA no puede ir en la página.
+2. **Asistente con IA** (dictar "agregá un 555 y conectá la pata 3 al LED"), **pago por uso** (pedido de Matías). **Decidido (10/10/2026): Mercado Pago y paquetes de créditos** (el usuario compra, por ejemplo, 50 pedidos y los va gastando). Plan:
+   - Servidor con **Firebase Functions** (requiere pasar el proyecto `mesa-pcb` al plan **Blaze**, pago por uso con tarjeta; con poco uso sigue costando casi nada). La clave de la IA y la de Mercado Pago van como secretos del servidor, nunca en la página.
+   - Créditos en Firestore `users/{uid}.credits`, que **solo el servidor** puede cambiar (las reglas no dejan que el usuario los toque).
+   - Comprar: la función crea una preferencia de Checkout Pro de Mercado Pago → el usuario paga → el webhook de Mercado Pago avisa a otra función, que suma los créditos.
+   - Usar: la página manda el pedido y el diseño a una función, que descuenta 1 crédito, llama a la API de Claude y devuelve los cambios a aplicar en el diseño.
+   - Matías tiene que preparar: plan Blaze en Firebase, cuenta de vendedor de Mercado Pago (credenciales de producción) y una clave de la API de Anthropic (console.anthropic.com).
 3. Conectar los avisos reales: banner (AdSense) y pantalla completa (Ad Manager, anuncios con recompensa).
 
 Pendiente chico: "entrada de audio lejos de la salida" al reacomodar (falta marcar en la biblioteca qué pata es entrada/salida de audio).
