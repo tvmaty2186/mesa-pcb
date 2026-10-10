@@ -6,6 +6,7 @@
 <style>[hidden]{display:none!important}img{max-width:100%}</style>
 <script src="biblioteca/componentes.js"></script>
 <script src="firebase-config.js"></script>
+<script src="publicidad.js"></script>
 <title>Mesa de Diseño PCB</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Chakra+Petch:wght@700&family=JetBrains+Mono:wght@400;600&display=swap">
@@ -163,6 +164,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 
 /* franja publicitaria reservada */
 .adslot{height:64px;display:flex;align-items:center;justify-content:center;background:var(--panel2);border-top:1px solid var(--line);padding-inline:16px}
+.adbox ins{display:block;width:100%;height:100%}
+.adbox.on{border:0}
 .adbox{width:468px;max-width:100%;height:60px;border:1px dashed var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:.78rem;font-family:var(--f-mono);letter-spacing:.04em;text-transform:uppercase}
 @media (max-width:820px){.adslot{height:54px}.adbox{width:320px;height:50px}}
 
@@ -251,7 +254,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
     </main>
     </div>
   </div>
-  <!-- Espacio reservado para publicidad. Escritorio: 468 × 60 · Celular: 320 × 50. Acá va el código de AdSense o AdMob. -->
+  <!-- Banner de abajo. Escritorio: 468 × 60 · Celular: 320 × 50. Con ADS_CONFIG (publicidad.js) se carga AdSense acá (adsInit). -->
   <aside class="adslot" id="ad-slot" aria-label="Espacio publicitario"><div class="adbox">Espacio publicitario · <span id="adsize">468 × 60</span></div></aside>
 </div>
 <input type="file" id="fileIn" accept=".json,application/json" hidden>
@@ -1766,25 +1769,78 @@ function openDlg(){
   usingCloud()?cloudOpen():openLocal();
 }
 
-/* ================= publicidad antes de las acciones ================= */
-// Antes de guardar, imprimir, exportar, importar y autorrutear se muestra un aviso a pantalla completa con
-// cuenta regresiva (pedido de Matías). El aviso real va en #adFull: Google Ad Manager con anuncios con
-// recompensa (AdSense no permite obligar a ver un aviso para seguir).
+/* ================= publicidad ================= */
+// Banner de abajo: AdSense. Pantalla completa antes de guardar, imprimir, exportar, importar y autorrutear
+// (pedido de Matías): Google Ad Manager con anuncio con recompensa (AdSense no permite obligar a ver un
+// aviso para seguir). Los datos van en publicidad.js; mientras estén en null se ven los espacios reservados.
+// Si Ad Manager no tiene aviso para dar (o el navegador lo bloquea), se muestra el espacio reservado con la
+// cuenta regresiva de siempre: la acción nunca queda trabada.
+const ADS=window.ADS_CONFIG||{};
+function adScript(src,attrs){return new Promise((ok,ko)=>{const e=document.createElement('script');e.async=true;e.src=src;
+  Object.entries(attrs||{}).forEach(([k,v])=>e.setAttribute(k,v));e.onload=ok;e.onerror=ko;document.head.appendChild(e)})}
+let gptReady=null;
+function gptLoad(){
+  if(!gptReady){window.googletag=window.googletag||{cmd:[]};
+    gptReady=adScript('https://securepubads.g.doubleclick.net/tag/js/gpt.js').then(()=>new Promise(ok=>googletag.cmd.push(()=>{googletag.enableServices();ok()})))}
+  return gptReady;
+}
+function adsInit(){
+  if(ADS.adsenseClient&&ADS.bannerSlot){
+    const box=document.querySelector('#ad-slot .adbox');
+    adScript('https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client='+encodeURIComponent(ADS.adsenseClient),{crossorigin:'anonymous'}).then(()=>{
+      box.classList.add('on');box.innerHTML=`<ins class="adsbygoogle" data-ad-client="${ADS.adsenseClient}" data-ad-slot="${ADS.bannerSlot}"></ins>`;
+      (window.adsbygoogle=window.adsbygoogle||[]).push({});
+    }).catch(()=>{});
+  }
+  if(ADS.rewardedUnit)gptLoad().catch(()=>{});
+}
+// Pide un aviso con recompensa. Llama a ready(show) cuando hay aviso (show() lo muestra; tiene que ser por un
+// clic del usuario), a done(true/false) cuando se cierra (true = lo vio entero) y a none() si no hay aviso.
+function rewardedAd(ready,done,none){
+  let slot=null,granted=false,over=false;
+  const end=f=>{if(over)return;over=true;clearTimeout(to);
+    try{if(slot)googletag.destroySlots([slot])}catch(e){}f()};
+  const to=setTimeout(()=>end(none),6000);
+  gptLoad().then(()=>googletag.cmd.push(()=>{
+    slot=googletag.defineOutOfPageSlot(ADS.rewardedUnit,googletag.enums.OutOfPageFormat.REWARDED);
+    if(!slot)return end(none);   // esta página o este navegador no admiten el formato
+    slot.addService(googletag.pubads());
+    const pa=googletag.pubads();
+    pa.addEventListener('rewardedSlotReady',e=>{if(e.slot!==slot||over)return;clearTimeout(to);ready(()=>e.makeRewardedVisible())});
+    pa.addEventListener('rewardedSlotGranted',e=>{if(e.slot===slot)granted=true});
+    pa.addEventListener('rewardedSlotClosed',e=>{if(e.slot===slot)end(()=>done(granted))});
+    pa.addEventListener('slotRenderEnded',e=>{if(e.slot===slot&&e.isEmpty)end(none)});
+    googletag.display(slot);
+  })).catch(()=>end(none));
+}
 const AD_SECONDS=5;let adBusy=false;
 function withAd(fn){
-  if(adBusy)return;adBusy=true;let left=AD_SECONDS;
+  if(adBusy)return;adBusy=true;let left=AD_SECONDS,t=null;const real=!!ADS.rewardedUnit;
   const ov=document.createElement('div');ov.className='adov';ov.innerHTML=`<div class="adfull" role="dialog" aria-modal="true" aria-label="Publicidad">
     <div class="adtop"><span>Publicidad</span><button class="adx" aria-label="Cancelar" title="Cancelar">✕</button></div>
-    <!-- Aviso de pantalla completa. Acá va el código de Google Ad Manager (anuncio con recompensa). -->
-    <div class="adslotfull" id="adFull">Espacio publicitario · pantalla completa</div>
+    <div class="adslotfull" id="adFull">${real?'Cargando aviso…':'Espacio publicitario · pantalla completa'}</div>
     <button class="adgo" disabled></button></div>`;
-  document.body.appendChild(ov);const go=ov.querySelector('.adgo');
-  const close=()=>{clearInterval(t);ov.remove();adBusy=false};
-  const paint=()=>{go.disabled=left>0;go.textContent=left>0?`Podés seguir en ${left}`:'Continuar'};paint();
-  const t=setInterval(()=>{left--;paint();if(left<=0){clearInterval(t);go.focus()}},1000);
-  go.onclick=()=>{if(left>0)return;close();fn()};
+  document.body.appendChild(ov);const go=ov.querySelector('.adgo'),slotEl=ov.querySelector('#adFull');
+  let closed=false;
+  const close=()=>{closed=true;clearInterval(t);ov.remove();adBusy=false};
+  const countdown=()=>{   // espacio reservado con cuenta regresiva (sin Ad Manager o sin aviso para dar)
+    if(closed)return;slotEl.textContent='Espacio publicitario · pantalla completa';
+    const paint=()=>{go.disabled=left>0;go.textContent=left>0?`Podés seguir en ${left}`:'Continuar'};paint();
+    t=setInterval(()=>{left--;paint();if(left<=0){clearInterval(t);go.focus()}},1000);
+    go.onclick=()=>{if(left>0)return;close();fn()};
+  };
   ov.querySelector('.adx').onclick=close;
   ov.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();close()}});
+  if(!real)return countdown();
+  go.textContent='Cargando…';
+  rewardedAd(show=>{
+    if(closed)return;slotEl.textContent='Mirá un aviso corto para seguir';
+    go.disabled=false;go.textContent='Ver aviso y seguir';go.focus();
+    go.onclick=()=>{ov.style.visibility='hidden';show()};
+  },ok=>{
+    if(closed)return;
+    if(ok){close();fn()}else close();   // si cerró el aviso antes de terminarlo, la acción se cancela
+  },countdown);
 }
 const importFile=()=>withAd(()=>document.getElementById('fileIn').click());
 // asistente con IA: todavía no está; va a ser pago por uso
@@ -2012,6 +2068,7 @@ document.getElementById('libq').addEventListener('input',buildLib);
 document.getElementById('aiBtn').onclick=aiDlg;
 {const pv=document.getElementById('pv');pv.addEventListener('dragstart',e=>{if(!pvComp){e.preventDefault();return}beginDrag(e,pvComp)});pv.addEventListener('dragend',endDrag);}
 new ResizeObserver(queueResize).observe(stage);
+adsInit();
 {const as=document.getElementById('adsize'),mq=matchMedia('(max-width:820px)');const f=()=>as.textContent=mq.matches?'320 × 50':'468 × 60';f();try{mq.addEventListener('change',f)}catch(e){}}
 buildMenus();buildToolbar();readColors();applyTheme();cloudInit();
 (window.COMPONENTES?Promise.resolve(window.COMPONENTES):fetch('biblioteca/componentes.json').then(r=>{if(!r.ok)throw 0;return r.json()})).then(j=>{

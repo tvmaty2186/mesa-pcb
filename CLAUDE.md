@@ -19,7 +19,7 @@ Este archivo es para que cualquier sesión de Claude retome el proyecto sin empe
    - Comprar: la función crea una preferencia de Checkout Pro de Mercado Pago → el usuario paga → el webhook de Mercado Pago avisa a otra función, que suma los créditos.
    - Usar: la página manda el pedido y el diseño a una función, que descuenta 1 crédito, llama a la API de Claude y devuelve los cambios a aplicar en el diseño.
    - Matías tiene que preparar: plan Blaze en Firebase, cuenta de vendedor de Mercado Pago (credenciales de producción) y una clave de la API de Anthropic (console.anthropic.com).
-3. **Publicidad (en curso, 10/10/2026):** conectar los avisos reales: banner (AdSense) y pantalla completa (Ad Manager, anuncios con recompensa). Requisitos de Google: dominio propio (AdSense no aprueba `github.io`; Matías ya tiene uno, falta que pase el nombre), política de privacidad y términos (hechos: `privacidad.html`, `terminos.html`), contenido con texto (`guia.html`), y AdSense aprobado antes de Ad Manager. Al conectar el dominio: CNAME en GitHub Pages, agregar el dominio en Firebase → Authentication → Dominios autorizados, y `ads.txt` en la raíz. El correo público de contacto es tvmaty2186@gmail.com (lo eligió Matías).
+3. **Publicidad (en curso, 10/10/2026):** el código ya está (`publicidad.js` con `ADS_CONFIG`, `adsInit`, `rewardedAd`, `withAd`); faltan los datos de las cuentas. Pasos y dónde sale cada dato: `docs/configurar_publicidad.md`. Banner con AdSense; pantalla completa con Ad Manager, anuncio con recompensa (GPT `OutOfPageFormat.REWARDED`); si no hay aviso, cuenta regresiva en el espacio reservado. Requisitos de Google: dominio propio (AdSense no aprueba `github.io`; Matías ya tiene uno, falta que pase el nombre), política de privacidad y términos (hechos: `privacidad.html`, `terminos.html`), contenido con texto (`guia.html`), y AdSense aprobado antes de Ad Manager. Al conectar el dominio: CNAME en GitHub Pages, agregar el dominio en Firebase → Authentication → Dominios autorizados, y `ads.txt` en la raíz. El correo público de contacto es tvmaty2186@gmail.com (lo eligió Matías).
 
 Pendiente chico: "entrada de audio lejos de la salida" al reacomodar (falta marcar en la biblioteca qué pata es entrada/salida de audio).
 
@@ -78,7 +78,7 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 - **Sin textos de ayuda automáticos** (nada de carteles que expliquen cómo usar una herramienta). Solo avisos cortos de confirmación.
 - **Sin barra de estado** abajo.
 - **Franja publicitaria reservada abajo de todo**: 468 × 60 en computadora, 320 × 50 en celular (comentario en `index.html` donde va el código del aviso).
-- **Publicidad de pantalla completa antes de guardar, imprimir (una o varias), exportar (PDF, Gerber, diseño), importar y autorrutear** (también el rerruteo de la revisión de reglas), pedido de Matías (`withAd`, `AD_SECONDS`=5). Va después del pedido de cuenta: primero "Entrá con Google", después el aviso, después la acción. Cuenta regresiva "Podés seguir en N" → "Continuar"; la ✕ cancela la acción. El aviso real va en `#adFull`: **Google Ad Manager con anuncios con recompensa** (AdSense no permite obligar a ver un aviso para seguir). Hoy es un espacio reservado.
+- **Publicidad de pantalla completa antes de guardar, imprimir (una o varias), exportar (PDF, Gerber, diseño), importar y autorrutear** (también el rerruteo de la revisión de reglas), pedido de Matías (`withAd`, `AD_SECONDS`=5). Va después del pedido de cuenta: primero "Entrá con Google", después el aviso, después la acción. Cuenta regresiva "Podés seguir en N" → "Continuar"; la ✕ cancela la acción. Con `ADS_CONFIG.rewardedUnit` pide un **anuncio con recompensa de Ad Manager** ("Ver aviso y seguir"; si lo cierra antes, se cancela); sin dato o sin aviso, queda el espacio reservado con la cuenta regresiva (AdSense no permite obligar a ver un aviso para seguir).
 - **Botón "Asistente con IA"** abajo del panel izquierdo, en lugar de "Colocar en el tablero" (para colocar: arrastrar, o doble clic en la lista). Hoy abre un aviso de "muy pronto, pago por uso" (`aiDlg`).
 - **Botón dividido "Pista ▾"**: se elige Pista o Conectar con la flechita.
 - Tres vistas: componentes (arriba), cobre visto de abajo (espejado), hoja para planchar (negro, **sin espejar** porque el cobre va abajo).
@@ -136,6 +136,8 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 | `biblioteca/build_lib.py` | **Fuente de verdad de la biblioteca.** Genera `componentes.json` y `componentes.js`. Verifica pines por huella y separación mínima. |
 | `biblioteca/componentes.json` / `.js` | Biblioteca generada. **No editar a mano**: cambiar `build_lib.py` y correr `python3 build_lib.py` dentro de `biblioteca/`. `componentes.js` existe para abrir la página con doble clic (sin servidor). |
 | `firebase-config.js` | Datos del proyecto Firebase `mesa-pcb` (no son secretos). |
+| `publicidad.js` | Datos de AdSense y Ad Manager (`ADS_CONFIG`). En `null` = espacios reservados. |
+| `docs/configurar_publicidad.md` | Cómo conectar la publicidad, paso a paso. |
 | `firestore.rules` | Reglas de seguridad de Firestore (ya publicadas en Firebase). |
 | `docs/configurar_firebase.md` | Cómo se configuró Firebase, paso a paso. |
 | `docs/investigacion_ruteo.md` | Investigación de reglas y algoritmos de ruteo, con fuentes. |
