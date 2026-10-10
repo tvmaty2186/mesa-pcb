@@ -1,0 +1,161 @@
+Resistencia de carbón 1/4 W|Resistencias|AX-R14|2
+Resistencia 1/2 W|Resistencias|AX-R12|2
+Resistencia 1 W|Resistencias|AX-R1W|2
+Resistencia 2 W|Resistencias|AX-R2W|2
+Resistencia de cemento 5 W|Resistencias|AX-R5W|2
+LDR (fotorresistencia) 5 mm|Resistencias|LDR|2
+Termistor NTC|Resistencias|NTC|2
+Preset 3386P (trimpot)|Resistencias|3386P|3|Extremo 1,Cursor,Extremo 2
+Potenciómetro 9 mm|Resistencias|POT9|5|Extremo 1,Cursor,Extremo 2,Sujeción,Sujeción
+Electrolítico 1 µF|Capacitores|CE-D5|2|+,−
+Electrolítico 2,2 µF|Capacitores|CE-D5|2|+,−
+Electrolítico 4,7 µF|Capacitores|CE-D5|2|+,−
+Electrolítico 10 µF|Capacitores|CE-D5|2|+,−
+Electrolítico 22 µF|Capacitores|CE-D5|2|+,−
+Electrolítico 47 µF|Capacitores|CE-D6.3|2|+,−
+Electrolítico 100 µF|Capacitores|CE-D6.3|2|+,−
+Electrolítico 220 µF|Capacitores|CE-D8|2|+,−
+Electrolítico 470 µF|Capacitores|CE-D10|2|+,−
+Electrolítico 1000 µF|Capacitores|CE-D10|2|+,−
+Electrolítico 2200 µF|Capacitores|CE-D13|2|+,−
+Electrolítico 4700 µF|Capacitores|CE-D16|2|+,−
+Capacitor cerámico chico (hasta 1 nF)|Capacitores|CC-2.54|2
+Capacitor cerámico (más de 1 nF)|Capacitores|CC-5.08|2
+Poliéster 1 nF a 100 nF|Capacitores|CP-5|2
+Poliéster 220 nF a 470 nF|Capacitores|CP-7.5|2
+Poliéster 1 µF|Capacitores|CP-10|2
+Poliéster 2,2 µF a 4,7 µF|Capacitores|CP-15|2
+Tantalio (gota)|Capacitores|CT-2.54|2|+,−
+Diodo 1N4007|Diodos|DO-41|2|A,K
+Diodo Schottky 1N5819|Diodos|DO-41|2|A,K
+Diodo rápido UF4007 / FR107|Diodos|DO-41|2|A,K
+Diodo 1N5408 (3 A)|Diodos|DO-201|2|A,K
+Diodo 1N4148|Diodos|DO-35|2|A,K
+Zener 1/2 W (BZX55)|Diodos|DO-35|2|A,K
+Zener 1 W (1N47xx)|Diodos|DO-41|2|A,K
+Puente rectificador redondo W04|Diodos|BR-W|4|+,~,−,~
+Puente rectificador KBP|Diodos|BR-KBP|4|+,~,~,−
+LED 5 mm|LEDs y ópticos|LED-5|2|K,A
+LED 3 mm|LEDs y ópticos|LED-3|2|K,A
+LED 10 mm|LEDs y ópticos|LED-10|2|K,A
+Display 7 segmentos 0,56"|LEDs y ópticos|DISP-7SEG|10|e,d,Común,c,DP,b,a,Común,f,g
+Optoacoplador PC817|LEDs y ópticos|DIP-4|4|A,K,E,C
+Optoacoplador 4N35|LEDs y ópticos|DIP-6|6|A,K,Sin uso,E,C,B
+Optotriac MOC3021|LEDs y ópticos|DIP-6|6|A,K,Sin uso,MT,Sin uso,MT
+Transistor BC547 (NPN)|Transistores|TO-92|3|C,B,E
+Transistor BC557 (PNP)|Transistores|TO-92|3|C,B,E
+Transistor BC337 (NPN)|Transistores|TO-92|3|C,B,E
+Transistor BC327 (PNP)|Transistores|TO-92|3|C,B,E
+Transistor BC639 (NPN)|Transistores|TO-92|3|E,C,B
+Transistor 2N2222A (NPN)|Transistores|TO-92|3|E,B,C
+Transistor 2N2907A (PNP)|Transistores|TO-92|3|E,B,C
+Transistor 2N3904 (NPN)|Transistores|TO-92|3|E,B,C
+Transistor 2N3906 (PNP)|Transistores|TO-92|3|E,B,C
+Transistor 2N5551 (NPN alta tensión)|Transistores|TO-92|3|E,B,C
+Transistor 2N5401 (PNP alta tensión)|Transistores|TO-92|3|E,B,C
+Transistor MPSA42 (NPN 300 V)|Transistores|TO-92|3|E,B,C
+Transistor S8050 (NPN)|Transistores|TO-92|3|E,B,C
+MOSFET 2N7000|Transistores|TO-92|3|S,G,D
+MOSFET BS170|Transistores|TO-92|3|D,G,S
+Transistor BD139 (NPN)|Transistores|TO-126|3|E,C,B
+Transistor BD140 (PNP)|Transistores|TO-126|3|E,C,B
+Transistor TIP31 (NPN)|Transistores|TO-220|3|B,C,E
+Transistor TIP32 (PNP)|Transistores|TO-220|3|B,C,E
+Darlington TIP120 (NPN)|Transistores|TO-220|3|B,C,E
+Darlington TIP125 (PNP)|Transistores|TO-220|3|B,C,E
+Transistor BD243 (NPN)|Transistores|TO-220|3|B,C,E
+MOSFET IRFZ44N|Transistores|TO-220|3|G,D,S
+MOSFET IRF9540 (canal P)|Transistores|TO-220|3|G,D,S
+Triac BT136|Transistores|TO-220|3|MT1,MT2,G
+Tiristor BT151 (SCR)|Transistores|TO-220|3|K,A,G
+Regulador 7805 (5 V)|Reguladores y sensores|TO-220|3|IN,GND,OUT
+Regulador 7905 (−5 V)|Reguladores y sensores|TO-220|3|GND,IN,OUT
+Regulador LM317 (ajustable)|Reguladores y sensores|TO-220|3|ADJ,OUT,IN
+Regulador LM337 (ajustable negativo)|Reguladores y sensores|TO-220|3|ADJ,IN,OUT
+Regulador 78L05 (chico)|Reguladores y sensores|TO-92|3|OUT,GND,IN
+Referencia TL431|Reguladores y sensores|TO-92|3|REF,A,K
+Sensor de temperatura LM35|Reguladores y sensores|TO-92|3|+VS,VOUT,GND
+Sensor de temperatura DS18B20|Reguladores y sensores|TO-92|3|GND,DQ,VDD
+NE555 (temporizador)|Integrados|DIP-8|8|GND,TRIG,OUT,RESET,CTRL,THR,DIS,VCC
+NE556 (doble 555)|Integrados|DIP-14|14|DIS 1,THR 1,CTRL 1,RESET 1,OUT 1,TRIG 1,GND,TRIG 2,OUT 2,RESET 2,CTRL 2,THR 2,DIS 2,VCC
+LM741 (amplificador operacional)|Integrados|DIP-8|8|Offset,IN −,IN +,V −,Offset,OUT,V +,Sin uso
+LM358 (operacional doble)|Integrados|DIP-8|8|OUT 1,IN 1 −,IN 1 +,GND / V−,IN 2 +,IN 2 −,OUT 2,VCC
+TL072 / TL082 (operacional doble)|Integrados|DIP-8|8|OUT 1,IN 1 −,IN 1 +,GND / V−,IN 2 +,IN 2 −,OUT 2,VCC
+LM393 (comparador doble)|Integrados|DIP-8|8|OUT 1,IN 1 −,IN 1 +,GND / V−,IN 2 +,IN 2 −,OUT 2,VCC
+LM311 (comparador)|Integrados|DIP-8|8|GND,IN +,IN −,V −,Balance,Balance/Strobe,OUT,V +
+LM386 (amplificador de audio)|Integrados|DIP-8|8|GAIN,IN −,IN +,GND,OUT,VS,BYPASS,GAIN
+LM324 (operacional cuádruple)|Integrados|DIP-14|14|OUT 1,IN 1 −,IN 1 +,VCC,IN 2 +,IN 2 −,OUT 2,OUT 3,IN 3 −,IN 3 +,GND,IN 4 +,IN 4 −,OUT 4
+LM339 (comparador cuádruple)|Integrados|DIP-14|14|OUT 2,OUT 1,VCC,IN 1 −,IN 1 +,IN 2 −,IN 2 +,IN 3 −,IN 3 +,IN 4 −,IN 4 +,GND,OUT 4,OUT 3
+ICL7660 (inversor de tensión)|Integrados|DIP-8|8|Sin uso,CAP +,GND,CAP −,VOUT,LV,OSC,V +
+7400 (4 compuertas NAND)|Integrados|DIP-14|14|1A,1B,1Y,2A,2B,2Y,GND,3Y,3A,3B,4Y,4A,4B,VCC
+7402 (4 compuertas NOR)|Integrados|DIP-14|14|1Y,1A,1B,2Y,2A,2B,GND,3A,3B,3Y,4A,4B,4Y,VCC
+7404 (6 inversores)|Integrados|DIP-14|14|1A,1Y,2A,2Y,3A,3Y,GND,4Y,4A,5Y,5A,6Y,6A,VCC
+74HC14 (6 inversores Schmitt)|Integrados|DIP-14|14|1A,1Y,2A,2Y,3A,3Y,GND,4Y,4A,5Y,5A,6Y,6A,VCC
+7408 (4 compuertas AND)|Integrados|DIP-14|14|1A,1B,1Y,2A,2B,2Y,GND,3Y,3A,3B,4Y,4A,4B,VCC
+7432 (4 compuertas OR)|Integrados|DIP-14|14|1A,1B,1Y,2A,2B,2Y,GND,3Y,3A,3B,4Y,4A,4B,VCC
+7486 (4 compuertas XOR)|Integrados|DIP-14|14|1A,1B,1Y,2A,2B,2Y,GND,3Y,3A,3B,4Y,4A,4B,VCC
+74LS47 (decodificador a 7 segmentos)|Integrados|DIP-16|16|B,C,LT,BI/RBO,RBI,D,A,GND,e,d,c,b,a,g,f,VCC
+74LS138 (decodificador 3 a 8)|Integrados|DIP-16|16|A,B,C,G2A,G2B,G1,Y7,GND,Y6,Y5,Y4,Y3,Y2,Y1,Y0,VCC
+74HC595 (registro de desplazamiento)|Integrados|DIP-16|16|QB,QC,QD,QE,QF,QG,QH,GND,QH',SRCLR,SRCLK,RCLK,OE,SER,QA,VCC
+74HC165 (entrada paralelo a serie)|Integrados|DIP-16|16|SH/LD,CLK,E,F,G,H,QH',GND,QH,SER,A,B,C,D,CLK INH,VCC
+74HC164 (registro serie a paralelo)|Integrados|DIP-14|14|A,B,QA,QB,QC,QD,GND,CLK,CLR,QE,QF,QG,QH,VCC
+CD4011 (4 NAND CMOS)|Integrados|DIP-14|14|A,B,J,K,C,D,VSS,E,F,L,M,G,H,VDD
+CD4093 (4 NAND Schmitt)|Integrados|DIP-14|14|A,B,J,K,C,D,VSS,E,F,L,M,G,H,VDD
+CD4001 (4 NOR CMOS)|Integrados|DIP-14|14|A,B,J,K,C,D,VSS,E,F,L,M,G,H,VDD
+CD4081 (4 AND CMOS)|Integrados|DIP-14|14|A,B,J,K,C,D,VSS,E,F,L,M,G,H,VDD
+CD4071 (4 OR CMOS)|Integrados|DIP-14|14|A,B,J,K,C,D,VSS,E,F,L,M,G,H,VDD
+CD4070 (4 XOR CMOS)|Integrados|DIP-14|14|A,B,J,K,C,D,VSS,E,F,L,M,G,H,VDD
+CD4069 (6 inversores CMOS)|Integrados|DIP-14|14|A,G,B,H,C,I,VSS,J,D,K,E,L,F,VDD
+CD4013 (doble flip-flop D)|Integrados|DIP-14|14|Q1,Q1 negado,CLK 1,RESET 1,DATA 1,SET 1,VSS,SET 2,DATA 2,RESET 2,CLK 2,Q2 negado,Q2,VDD
+CD4066 (4 llaves analógicas)|Integrados|DIP-14|14|Llave A,Llave A,Llave B,Llave B,Control B,Control C,VSS,Llave C,Llave C,Llave D,Llave D,Control D,Control A,VDD
+CD4017 (contador de décadas)|Integrados|DIP-16|16|Q5,Q1,Q0,Q2,Q6,Q7,Q3,VSS,Q8,Q4,Q9,CO,CE,CLK,RESET,VDD
+CD4511 (decodificador 7 segmentos)|Integrados|DIP-16|16|B,C,LT,BL,LE,D,A,VSS,e,d,c,b,a,g,f,VDD
+CD4060 (contador con oscilador)|Integrados|DIP-16|16|Q12,Q13,Q14,Q6,Q5,Q7,Q4,VSS,CTC,RTC,RS,RESET,Q9,Q8,Q10,VDD
+CD4040 (contador binario)|Integrados|DIP-16|16
+CD4051 (multiplexor 8 canales)|Integrados|DIP-16|16
+L293D (driver de motores)|Integrados|DIP-16|16|EN 1-2,IN 1,OUT 1,GND,GND,OUT 2,IN 2,VS,EN 3-4,IN 3,OUT 3,GND,GND,OUT 4,IN 4,VSS
+ULN2003 (driver darlington)|Integrados|DIP-16|16|IN 1,IN 2,IN 3,IN 4,IN 5,IN 6,IN 7,GND,COM,OUT 7,OUT 6,OUT 5,OUT 4,OUT 3,OUT 2,OUT 1
+ULN2803 (driver 8 canales)|Integrados|DIP-18|18
+MAX232 (conversor RS-232)|Integrados|DIP-16|16|C1 +,V +,C1 −,C2 +,C2 −,V −,T2 OUT,R2 IN,R2 OUT,T2 IN,T1 IN,R1 OUT,R1 IN,T1 OUT,GND,VCC
+DS1307 (reloj de tiempo real)|Integrados|DIP-8|8|X1,X2,VBAT,GND,SDA,SCL,SQW,VCC
+Memoria EEPROM 24C02|Integrados|DIP-8|8|A0,A1,A2,GND,SDA,SCL,WP,VCC
+MAX485 (RS-485)|Integrados|DIP-8|8|RO,RE,DE,DI,GND,A,B,VCC
+ATmega328P (Arduino Uno)|Microcontroladores|DIP-28|28|PC6 · RESET,PD0 · D0,PD1 · D1,PD2 · D2,PD3 · D3,PD4 · D4,VCC,GND,PB6 · cristal,PB7 · cristal,PD5 · D5,PD6 · D6,PD7 · D7,PB0 · D8,PB1 · D9,PB2 · D10,PB3 · D11,PB4 · D12,PB5 · D13,AVCC,AREF,GND,PC0 · A0,PC1 · A1,PC2 · A2,PC3 · A3,PC4 · A4,PC5 · A5
+ATtiny85|Microcontroladores|DIP-8|8|PB5 · RESET,PB3,PB4,GND,PB0,PB1,PB2,VCC
+PIC16F628A|Microcontroladores|DIP-18|18|RA2,RA3,RA4,RA5 · MCLR,VSS,RB0 · INT,RB1 · RX,RB2 · TX,RB3,RB4,RB5,RB6,RB7,VDD,RA6 · OSC2,RA7 · OSC1,RA0,RA1
+PIC16F84A|Microcontroladores|DIP-18|18|RA2,RA3,RA4 · T0CKI,MCLR,VSS,RB0 · INT,RB1,RB2,RB3,RB4,RB5,RB6,RB7,VDD,OSC2,OSC1,RA0,RA1
+PIC12F675|Microcontroladores|DIP-8|8|VDD,GP5,GP4,GP3 · MCLR,GP2,GP1,GP0,VSS
+PIC16F876A|Microcontroladores|DIP-28|28
+PIC16F877A|Microcontroladores|DIP-40W|40
+ATmega16 / ATmega32|Microcontroladores|DIP-40W|40
+AT89S52 (8051)|Microcontroladores|DIP-40W|40
+Arduino Nano|Microcontroladores|NANO|30
+Relé Songle SRD (5 / 12 V)|Electromecánicos y conectores|SRD|5|COM,Bobina,NC / NO,NO / NC,Bobina
+Pulsador táctil 6×6|Electromecánicos y conectores|PUL6|4
+Cristal HC-49|Electromecánicos y conectores|HC49|2
+Buzzer 12 mm|Electromecánicos y conectores|BUZZER|2|+,−
+Jack de alimentación DC|Electromecánicos y conectores|JACK|3|Centro,Manguito,Contacto de detección
+Bornera 2 vías|Electromecánicos y conectores|BORN-2|2
+Bornera 3 vías|Electromecánicos y conectores|BORN-3|3
+Tira de pines|Electromecánicos y conectores|SIP-n|n
+Zócalo DIP|Electromecánicos y conectores|DIP-8|8
+TDA2030A (18 W)|Amplificadores de audio|PENTA|5|IN +,IN −,−VS,OUT,+VS
+TDA2050 (32 W)|Amplificadores de audio|PENTA|5|IN +,IN −,−VS,OUT,+VS
+LM1875 (20 W)|Amplificadores de audio|PENTA|5|IN +,IN −,−VS,OUT,+VS
+TDA2003 (10 W)|Amplificadores de audio|PENTA|5|IN +,IN −,GND,OUT,+VS
+TDA7294 (100 W)|Amplificadores de audio|MW15|15|Stand-by GND,IN −,IN +,SVR,Sin uso,Bootstrap,+VS,−VS,Stand-by,Mute,Sin uso,Sin uso,+VS,OUT,−VS
+TDA7293 (100 W)|Amplificadores de audio|MW15|15
+TDA7375 (4 × 35 W)|Amplificadores de audio|MW15|15
+TDA7377 (4 × 30 W)|Amplificadores de audio|MW15|15
+TDA7297 (2 × 15 W)|Amplificadores de audio|MW15|15
+LM4766 (2 × 40 W)|Amplificadores de audio|MW15|15
+TDA2005 (2 × 10 W)|Amplificadores de audio|MW11|11
+TDA2009 (2 × 10 W)|Amplificadores de audio|MW11|11
+TDA7265 (2 × 25 W)|Amplificadores de audio|MW11|11
+LM3886 (68 W)|Amplificadores de audio|TO220-11|11|V +,Sin uso,OUT,V −,V +,Sin uso,GND,MUTE,IN −,IN +,Sin uso
+TDA2822M (2 × 1 W)|Amplificadores de audio|DIP-8|8|OUT 1,VCC,OUT 2,GND,IN 2 −,IN 2 +,IN 1 +,IN 1 −
+TDA7052 (1 W)|Amplificadores de audio|DIP-8|8
+TBA820M (2 W)|Amplificadores de audio|DIP-8|8
+LM380 (2,5 W)|Amplificadores de audio|DIP-8|8
+TDA7056 / TDA1517 (SIL-9)|Amplificadores de audio|SIP-9A|9
+PT2399 (eco / delay)|Amplificadores de audio|DIP-16|16

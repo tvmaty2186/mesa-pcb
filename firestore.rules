@@ -1,7 +1,13 @@
 rules_version = '2';
 // Reglas de Firestore para Mesa PCB: cada usuario lee y escribe solo sus propios proyectos.
+// users/{uid} guarda las consultas del asistente y los créditos: el usuario solo puede leerlo;
+// lo cambia únicamente el servidor (functions/), que no pasa por estas reglas.
 service cloud.firestore {
   match /databases/{database}/documents {
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
     match /users/{uid}/projects/{pid} {
       allow read, delete: if request.auth != null && request.auth.uid == uid;
       allow create, update: if request.auth != null && request.auth.uid == uid

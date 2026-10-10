@@ -409,4 +409,11 @@ import os
 here = os.path.dirname(os.path.abspath(__file__))
 open(os.path.join(here, "componentes.json"), "w", encoding="utf-8").write(s)
 open(os.path.join(here, "componentes.js"), "w", encoding="utf-8").write("window.COMPONENTES=" + s + ";\n")
+# catálogo resumido para el asistente con IA (lo lee el servidor, functions/): nombre|encapsulado|patas|nombres de patas
+def corto(p): return p.split(" (")[0]
+cat = []
+for c in C:
+    n = "n" if c["enc"] == "SIP-n" else len(ENC[c["enc"]]["pads"])
+    cat.append(f'{c["nombre"]}|{c["cat"]}|{c["enc"]}|{n}' + ("|" + ",".join(corto(p) for p in c["pines"]) if "pines" in c else ""))
+open(os.path.join(here, "..", "functions", "catalogo.txt"), "w", encoding="utf-8").write("\n".join(cat) + "\n")
 print(len(C), "componentes,", len(ENC), "encapsulados,", len(s) // 1024, "KB")

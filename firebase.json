@@ -1,0 +1,4 @@
+{
+  "functions": { "source": "functions", "runtime": "nodejs22", "ignore": ["node_modules", "prueba.js"] },
+  "firestore": { "rules": "firestore.rules" }
+}

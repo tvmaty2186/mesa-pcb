@@ -124,6 +124,42 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .place:disabled{opacity:.4}
 .place.ai{display:flex;align-items:center;justify-content:center;gap:8px}
 .place.ai svg{width:18px;height:18px}
+/* asistente con IA: ventana flotante sobre la mesa (no mueve el dibujo) */
+.aip{position:absolute;right:12px;bottom:12px;width:min(380px,calc(100% - 24px));height:min(560px,calc(100% - 24px));display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 36px rgba(0,0,0,.22);z-index:15;overflow:hidden}
+.aih{display:flex;align-items:center;gap:6px;padding:7px 8px 7px 12px;border-bottom:1px solid var(--line)}
+.aih b{font-size:.92rem}
+.aisal{flex:1;font-family:var(--f-mono);font-size:.7rem;color:var(--muted);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aiic{background:none;border:0;border-radius:8px;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);flex:none}
+.aiic:hover{background:var(--panel2);color:var(--ink)}
+.aiic svg{width:18px;height:18px}
+.aiic.on{color:var(--err)}
+.aim{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
+.msg{max-width:90%;padding:8px 10px;border-radius:12px;font-size:.9rem;line-height:1.38;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.u{align-self:flex-end;background:var(--accent-soft);border-bottom-right-radius:4px}
+.msg.a{align-self:flex-start;background:var(--panel2);border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg.e{align-self:stretch;max-width:none;color:var(--err);border:1px solid var(--err);background:none;font-size:.85rem}
+.mfile,.mnote{font-size:.75rem;color:var(--muted);margin-top:4px}
+.mq{margin-top:6px;font-weight:700}
+.mplan{margin-top:7px;padding-top:6px;border-top:1px dashed var(--line);font-family:var(--f-mono);font-size:.74rem;color:var(--sel)}
+.mopts{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.mopts button,.aichips button{border:1px solid var(--line);background:var(--ws-bg);border-radius:999px;padding:4px 11px;font-size:.8rem}
+.mopts button:hover,.aichips button:hover{background:var(--accent-soft)}
+.mopts button.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.msg.busy{display:flex;gap:4px;padding:11px 12px}
+.msg.busy span{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:aib 1s infinite ease-in-out}
+.msg.busy span:nth-child(2){animation-delay:.15s}.msg.busy span:nth-child(3){animation-delay:.3s}
+@keyframes aib{0%,80%,100%{opacity:.25}40%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.msg.busy span{animation:none;opacity:.6}}
+.aichips{display:flex;gap:6px;flex-wrap:wrap;padding:0 10px 8px}
+.aiin{border-top:1px solid var(--line);padding:8px;display:flex;flex-direction:column;gap:6px;background:var(--panel2)}
+.aiin textarea{font:inherit;font-size:.9rem;resize:none;border:1px solid var(--line);border-radius:10px;padding:7px 9px;background:var(--ws-bg);color:var(--ink);max-height:120px}
+.aiin textarea:focus-visible{outline:2px solid var(--accent);outline-offset:0}
+.aiadj{display:flex;flex-wrap:wrap;gap:5px}.aiadj:empty{display:none}
+.achip{border:1px solid var(--line);background:var(--ws-bg);border-radius:8px;padding:2px 8px;font-size:.75rem;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aibar{display:flex;align-items:center;gap:2px}.aisp{flex:1}
+.aisend{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;width:40px;height:34px;display:inline-flex;align-items:center;justify-content:center}
+.aisend svg{width:18px;height:18px}.aisend:disabled{opacity:.45}
+@media (max-width:820px){.aip{right:0;left:0;bottom:0;width:auto;height:min(70%,560px);border-radius:14px 14px 0 0}}
 /* publicidad de pantalla completa */
 .adov{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px;z-index:80}
 .adfull{background:var(--panel);border-radius:14px;width:min(760px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;gap:12px;padding:12px 14px 14px}
@@ -136,7 +172,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .stage{flex:1;position:relative;min-width:0;min-height:0;overflow:hidden;background:var(--ws-bg);touch-action:none}
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .hint{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:.88rem;box-shadow:0 4px 14px rgba(0,0,0,.12);pointer-events:none;max-width:calc(100% - 32px);text-align:center}
-.toast{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--panel);border-radius:10px;padding:8px 14px;font-size:.88rem;pointer-events:none}
+.toast{z-index:16;position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--panel);border-radius:10px;padding:8px 14px;font-size:.88rem;pointer-events:none}
 
 .propbar{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;padding:3px 10px;min-height:32px;background:var(--panel);border-bottom:1px solid var(--line);font-size:.8rem;white-space:nowrap}
 .propbar[hidden]{display:none!important}
@@ -1109,6 +1145,7 @@ function autoroute(opt){
   }
   const est=n=>{const P=NETS[n].map(k=>padBy.get(k)).filter(Boolean);const xs=P.map(p=>p.x),ys=P.map(p=>p.y);return P.length?Math.max(...xs)-Math.min(...xs)+Math.max(...ys)-Math.min(...ys):0};
   let order=NETS.map((_,i)=>i).sort((a,b)=>(opt.powerFirst?(power[b]-power[a]):0)||est(a)-est(b));
+  if(opt.first&&opt.first.length){const pri=opt.first.map(k=>netOf.get(k)).filter(n=>n!=null);order=[...new Set([...pri,...order])]} // primero lo que indicó el asistente
   const better=(r,b)=>!b||r.fail.length<b.fail.length||(r.fail.length===b.fail.length&&(r.newJ.length<b.newJ.length||(r.newJ.length===b.newJ.length&&r.len<b.len)));
   let best=null,seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647; // azar repetible: mismo diseño, mismo resultado
   const passes={fast:4,normal:12,deep:30}[opt.effort]||12;
@@ -1117,10 +1154,13 @@ function autoroute(opt){
     if(p>=3)for(let i=order.length-1;i>f.length;i--){const j=f.length+Math.floor(rnd()*(i-f.length+1));[order[i],order[j]]=[order[j],order[i]]}} // y el resto en otro orden
   return {tracks:base.concat(best.newT),jumpers:baseJ.concat(best.newJ),done:best.total-best.fail.length,total:best.total,nj:best.newJ.length};
 }
+function routeOpts(){ // opciones del autorruteador: las últimas usadas, con lo de la placa actual
+  const o=Object.assign({sigW:0.8,powW:1.5,powerFirst:true,keep:'all',comfort:true,effort:'normal',jumps:false,maxJ:2,jLen:'both',place:false,size:'none',std:'5x7'},prefs.route||{});
+  if(typeof o.keep!=='string')o.keep=o.keep?'all':'locked';o.tears=!!doc.tears;o.plane=!!doc.plane;o.holes=hasHoles();return o;
+}
 function routeDlg(){
   if(!doc.links.length&&!linksFromTracks(true).added){toast('Primero uní los pads con Conectar (C) o con una pista');return}
-  const o=Object.assign({sigW:0.8,powW:1.5,powerFirst:true,keep:'all',comfort:true,effort:'normal',jumps:false,maxJ:2,jLen:'both',tears:!!doc.tears,plane:!!doc.plane,place:false,size:'none',std:'5x7',holes:hasHoles()},prefs.route||{});
-  if(typeof o.keep!=='string')o.keep=o.keep?'all':'locked';o.tears=!!doc.tears;o.plane=!!doc.plane;o.holes=hasHoles();
+  const o=routeOpts();
   // controles: interruptor (sí/no), botones unidos (pocas opciones) y lista (anchos, placas)
   const sw=(k,label)=>`<div class="rrow"><span>${label}</span><button class="sw" data-k="${k}" role="switch" aria-label="${label}"></button></div>`;
   const seg=(k,label,opts)=>`<div class="rrow"><span>${label}</span><div class="seg" data-k="${k}">${opts.map(([v,t,tip])=>`<button data-v="${v}"${tip?` title="${tip}"`:''}>${t}</button>`).join('')}</div></div>`;
@@ -1158,8 +1198,9 @@ function routeDlg(){
   ov.querySelectorAll('select[data-k]').forEach(s=>s.onchange=()=>{o[s.dataset.k]=val(s.dataset.k,s.value);paint()});
   paint();
 }
-function runRoute(o){
-  pushUndo();linksFromTracks();trackSel=null;let extra='',pl=null;doc.holes=o.holes?(hasHoles()?doc.holes:cornerHoles()):[];
+function runRoute(o){pushUndo();routeReport(routeCore(o))}
+function routeCore(o){
+  linksFromTracks();trackSel=null;let extra='',pl=null;doc.holes=o.holes?(hasHoles()?doc.holes:cornerHoles()):[];
   if(o.place){pl=placeComps(o);if(!pl.ok)extra+=' · Algunos componentes no entran bien: revisá la placa'}
   else if(o.size==='std')doc.outline=stdRegion(o.std);
   const r=autoroute(o);doc.tracks=r.tracks;doc.jumpers=r.jumpers;doc.tears=o.tears;
@@ -1167,6 +1208,9 @@ function runRoute(o){
   if(o.size!=='none'&&doc.outline)extra=` · Placa de ${cm(doc.outline.w)} × ${cm(doc.outline.h)} cm`+extra;
   if(o.plane){const k=gndKey();if(doc.outline){doc.plane={key:k,thermal:doc.plane?doc.plane.thermal!==false:true,fill:doc.plane?doc.plane.fill!==false:true};if(!k)extra=' · No encontré la masa (GND): el relleno queda sin conectar'}else{doc.plane=null;extra=' · Plano de masa: falta el contorno'}}else doc.plane=null;
   changed();r.done=Math.max(0,r.total-ratsnest().length); // lo que de verdad quedó sin unir
+  return {r,pl,extra};
+}
+function routeReport({r,pl,extra}){
   if(!r.total){toast('No había conexiones para rutear'+extra);return}
   if(pl&&pl.moved)extra=` · ${pl.moved} componentes reacomodados`+extra;
   const pj=r.nj?` con ${r.nj} puente${r.nj>1?'s':''}`:'';
@@ -1201,7 +1245,9 @@ function placeComps(o){
   const decoup=[];doc.comps.forEach(c=>{if(!/^C\d/.test(c.ref))return;const fp=fpOf(c);if(!fp||fp.pads.length!==2)return;
     const n1=netOfK.get(pkey(c.id,fp.pads[0].n)),n2=netOfK.get(pkey(c.id,fp.pads[1].n));if(n1==null||n2==null)return;
     for(const [a,b] of [[n1,n2],[n2,n1]])if(netKeys[a].some(isG)){const v=netKeys[b].find(isV);if(v){const [cid,n]=v.split(':');const ic=doc.comps.find(x=>x.id===cid);decoup.push({c,ic,p:fpOf(ic).pads.find(q=>String(q.n)===n)});break}}});
-  const edgeComps=doc.comps.filter(c=>/^Regulador/.test(c.name)||/bornera|jack/.test((info(c).alias||[]).join(' ')));
+  const byId=id=>doc.comps.find(c=>c.id===id),pairs=L=>(L||[]).map(([a,b])=>[byId(a),byId(b)]).filter(([a,b])=>a&&b&&a!==b);
+  const nearP=pairs(o.near),apartP=pairs(o.apart),mid=c=>{const b=compBox(c);return [(b[0]+b[2])/2,(b[1]+b[3])/2]},dist=(a,b)=>{const p=mid(a),q=mid(b);return Math.hypot(p[0]-q[0],p[1]-q[1])};
+  const edgeComps=doc.comps.filter(c=>/^Regulador/.test(c.name)||/bornera|jack/.test((info(c).alias||[]).join(' '))||(o.edge||[]).includes(c.id));
   const segX=(a,b,c,d)=>segCross(a,b,c,d);
   function cost(){
     let W=0,X=0,O=0,B=0,Ru=0;const edges=[];
@@ -1216,10 +1262,11 @@ function placeComps(o){
     holeList().forEach(h=>bx.forEach(a=>{const ox=Math.min(a[2],h.x+h.keep)-Math.max(a[0],h.x-h.keep),oy=Math.min(a[3],h.y+h.keep)-Math.max(a[1],h.y-h.keep);if(ox>0&&oy>0)O+=ox*oy+1}));
     decoup.forEach(({c,ic,p})=>{const q=padWorld(ic,p),b=compBox(c);Ru+=2*Math.hypot((b[0]+b[2])/2-q[0],(b[1]+b[3])/2-q[1])});
     edgeComps.forEach(c=>{const b=compBox(c);Ru+=1.2*Math.min(b[0]-ix0,b[1]-iy0,ix1-b[2],iy1-b[3])});
+    nearP.forEach(([a,b])=>Ru+=1.5*dist(a,b));apartP.forEach(([a,b])=>Ru+=3*Math.max(0,30-dist(a,b))); // indicaciones del asistente
     let K=0;if(o.size==='min'){const u=[Math.min(...bx.map(b=>b[0])),Math.min(...bx.map(b=>b[1])),Math.max(...bx.map(b=>b[2])),Math.max(...bx.map(b=>b[3]))];K=0.03*(u[2]-u[0])*(u[3]-u[1])}
     return {t:W+12*X+60*O+60*B+Ru+K,O,B,X};
   }
-  let seed=11;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  let seed=o.seed||11;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647; // o.seed: otra variante de acomodo
   mov.forEach(c=>snapComp(c));
   const save=()=>doc.comps.map(c=>[c.x,c.y,c.rot]),load=s=>doc.comps.forEach((c,i)=>{[c.x,c.y,c.rot]=s[i]});
   let cur=cost(),best=cur,bestS=save();
@@ -1843,8 +1890,223 @@ function withAd(fn){
   },countdown);
 }
 const importFile=()=>withAd(()=>document.getElementById('fileIn').click());
-// asistente con IA: todavía no está; va a ser pago por uso
-function aiDlg(){dialog('Asistente con IA','<p class="muted">Muy pronto vas a poder pedirle al asistente cosas como “agregá un 555 y conectá la pata 3 al LED”. Va a ser un servicio pago por uso.</p>',[{t:'Cerrar',pri:1}])}
+/* ================= asistente con IA ================= */
+// Ventana de chat sobre la mesa. Cada pedido va al servidor (functions/: Firebase + API de Claude), que exige
+// cuenta de Google y descuenta consultas (gratis del mes o créditos comprados). La IA no dibuja: devuelve
+// cambios (agregar, redes, quitar, valores, contorno, ruteo, marcar) que se muestran antes y se aplican de
+// una vez (Ctrl+Z los deshace). Para gastar pocos tokens: el diseño va resumido en texto (aiDesign), el
+// historial solo como texto (las imágenes no se reenvían) y las imágenes se achican antes de mandarlas.
+const AI={open:false,msgs:[],adj:[],busy:false,saldo:null,rec:null,remap:new Map()};
+const AI_IMG=1568,AI_PDF=8e6,AI_MAXADJ=4;
+const AI_IC={
+  clip:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5l-8.6 8.6a5 5 0 0 1-7-7L14 4.5a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4L15.5 7.6"/></svg>',
+  mic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
+  nueva:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+  send:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'};
+const AI_CHIPS=[['Autorrutear con IA','Autorruteá la placa con IA: decime qué priorizás y dejala lo mejor posible.'],
+  ['Revisar el diseño','Revisá mi diseño y sugerime mejoras concretas.'],
+  ['Explicar lo seleccionado','Explicame el componente seleccionado: para qué sirve y cómo se conecta.']];
+function aiDlg(){
+  if(!Cloud.ready){toast('El asistente necesita el servicio de cuentas');return}
+  if(needAccount('usar el asistente,'))return;
+  AI.open=!AI.open;if(AI.open&&innerWidth<=820&&prefs.left){prefs.left=false;refreshUI()}aiPaint();if(AI.open){aiSaldo();setTimeout(()=>document.getElementById('aiTxt').focus(),30)}
+}
+async function aiCall(name,data){
+  if(!firebase.functions)await loadScript(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-functions-compat.js`);
+  return (await firebase.functions().httpsCallable(name,{timeout:310000})(data)).data;
+}
+function aiSaldo(){aiCall('saldo',{}).then(d=>{AI.saldo=d.saldo;aiPaint()}).catch(()=>{})}
+function aiErr(e){const c=String(e&&e.code||'').replace('functions/',''),m=e&&e.message||'';
+  if(c==='resource-exhausted')return 'Te quedaste sin consultas. Las gratis se renuevan cada mes; muy pronto vas a poder comprar más.';
+  if(c==='unauthenticated')return 'Entrá con tu cuenta de Google para usar el asistente.';
+  if(c==='deadline-exceeded')return 'Tardó demasiado. Probá con un pedido más chico.';
+  if(!m||m==='internal'||c==='not-found')return 'El asistente todavía no está activado o no responde. Probá más tarde.';
+  return m}
+
+// el diseño resumido en texto: lo que la IA necesita saber, sin coordenadas de pistas
+function aiDesign(){
+  const o=doc.outline,X=o?o.x:0,Y=o?o.y:0,r1=v=>Math.round(v*10)/10,L=[];
+  L.push(o?`Placa: ${r1(o.w)} × ${r1(o.h)} mm`:'Placa: sin contorno');
+  if(!doc.comps.length)L.push('Sin componentes.');
+  else{L.push('Componentes (ref|parte|valor|x,y mm|rot|fijo):');
+    doc.comps.forEach(c=>L.push(`${c.ref}|${c.name}${c.name==='Tira de pines'?` (${c.enc.slice(4)} pines)`:''}|${c.val||''}|${r1(c.x-X)},${r1(c.y-Y)}|${c.rot}${c.lock?'|fijo':''}`))}
+  const N=nets();
+  if(N.length){L.push('Redes:');N.forEach(ks=>{const a=Math.max(0,...doc.links.filter(l=>ks.includes(l.a)).map(l=>l.amps||0));L.push(ks.map(padName).join(' ')+(a?` (${a} A)`:''))})}
+  if(doc.links.length)L.push(`Ruteo: ${doc.tracks.length} pistas, ${(doc.jumpers||[]).length} puentes, ${ratsnest().length} conexiones sin rutear.`);
+  if(doc.plane)L.push('Plano de masa: sí.');
+  if(doc.comps.length){const d=drcDirty?runDrc():drcList,g=new Map();d.forEach(x=>{if(!g.has(x.t))g.set(x.t,[]);g.get(x.t).push(x.m)});
+    if(d.length)L.push('Revisión de reglas: '+[...g].map(([t,ms])=>`${t} ×${ms.length} (${ms.slice(0,3).join('; ')})`).join(' · '))}
+  const s=selComps();if(s.length)L.push('Seleccionado: '+s.map(c=>c.ref).join(', '));
+  return L.join('\n');
+}
+
+async function aiSend(texto){
+  if(AI.busy)return;texto=(texto||'').trim();if(!texto&&!AI.adj.length)return;
+  const link=(texto.match(/https?:\/\/[^\s<>"]+/)||[])[0]||null,adj=AI.adj;AI.adj=[];
+  const hist=AI.msgs.filter(m=>m.rol!=='error').slice(-8).map(m=>({rol:m.rol,texto:(m.hist||m.texto).slice(0,2000)}));
+  const names=adj.map(a=>a.nombre);
+  AI.msgs.push({rol:'user',texto:texto||'(archivo adjunto)',adj:names,hist:(texto||'')+(names.length?` [adjunté: ${names.join(', ')}]`:'')});
+  AI.busy=true;aiPaint();
+  try{
+    const res=await aiCall('asistente',{texto,diseno:aiDesign(),historial:hist,adjuntos:adj.map(({tipo,datos})=>({tipo,datos})),link});
+    const r=res.r||{respuesta:''},plan=aiPlan(r);AI.saldo=res.saldo||AI.saldo;
+    AI.msgs.push({rol:'assistant',texto:r.respuesta,r,estado:plan?'pendiente':null,
+      hist:r.respuesta+(plan?` [Propuse: ${plan}]`:'')+(r.pregunta?` [Pregunté: ${r.pregunta.texto} (${(r.pregunta.opciones||[]).join(' / ')})]`:'')});
+    if(r.marcar&&r.marcar.length)aiMark(r.marcar);
+  }catch(e){AI.msgs.push({rol:'error',texto:aiErr(e)});if(e&&e.details&&e.details.saldo)AI.saldo=e.details.saldo}
+  AI.busy=false;aiPaint();
+}
+
+// lo que propone, en una línea
+function aiPlan(r){const t=[],n=a=>Array.isArray(a)?a.length:0,s=(k,a,b)=>k>1?b:a;
+  if(n(r.agregar))t.push(`agregar ${n(r.agregar)} ${s(n(r.agregar),'componente','componentes')}`);
+  if(n(r.quitar))t.push(`quitar ${r.quitar.join(', ')}`);
+  if(n(r.valores))t.push(`cambiar ${n(r.valores)} ${s(n(r.valores),'valor','valores')}`);
+  if(n(r.desconectar))t.push(`desconectar ${n(r.desconectar)} ${s(n(r.desconectar),'pata','patas')}`);
+  if(n(r.redes))t.push(`${n(r.redes)} ${s(n(r.redes),'conexión','conexiones')}`);
+  if(r.contorno)t.push(`placa de ${cm(r.contorno.ancho)} × ${cm(r.contorno.alto)} cm`);
+  if(r.ruteo)t.push(r.ruteo.reacomodar?'reacomodar y rutear':'rutear');
+  return t.join(' · ')}
+
+const aiRef=ref=>{const R=String(ref||'').trim().toUpperCase();return AI.remap.get(R)||doc.comps.find(c=>c.ref.toUpperCase()===R)||null};
+function aiPad(pt){const s=String(pt||'').trim(),i=s.lastIndexOf('.');if(i<1)return null;const c=aiRef(s.slice(0,i)),n=s.slice(i+1),fp=c&&fpOf(c);
+  return fp&&fp.pads.some(p=>String(p.n)===n)?pkey(c.id,n):null}
+function aiPart(name){const n=norm(String(name||'').trim());return DB.find(d=>d.nombre===name)||DB.find(d=>norm(d.nombre)===n)||null}
+// lugar para lo nuevo: dentro del contorno, o en un bloque a la derecha de lo que ya estaba; con 1,5 mm de aire entre piezas
+function aiRegion(nw){
+  const o=doc.outline,old=doc.comps.filter(c=>!nw.includes(c)).map(compBox);
+  const area=nw.reduce((s,c)=>{const b=compBox(c);return s+(b[2]-b[0]+4)*(b[3]-b[1]+4)},0),w=Math.max(40,Math.sqrt(area)*1.4);
+  if(o)return {x0:o.x+DRC.edge+4,y0:o.y+DRC.edge+4,x1:o.x+o.w-4};
+  if(old.length){const x=Math.max(...old.map(b=>b[2]))+8;return {x0:x,y0:Math.min(...old.map(b=>b[1])),x1:x+w}}
+  return {x0:10,y0:10,x1:10+w};
+}
+function aiSpot(c,R){
+  const busy=()=>{const b=compBox(c),B=[b[0]-1.5,b[1]-1.5,b[2]+1.5,b[3]+1.5];return doc.comps.some(o=>o!==c&&boxHit(B,compBox(o)))||holeList().some(h=>boxCircle(B,h.x,h.y,h.keep))};
+  for(let y=R.y0;y<R.y0+500;y+=2.54)for(let x=R.x0;x<=R.x1;x+=2.54){c.x=x;c.y=y;snapComp(c);if(!busy())return}
+}
+// encuadra el dibujo en la parte de la mesa que no tapa la ventana del asistente
+function aiFit(){const p=document.getElementById('aiP');if(!AI.open||!p){fit();return}
+  const W0=W,H0=H;if(innerWidth>820)W=Math.max(200,W-p.offsetWidth-24);else H=Math.max(150,H-p.offsetHeight);fit();W=W0;H=H0;draw()}
+function aiMark(refs){const ids=refs.map(aiRef).filter(Boolean).map(c=>c.id);if(!ids.length)return;sel=newSel(ids);refreshUI();draw()}
+
+// aplica los cambios de una respuesta; devuelve las cosas que no se pudieron hacer
+function aiEdit(r){
+  const notes=[];AI.remap=new Map();
+  if(r.contorno){const w=Math.max(10,Math.min(300,+r.contorno.ancho||0)),h=Math.max(10,Math.min(300,+r.contorno.alto||0));doc.outline=doc.outline?{...doc.outline,w,h}:{x:0,y:0,w,h}}
+  const X=doc.outline?doc.outline.x:0,Y=doc.outline?doc.outline.y:0;
+  for(const ref of r.quitar||[]){const c=aiRef(ref);if(!c){notes.push(`no encontré ${ref}`);continue}if(c.lock){notes.push(`${c.ref} tiene candado`);continue}
+    doc.comps=doc.comps.filter(x=>x!==c);doc.links=doc.links.filter(l=>l.a.split(':')[0]!==c.id&&l.b.split(':')[0]!==c.id)}
+  const free=[];
+  for(const a of r.agregar||[]){const comp=aiPart(a.parte);if(!comp){notes.push(`“${a.parte}” no está en la biblioteca`);continue}
+    const c=makeComp(comp,0,0,(((a.rot|0)%4)+4)%4),want=String(a.ref||'').trim().toUpperCase();
+    if(comp.enc==='SIP-n'&&a.pines)c.enc='SIP-'+Math.max(1,Math.min(40,a.pines|0));
+    if(/^[A-Z]{1,4}\d{1,4}$/.test(want)&&!aiRef(want))c.ref=want;
+    if(want)AI.remap.set(want,c);
+    if(a.valor)c.val=String(a.valor).slice(0,40);
+    c.x=c.y=-1e5;doc.comps.push(c); // lejos hasta tener lugar, así no estorba
+    if(Number.isFinite(a.x)&&Number.isFinite(a.y)){c.x=X+a.x;c.y=Y+a.y;snapComp(c);if(compBlocked(c)){c.x=c.y=-1e5;free.push(c)}}else free.push(c)}
+  const R=aiRegion(free);free.forEach(c=>aiSpot(c,R));
+  for(const v of r.valores||[]){const c=aiRef(v.ref);if(c)c.val=String(v.valor).slice(0,40);else notes.push(`no encontré ${v.ref}`)}
+  const off=new Set((r.desconectar||[]).map(aiPad).filter(Boolean));if(off.size)doc.links=doc.links.filter(l=>!off.has(l.a)&&!off.has(l.b));
+  const uf=UF();doc.links.forEach(l=>uf.u(l.a,l.b));
+  for(const red of r.redes||[]){const ks=[];
+    (red.patas||[]).forEach(pt=>{const k=aiPad(pt);if(!k)notes.push(`la pata ${pt} no existe`);else if(!ks.includes(k))ks.push(k)});
+    for(let i=1;i<ks.length;i++)if(uf.f(ks[i])!==uf.f(ks[0])){doc.links.push({id:uid(),a:ks[i-1],b:ks[i]});uf.u(ks[i-1],ks[i])}
+    if([1,2,3].includes(red.amperes)){const S=new Set(ks);doc.links.forEach(l=>{if(S.has(l.a)||S.has(l.b))l.amps=red.amperes})}}
+  return notes;
+}
+// autorruteo con las indicaciones de la IA; si quedan conexiones sin rutear prueba variantes y se queda con la mejor
+function aiRoute(h){
+  if(!doc.links.length&&!linksFromTracks(true).added){toast('No hay conexiones para rutear');return}
+  const ids=L=>(L||[]).map(aiRef).filter(Boolean).map(c=>c.id),pairs=L=>(L||[]).map(p=>ids(p)).filter(p=>p.length===2);
+  const o=routeOpts();o.place=!!h.reacomodar;if(h.tamano)o.size=h.tamano;if(o.place)o.keep='locked';
+  if(Number.isInteger(h.puentes)){o.jumps=h.puentes>0;if(h.puentes>0)o.maxJ=Math.min(5,h.puentes)}
+  if(h.ancho_senal)o.sigW=Math.max(.5,Math.min(2.5,+h.ancho_senal));if(h.ancho_potencia)o.powW=Math.max(.5,Math.min(2.5,+h.ancho_potencia));
+  if(typeof h.plano==='boolean')o.plane=h.plano;
+  o.near=pairs(h.juntos);o.apart=pairs(h.separados);o.edge=ids(h.borde);o.first=(h.primero||[]).map(aiPad).filter(Boolean);
+  pushUndo();const base=snapshot(),tries=[o,{...o,effort:'deep'}];
+  if(o.place)[23,37,53].forEach(seed=>tries.push({...o,effort:'deep',seed}));if(o.jumps)tries.push({...o,effort:'deep',maxJ:Math.min(5,o.maxJ+1)});
+  let best=null,bestS=null;
+  for(const t of tries){if(best)restore(base);const res=routeCore(t),f=res.r.total-res.r.done;
+    if(!best||f<best.f||(f===best.f&&res.r.nj<best.res.r.nj)){best={f,res};bestS=snapshot()}if(!f)break}
+  if(snapshot()!==bestS)restore(bestS);routeReport(best.res);aiFit();
+}
+function aiApply(m){
+  const r=m.r,edit=['agregar','quitar','valores','desconectar','redes'].some(k=>r[k]&&r[k].length)||r.contorno;m.estado='hecho';
+  if(edit){pushUndo();m.notas=aiEdit(r);changed();if(r.agregar&&r.agregar.length)aiFit()}
+  aiPaint();
+  if(r.ruteo){toast('Ruteando…');setTimeout(()=>aiRoute(r.ruteo),40)}else toast('Listo. Ctrl+Z deshace');
+}
+
+// archivos: las imágenes se achican a 1568 px (lo que la IA aprovecha) y los PDF van como están
+function aiImg(file){return new Promise((ok,ko)=>{const u=URL.createObjectURL(file),im=new Image();
+  im.onload=()=>{const k=Math.min(1,AI_IMG/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
+    const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);
+    ok({nombre:file.name||'imagen',tipo:'image/jpeg',datos:c.toDataURL('image/jpeg',.85).split(',')[1]})};
+  im.onerror=()=>{URL.revokeObjectURL(u);ko()};im.src=u})}
+function aiPdf(file){return new Promise((ok,ko)=>{const fr=new FileReader();fr.onload=()=>ok({nombre:file.name,tipo:'application/pdf',datos:String(fr.result).split(',')[1]});fr.onerror=ko;fr.readAsDataURL(file)})}
+async function aiAddFiles(files){
+  for(const f of files){if(AI.adj.length>=AI_MAXADJ){toast(`Hasta ${AI_MAXADJ} archivos por mensaje`);break}
+    try{if(f.type==='application/pdf'){if(f.size>AI_PDF){toast('El PDF pesa más de 8 MB');continue}AI.adj.push(await aiPdf(f))}
+      else if(/^image\//.test(f.type))AI.adj.push(await aiImg(f));else toast('Solo imágenes o PDF')}catch(e){toast('No se pudo leer '+f.name)}}
+  aiPaint()}
+function aiMic(){const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return;
+  if(AI.rec){AI.rec.stop();return}
+  const r=new R(),t=document.getElementById('aiTxt'),base=t.value?t.value.replace(/\s*$/,' '):'';r.lang='es-AR';r.interimResults=true;
+  r.onresult=e=>{let s='';for(const x of e.results)s+=x[0].transcript;t.value=base+s};
+  r.onend=()=>{AI.rec=null;aiPaint()};r.onerror=()=>{};AI.rec=r;r.start();aiPaint()}
+
+function aiPanel(){
+  let p=document.getElementById('aiP');if(p)return p;
+  p=document.createElement('section');p.id='aiP';p.className='aip';p.setAttribute('aria-label','Asistente con IA');
+  p.innerHTML=`<header class="aih"><b>Asistente con IA</b><span class="aisal" id="aiSal"></span>
+      <button class="aiic" id="aiNew" title="Conversación nueva" aria-label="Conversación nueva">${AI_IC.nueva}</button>
+      <button class="aiic" id="aiX" title="Cerrar" aria-label="Cerrar">✕</button></header>
+    <div class="aim" id="aiM" aria-live="polite"></div>
+    <div class="aichips" id="aiChips"></div>
+    <div class="aiin"><div class="aiadj" id="aiAdj"></div>
+      <textarea id="aiTxt" rows="2" placeholder="¿Qué necesitás?" aria-label="Mensaje para el asistente"></textarea>
+      <div class="aibar"><button class="aiic" id="aiFile" title="Adjuntar imagen o PDF" aria-label="Adjuntar imagen o PDF">${AI_IC.clip}</button>
+        <button class="aiic" id="aiMic" title="Dictar" aria-label="Dictar">${AI_IC.mic}</button><span class="aisp"></span>
+        <button class="aisend" id="aiSend" title="Enviar" aria-label="Enviar">${AI_IC.send}</button></div></div>
+    <input type="file" id="aiFileIn" accept="image/*,application/pdf" multiple hidden>`;
+  stage.appendChild(p);
+  const t=p.querySelector('#aiTxt'),fi=p.querySelector('#aiFileIn');
+  p.querySelector('#aiX').onclick=()=>{AI.open=false;aiPaint()};
+  p.querySelector('#aiNew').onclick=()=>{if(AI.busy)return;AI.msgs=[];AI.adj=[];aiPaint()};
+  p.querySelector('#aiSend').onclick=()=>{const v=t.value;t.value='';aiSend(v)};
+  t.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();p.querySelector('#aiSend').click()}});
+  t.addEventListener('paste',e=>{const f=[...(e.clipboardData||{}).files||[]];if(f.length){e.preventDefault();aiAddFiles(f)}});
+  p.querySelector('#aiFile').onclick=()=>fi.click();fi.onchange=()=>{aiAddFiles([...fi.files]);fi.value=''};
+  p.querySelector('#aiMic').onclick=aiMic;p.querySelector('#aiMic').hidden=!(window.SpeechRecognition||window.webkitSpeechRecognition);
+  p.addEventListener('dragover',e=>{e.preventDefault()});p.addEventListener('drop',e=>{e.preventDefault();aiAddFiles([...e.dataTransfer.files])});
+  return p;
+}
+function aiPaint(){
+  const p=aiPanel();p.hidden=!AI.open;if(!AI.open)return;
+  const s=AI.saldo;p.querySelector('#aiSal').textContent=s?`${s.gratis} gratis este mes${s.creditos?` · ${s.creditos} créditos`:''}`:'';
+  const M=p.querySelector('#aiM'),last=AI.msgs.length-1;M.innerHTML='';
+  AI.msgs.forEach((m,i)=>{const d=document.createElement('div');d.className='msg '+({user:'u',assistant:'a',error:'e'}[m.rol]);d.textContent=m.texto;
+    if(m.adj&&m.adj.length){const a=document.createElement('div');a.className='mfile';a.textContent='📎 '+m.adj.join(', ');d.appendChild(a)}
+    const r=m.r;
+    if(r&&r.pregunta){const q=document.createElement('div');q.className='mq';q.textContent=r.pregunta.texto;d.appendChild(q);
+      if(i===last&&(r.pregunta.opciones||[]).length){const o=document.createElement('div');o.className='mopts';
+        r.pregunta.opciones.forEach(t=>{const b=document.createElement('button');b.textContent=t;b.onclick=()=>aiSend(t);o.appendChild(b)});d.appendChild(o)}}
+    const plan=r&&aiPlan(r);
+    if(plan){const w=document.createElement('div');w.className='mplan';w.textContent=(m.estado==='hecho'?'✓ ':m.estado==='no'?'✕ ':'')+plan;d.appendChild(w);
+      if(m.estado==='pendiente'){const o=document.createElement('div');o.className='mopts';
+        const ap=document.createElement('button');ap.className='pri';ap.textContent='Aplicar';ap.onclick=()=>aiApply(m);
+        const no=document.createElement('button');no.textContent='Descartar';no.onclick=()=>{m.estado='no';aiPaint()};o.append(ap,no);d.appendChild(o)}
+      if(m.notas&&m.notas.length){const n=document.createElement('div');n.className='mnote';n.textContent='No se pudo: '+m.notas.join('; ');d.appendChild(n)}}
+    M.appendChild(d)});
+  if(AI.busy){const d=document.createElement('div');d.className='msg a busy';d.innerHTML='<span></span><span></span><span></span>';d.setAttribute('aria-label','Pensando');M.appendChild(d)}
+  M.scrollTop=M.scrollHeight;
+  const C=p.querySelector('#aiChips');C.innerHTML='';C.hidden=AI.busy;
+  AI_CHIPS.forEach(([t,q])=>{const b=document.createElement('button');b.textContent=t;
+    b.onclick=()=>{if(/seleccionado/.test(q)&&!selComps().length){toast('Seleccioná un componente');return}aiSend(q)};C.appendChild(b)});
+  const A=p.querySelector('#aiAdj');A.innerHTML='';AI.adj.forEach((a,i)=>{const b=document.createElement('button');b.className='achip';b.title='Quitar';b.textContent=`${a.nombre} ✕`;b.onclick=()=>{AI.adj.splice(i,1);aiPaint()};A.appendChild(b)});
+  p.querySelector('#aiSend').disabled=AI.busy;p.querySelector('#aiMic').classList.toggle('on',!!AI.rec);
+}
 
 /* ================= menús ================= */
 const MENUS=[

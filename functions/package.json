@@ -1,0 +1,13 @@
+{
+  "name": "mesa-pcb-functions",
+  "description": "Servidor del asistente con IA de Mesa PCB",
+  "private": true,
+  "main": "index.js",
+  "engines": { "node": "22" },
+  "scripts": { "test": "node prueba.js" },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
+    "firebase-admin": "^14.5.0",
+    "firebase-functions": "^7.4.0"
+  }
+}

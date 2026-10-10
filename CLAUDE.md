@@ -2,7 +2,7 @@
 
 Este archivo es para que cualquier sesión de Claude retome el proyecto sin empezar de cero. **Leelo completo antes de tocar código.**
 
-Última actualización: 10/10/2026.
+Última actualización: 10/10/2026 (asistente con IA).
 
 ## Dónde está todo
 
@@ -13,15 +13,14 @@ Este archivo es para que cualquier sesión de Claude retome el proyecto sin empe
 ## Próximos pasos (en este orden)
 
 1. **Pads más grandes donde sobre lugar** (más fáciles de soldar y agujerear a mano), **zonas prohibidas** (áreas donde no pasa ninguna pista, por ejemplo debajo de un disipador) y **varias alternativas de ruteo** para elegir.
-2. **Asistente con IA** (dictar "agregá un 555 y conectá la pata 3 al LED"), **pago por uso** (pedido de Matías). **Decidido (10/10/2026): Mercado Pago y paquetes de créditos** (el usuario compra, por ejemplo, 50 pedidos y los va gastando). Plan:
-   - Servidor con **Firebase Functions** (requiere pasar el proyecto `mesa-pcb` al plan **Blaze**, pago por uso con tarjeta; con poco uso sigue costando casi nada). La clave de la IA y la de Mercado Pago van como secretos del servidor, nunca en la página.
-   - Créditos en Firestore `users/{uid}.credits`, que **solo el servidor** puede cambiar (las reglas no dejan que el usuario los toque).
-   - Comprar: la función crea una preferencia de Checkout Pro de Mercado Pago → el usuario paga → el webhook de Mercado Pago avisa a otra función, que suma los créditos.
-   - Usar: la página manda el pedido y el diseño a una función, que descuenta 1 crédito, llama a la API de Claude y devuelve los cambios a aplicar en el diseño.
-   - Matías tiene que preparar: plan Blaze en Firebase, cuenta de vendedor de Mercado Pago (credenciales de producción) y una clave de la API de Anthropic (console.anthropic.com).
-3. **Publicidad (en curso, 10/10/2026):** el código ya está (`publicidad.js` con `ADS_CONFIG`, `adsInit`, `rewardedAd`, `withAd`); faltan los datos de las cuentas. Pasos y dónde sale cada dato: `docs/configurar_publicidad.md`. Banner con AdSense; pantalla completa con Ad Manager, anuncio con recompensa (GPT `OutOfPageFormat.REWARDED`); si no hay aviso, cuenta regresiva en el espacio reservado. Requisitos de Google: dominio propio (AdSense no aprueba `github.io`; Matías ya tiene uno, falta que pase el nombre), política de privacidad y términos (hechos: `privacidad.html`, `terminos.html`), contenido con texto (`guia.html`), y AdSense aprobado antes de Ad Manager. Al conectar el dominio: CNAME en GitHub Pages, agregar el dominio en Firebase → Authentication → Dominios autorizados, y `ads.txt` en la raíz. El correo público de contacto es tvmaty2186@gmail.com (lo eligió Matías).
+2. **Asistente con IA: hecho el código (10/10/2026), falta activarlo.** Matías tiene que hacer `docs/configurar_asistente.md`: plan Blaze, clave de Anthropic como secreto y subir `functions/` desde Google Cloud Shell. Después: **cobrar con Mercado Pago y paquetes de créditos** (decidido). Plan:
+   - Una función crea una preferencia de Checkout Pro → el usuario paga → el webhook de Mercado Pago avisa a otra función, que suma `creditos` en `users/{uid}` (solo el servidor los cambia).
+   - Falta que Matías pase las credenciales de producción de Mercado Pago (como secreto del servidor, nunca en el chat) y decida precios y paquetes.
+3. **Publicidad (en curso, 10/10/2026):** el código ya está (`publicidad.js` con `ADS_CONFIG`, `adsInit`, `rewardedAd`, `withAd`); faltan los datos de las cuentas. Pasos y dónde sale cada dato: `docs/configurar_publicidad.md`. Banner con AdSense; pantalla completa con Ad Manager, anuncio con recompensa (GPT `OutOfPageFormat.REWARDED`); si no hay aviso, cuenta regresiva en el espacio reservado. Requisitos de Google: dominio propio (AdSense casi nunca aprueba `github.io`). **Matías no quiere comprar dominio (10/10/2026)**: se le propuso probar AdSense igual con un repositorio `tvmaty2186.github.io` (para el `ads.txt` en la raíz), sumar colaboraciones (Cafecito o Mercado Pago) y un botón de afiliado "Fabricá tu placa" (JLCPCB/PCBWay), y como respaldo redes que no piden dominio (Adsterra, Monetag); falta su respuesta. Otros requisitos: política de privacidad y términos (hechos: `privacidad.html`, `terminos.html`), contenido con texto (`guia.html`), y AdSense aprobado antes de Ad Manager. Al conectar el dominio: CNAME en GitHub Pages, agregar el dominio en Firebase → Authentication → Dominios autorizados, y `ads.txt` en la raíz. El correo público de contacto es tvmaty2186@gmail.com (lo eligió Matías).
 
-Pendiente chico: "entrada de audio lejos de la salida" al reacomodar (falta marcar en la biblioteca qué pata es entrada/salida de audio).
+Pendientes chicos:
+- "Entrada de audio lejos de la salida" al reacomodar: falta marcar en la biblioteca qué pata es entrada o salida de audio. Hoy lo puede indicar el asistente con `separados`.
+- En celular la página queda más ancha que la pantalla (la barra de herramientas no entra y el navegador achica todo).
 
 ## Quién y qué
 
@@ -79,7 +78,7 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 - **Sin barra de estado** abajo.
 - **Franja publicitaria reservada abajo de todo**: 468 × 60 en computadora, 320 × 50 en celular (comentario en `index.html` donde va el código del aviso).
 - **Publicidad de pantalla completa antes de guardar, imprimir (una o varias), exportar (PDF, Gerber, diseño), importar y autorrutear** (también el rerruteo de la revisión de reglas), pedido de Matías (`withAd`, `AD_SECONDS`=5). Va después del pedido de cuenta: primero "Entrá con Google", después el aviso, después la acción. Cuenta regresiva "Podés seguir en N" → "Continuar"; la ✕ cancela la acción. Con `ADS_CONFIG.rewardedUnit` pide un **anuncio con recompensa de Ad Manager** ("Ver aviso y seguir"; si lo cierra antes, se cancela); sin dato o sin aviso, queda el espacio reservado con la cuenta regresiva (AdSense no permite obligar a ver un aviso para seguir).
-- **Botón "Asistente con IA"** abajo del panel izquierdo, en lugar de "Colocar en el tablero" (para colocar: arrastrar, o doble clic en la lista). Hoy abre un aviso de "muy pronto, pago por uso" (`aiDlg`).
+- **Botón "Asistente con IA"** abajo del panel izquierdo, en lugar de "Colocar en el tablero" (para colocar: arrastrar, o doble clic en la lista). Abre la ventana del asistente (`aiDlg`): flotante abajo a la derecha de la mesa (en celular, abajo de todo), no mueve el dibujo. Sin publicidad (es pago).
 - **Botón dividido "Pista ▾"**: se elige Pista o Conectar con la flechita.
 - Tres vistas: componentes (arriba), cobre visto de abajo (espejado), hoja para planchar (negro, **sin espejar** porque el cobre va abajo).
 - Cuadros de opciones con el estilo del autorruteador: bloques con título, interruptores para sí/no, botones unidos para pocas opciones, listas para muchas.
@@ -120,6 +119,16 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 - **Exportar Gerber** (`exportGerber`): ZIP con cobre `.gbl` (plano y alivios incluidos), contorno `.gko` y agujeros `.drl`.
 - **Exportar diseño** a `.json` (descargar o copiar) e importarlo.
 
+**Asistente con IA** (`aiDlg`, `aiSend`, `aiApply`; servidor en `functions/`)
+- Chat con texto, **dictado por voz** (es-AR, si el navegador lo permite), **imágenes y PDF** (adjuntar, pegar o arrastrar; las imágenes se achican a 1568 px) y **links** (el servidor baja el contenido; los de GitHub van a la versión cruda; no entra a redes internas).
+- Atajos: Autorrutear con IA, Revisar el diseño, Explicar lo seleccionado.
+- La IA **no dibuja**: devuelve JSON (`functions/nucleo.js`, `ESQUEMA`) con `respuesta`, `pregunta` (con opciones), `agregar` (nombre exacto de la biblioteca), `redes` (patas `REF.NÚMERO`, `amperes`), `desconectar`, `quitar`, `valores`, `contorno`, `ruteo` y `marcar`. La página muestra el plan en una línea con **Aplicar / Descartar**; aplicar es un solo paso de deshacer (`aiEdit`). Lo que no existe (pieza fuera de la biblioteca, pata inválida) no se aplica y se avisa.
+- **Autorruteo asistido** (`aiRoute`): la IA indica reacomodar, tamaño, `juntos` / `separados` / `borde` (entran al costo de `placeComps` como `o.near`, `o.apart`, `o.edge`), `primero` (redes que se rutean antes, `opt.first` en `autoroute`), puentes, anchos y plano. Si quedan conexiones sin rutear prueba variantes sin gastar tokens (más esfuerzo, otras semillas de acomodo `o.seed`, un puente más si se permiten) y se queda con la mejor.
+- Instrucciones de honestidad en el servidor: no inventar piezas, valores ni patas; si duda, pregunta con opciones; si la pieza no tiene tabla de pines, no supone el orden.
+- **Ahorro de tokens**: instrucciones + biblioteca resumida (`functions/catalogo.txt`, la genera `build_lib.py`) en caché; el diseño va como texto corto (`aiDesign`); el historial (8 mensajes) solo como texto; esfuerzo `low` para preguntas y `medium` con archivos o ruteo; salida estructurada.
+- **Créditos** en `users/{uid}`: `gratisMes`, `gratisUsadas` (5 gratis por mes, `GRATIS_POR_MES`) y `creditos` (comprados). Se descuentan antes de llamar a la IA y se devuelven si falla. Costo: 1 por mensaje, +1 con imágenes, +1 cada 10 páginas de PDF, +1 con link. Consumo de tokens en `users/{uid}/consumo`. Funciones: `asistente` y `saldo` (llamables, exigen cuenta).
+- Modelo: `claude-opus-5-5` (`MODELO` en `nucleo.js`), con `fallbacks: "default"`.
+
 **Cuentas con Google** (Firebase, `firebase-config.js`)
 - Botón **Entrar con Google** arriba a la derecha; con sesión muestra foto o inicial, nombre y menú (Mis proyectos, Guardar, Salir).
 - **Sin cuenta solo se dibuja y diseña**: guardar, abrir, imprimir y exportar piden entrar (`needAccount`).
@@ -138,7 +147,10 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 | `firebase-config.js` | Datos del proyecto Firebase `mesa-pcb` (no son secretos). |
 | `publicidad.js` | Datos de AdSense y Ad Manager (`ADS_CONFIG`). En `null` = espacios reservados. |
 | `docs/configurar_publicidad.md` | Cómo conectar la publicidad, paso a paso. |
-| `firestore.rules` | Reglas de seguridad de Firestore (ya publicadas en Firebase). |
+| `firestore.rules` | Reglas de seguridad de Firestore. `users/{uid}` (créditos) solo se lee; lo cambia el servidor. Se publican con `firebase deploy --only firestore:rules`. |
+| `functions/` | Servidor del asistente (Firebase Functions): `index.js` (cuenta, créditos, llamada a Claude), `nucleo.js` (instrucciones, formato de respuesta, validación, links; se prueba con `node prueba.js`), `catalogo.txt` (generado). |
+| `firebase.json`, `.firebaserc` | Configuración para subir el servidor y las reglas. |
+| `docs/configurar_asistente.md` | Cómo activar el asistente (Blaze, clave de Anthropic, subir el servidor) y cuánto cuesta. |
 | `docs/configurar_firebase.md` | Cómo se configuró Firebase, paso a paso. |
 | `docs/investigacion_ruteo.md` | Investigación de reglas y algoritmos de ruteo, con fuentes. |
 | `guia.html`, `privacidad.html`, `terminos.html` | Guía para hacer la plaqueta, política de privacidad y términos de uso (los pide Google para la publicidad). Enlazadas desde el menú Ayuda. |
