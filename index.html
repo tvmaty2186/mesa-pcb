@@ -883,7 +883,7 @@ function openDlg(){
 function newDoc(){dialog('Diseño nuevo','<p class="muted">Se va a vaciar el tablero. Podés recuperarlo con Deshacer.</p>',[{t:'Cancelar'},{t:'Empezar de cero',pri:1,f:()=>{pushUndo();doc=docFrom({comps:[]},null);sel.clear();trackSel=null;outlineSel=false;changed();fit()}}])}
 function exportDlg(){
   const txt=JSON.stringify({app:'Mesa PCB',version:1,nombre:doc.name,...docData()},null,1);
-  const ov=dialog('Exportar diseño',`<p class="muted">Copiá este texto y guardalo en un archivo .json. Después lo abrís con Archivo → Abrir → Importar archivo.</p><textarea id="ex" readonly></textarea>`,[{t:'Copiar',f:()=>{const t=document.getElementById('ex');navigator.clipboard.writeText(t.value).then(()=>toast('Copiado'),()=>{t.select();toast('Seleccionado: usá Ctrl+C')});return false}},{t:'Cerrar',pri:1}]);
+  const ov=dialog('Exportar diseño',`<p class="muted">Descargá el archivo .json o copiá el texto. Después lo abrís con Archivo → Abrir → Importar archivo.</p><textarea id="ex" readonly></textarea>`,[{t:'Descargar archivo',f:()=>{download(fileBase()+'.json',document.getElementById('ex').value,'application/json');toast('Diseño descargado');return false}},{t:'Copiar',f:()=>{const t=document.getElementById('ex');navigator.clipboard.writeText(t.value).then(()=>toast('Copiado'),()=>{t.select();toast('Seleccionado: usá Ctrl+C')});return false}},{t:'Cerrar',pri:1}]);
   ov.querySelector('#ex').value=txt;
 }
 document.getElementById('fileIn').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);if(!Array.isArray(o.comps))throw 0;
@@ -1313,9 +1313,10 @@ function planeGeo(){
   // lo que hay que borrar del dibujo liso: islas sin masa y tiras finas
   // el dibujo liso solo puede tener cobre donde la grilla dice que el plano queda (más un paso, para que el borde siga liso):
   // así no aparecen puntitos sueltos en los rincones que la grilla descartó
-  const clip=new Path2D(),ok=c=>fin[c]&&keep[lab[c]];
+  const clip=new Path2D(),ok=c=>fin[c]&&keep[lab[c]],drop=[];
+  for(let j=0;j<NY;j++){let i=0;while(i<NX){const c=j*NX+i;if(free[c]&&!ok(c)){let q=i;while(q<NX&&free[j*NX+q]&&!ok(j*NX+q))q++;drop.push([X0+i*s-s*0.5,Y0+j*s-s*0.5,(q-i+1)*s,2*s]);i=q}else i++}}
   for(let j=0;j<NY;j++){let i=0;while(i<NX){if(ok(j*NX+i)){let q=i;while(q<NX&&ok(j*NX+q))q++;clip.rect(X0+(i-1)*s,Y0+(j-1)*s,(q-i+2)*s,3*s);i=q}else i++}}
-  planeCache.geo={regions,rect:[X0,Y0,W0,H0],foreign,thermal,holes,clip,s,empty:!kept};return planeCache.geo;
+  planeCache.geo={regions,rect:[X0,Y0,W0,H0],foreign,thermal,holes,clip,drop,s,empty:!kept};return planeCache.geo;
 }
 // dibujo liso del plano: rectángulo de la placa menos el cobre ajeno con su separación, anillos térmicos con rayos
 let planeCv=null;
@@ -1519,13 +1520,118 @@ function drawHoles(){const H=holeList();if(!H.length)return;const pr=view==='pla
     ctx.fillStyle=pr?C.paper:C['ws-bg'];ctx.strokeStyle=pr?C.toner:on?C.sel:C['ws-edge'];ctx.lineWidth=Math.max(.2,1.2/scale);ctx.beginPath();ctx.arc(h.x,h.y,h.d/2,0,Math.PI*2);ctx.fill();ctx.stroke()});
   if(holeSel&&!pr){const h=H.find(x=>x.id===holeSel);if(h){const [sx,sy]=toS(h.x,h.y);label(`⌀ ${f2(h.d)} mm`,sx,sy-h.keep*scale-14)}}}
 
+/* ================= imprimir, PDF y Gerber ================= */
+// La hoja para planchar se dibuja con el mismo dibujo de la vista "plancha" en un lienzo aparte a ~600 ppp;
+// el tamaño real lo fija la impresora (imprimir al 100 %), y una barra de 5 cm permite comprobarlo.
+function sheetBox(){const o=doc.outline;if(o)return [o.x-1,o.y-1,o.x+o.w+1,o.y+o.h+1];const b=contentBox();if(!b)return null;
+  const tr=doc.tracks.flatMap(t=>t.pts);const xs=[b[0],b[2],...tr.map(p=>p[0])],ys=[b[1],b[3],...tr.map(p=>p[1])];return [Math.min(...xs)-3,Math.min(...ys)-3,Math.max(...xs)+3,Math.max(...ys)+3]}
+function renderSheet(type,q){
+  const B=sheetBox();if(!B)return null;const wmm=B[2]-B[0],hmm=B[3]-B[1],ppm=Math.min(24,8000/Math.max(wmm,hmm));
+  const keep={view,scale,ox,oy,W,H,dpr,cw:cv.width,ch:cv.height,rulers:prefs.rulers,measure,mouseIn:mouse.in,drag};
+  view='plancha';dpr=1;scale=ppm;W=Math.ceil(wmm*ppm);H=Math.ceil(hmm*ppm);cv.width=W;cv.height=H;ox=-B[0]*ppm;oy=-B[1]*ppm;prefs.rulers=false;measure=null;mouse.in=false;drag=null;
+  let url;try{draw();url=cv.toDataURL(type||'image/png',q)}finally{
+    ({view,scale,ox,oy,W,H,dpr,measure,drag}=keep);prefs.rulers=keep.rulers;mouse.in=keep.mouseIn;cv.width=keep.cw;cv.height=keep.ch;draw()}
+  return {url,wmm,hmm,px:[Math.ceil(wmm*ppm),Math.ceil(hmm*ppm)]};
+}
+const sheetTitle=()=>`Mesa PCB${doc.name?' · '+doc.name:''}`;
+function printSheet(){
+  const s=renderSheet('image/png');if(!s){toast('No hay nada para imprimir');return}
+  const land=s.wmm>s.hmm&&s.wmm>185;const fr=document.createElement('iframe');fr.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0';document.body.appendChild(fr);
+  const d=fr.contentDocument;d.open();d.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(sheetTitle())}</title><style>
+    @page{size:A4 ${land?'landscape':'portrait'};margin:12mm}body{margin:0;font:10pt Arial,sans-serif;color:#000}
+    img{display:block;width:${s.wmm}mm;height:${s.hmm}mm}.bar{width:50mm;height:3mm;background:#000;margin-top:6mm}p{margin:1.5mm 0}</style></head><body>
+    <p><b>${esc(sheetTitle())}</b> · ${cm(s.wmm)} × ${cm(s.hmm)} cm · Imprimí al 100 % (tamaño real, sin “ajustar a la página”).</p>
+    <img src="${s.url}" alt="Hoja para planchar"><div class="bar"></div><p>Esta barra tiene que medir 5 cm. Si mide otra cosa, la impresora cambió la escala.</p></body></html>`);d.close();
+  const go=()=>{fr.contentWindow.focus();fr.contentWindow.print();setTimeout(()=>fr.remove(),60000)};
+  const img=d.querySelector('img');if(img.complete)setTimeout(go,50);else img.onload=()=>setTimeout(go,50);
+}
+function download(name,data,mime){const a=document.createElement('a');a.href=URL.createObjectURL(data instanceof Blob?data:new Blob([data],{type:mime}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000)}
+const fileBase=()=>(doc.name||'mesa-pcb').replace(/[^\wáéíóúñÁÉÍÓÚÑ-]+/g,'_');
+// PDF hecho a mano: una página A4 (o más grande si la placa no entra) con la hoja como imagen JPEG a escala exacta
+function exportPdf(){
+  const s=renderSheet('image/jpeg',0.95);if(!s){toast('No hay nada para exportar');return}
+  const pt=mm=>mm*72/25.4,M=15;let pw=210,ph=297;if(s.wmm>s.hmm&&s.wmm>pw-2*M)[pw,ph]=[ph,pw];pw=Math.max(pw,s.wmm+2*M);ph=Math.max(ph,s.hmm+2*M+20);
+  const jpg=Uint8Array.from(atob(s.url.split(',')[1]),c=>c.charCodeAt(0));
+  const enc=t=>Uint8Array.from(t,ch=>{const c=ch.charCodeAt(0);return c<256?c:63}); // WinAnsi alcanza para castellano
+  const pdfStr=t=>t.replace(/[\\()]/g,m=>'\\'+m);
+  const n=v=>(+v.toFixed(3)).toString();
+  const iy=ph-M-s.hmm,by=iy-8;
+  const content=[`q ${n(pt(s.wmm))} 0 0 ${n(pt(s.hmm))} ${n(pt(M))} ${n(pt(iy))} cm /Im0 Do Q`,
+    `0 g ${n(pt(M))} ${n(pt(by))} ${n(pt(50))} ${n(pt(3))} re f`,
+    `BT /F1 9 Tf ${n(pt(M))} ${n(pt(by-5))} Td (${pdfStr('Esta barra tiene que medir 5 cm. Si mide otra cosa, la impresora cambió la escala.')}) Tj ET`,
+    `BT /F1 10 Tf ${n(pt(M))} ${n(pt(ph-M+4))} Td (${pdfStr(`${sheetTitle()} · ${cm(s.wmm)} × ${cm(s.hmm)} cm · Imprimí al 100 % (tamaño real)`)}) Tj ET`].join('\n');
+  const objs=[`<</Type/Catalog/Pages 2 0 R>>`,`<</Type/Pages/Kids[3 0 R]/Count 1>>`,
+    `<</Type/Page/Parent 2 0 R/MediaBox[0 0 ${n(pt(pw))} ${n(pt(ph))}]/Resources<</XObject<</Im0 4 0 R>>/Font<</F1 6 0 R>>>>/Contents 5 0 R>>`,
+    {head:`<</Type/XObject/Subtype/Image/Width ${s.px[0]}/Height ${s.px[1]}/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length ${jpg.length}>>`,data:jpg},
+    {head:`<</Length ${enc(content).length}>>`,data:enc(content)},`<</Type/Font/Subtype/Type1/BaseFont/Helvetica/Encoding/WinAnsiEncoding>>`];
+  const parts=[enc('%PDF-1.4\n%\xe2\xe3\xcf\xd3\n')],offs=[];let len=parts[0].length;const push=u=>{parts.push(u);len+=u.length};
+  objs.forEach((o,i)=>{offs.push(len);if(typeof o==='string')push(enc(`${i+1} 0 obj\n${o}\nendobj\n`));else{push(enc(`${i+1} 0 obj\n${o.head}\nstream\n`));push(o.data);push(enc('\nendstream\nendobj\n'))}});
+  const xref=len;push(enc(`xref\n0 ${objs.length+1}\n0000000000 65535 f \n${offs.map(o=>String(o).padStart(10,'0')+' 00000 n \n').join('')}trailer\n<</Size ${objs.length+1}/Root 1 0 R>>\nstartxref\n${xref}\n%%EOF\n`));
+  download(fileBase()+'-planchado.pdf',new Blob(parts,{type:'application/pdf'}));toast('PDF descargado · imprimilo al 100 %');
+}
+// Gerber RS-274X (cobre de abajo, contorno) y taladrado Excellon, en un ZIP. El plano se arma igual que en pantalla:
+// zona oscura, se limpia lo ajeno con su separación (polaridad clara) y se vuelve a dibujar el cobre.
+function exportGerber(){
+  if(!doc.comps.length){toast('No hay nada para exportar');return}
+  const f=v=>Math.round(v*1e6).toString(),X=x=>'X'+f(x),Y=y=>'Y'+f(-y); // Gerber tiene Y hacia arriba
+  const ap=new Map(),body=[];let dn=10;const D=def=>{if(!ap.has(def))ap.set(def,dn++);return 'D'+ap.get(def)+'*'};
+  const C=d=>`C,${(+d).toFixed(4)}`,R=(w,h)=>`R,${w.toFixed(4)}X${h.toFixed(4)}`,O=(w,h)=>`O,${w.toFixed(4)}X${h.toFixed(4)}`;
+  const padAp=(c,p,g)=>{let w=p.w||p.d,h=p.h||p.d;if(c.rot%2)[w,h]=[h,w];w+=2*g;h+=2*g;return p.sq?R(w,h):Math.abs(w-h)<1e-6?C(w):O(w,h)};
+  const flash=(def,x,y)=>body.push(D(def),`${X(x)}${Y(y)}D03*`);
+  const stroke=(def,pts)=>{body.push(D(def));pts.forEach((p,i)=>body.push(`${X(p[0])}${Y(p[1])}${i?'D01':'D02'}*`))};
+  const region=pts=>{body.push('G36*');pts.forEach((p,i)=>body.push(`${X(p[0])}${Y(p[1])}${i?'D01':'D02'}*`));body.push(`${X(pts[0][0])}${Y(pts[0][1])}D01*`,'G37*')};
+  const copper=()=>{
+    doc.comps.forEach(c=>{const fp=fpOf(c);if(fp)fp.pads.forEach(p=>{const [x,y]=padWorld(c,p);flash(padAp(c,p,0),x,y)})});
+    doc.tracks.forEach(t=>stroke(C(t.w),t.pts));jumperPads().forEach(q=>flash(C(2*JR),q.x,q.y));
+    tearShapes().forEach(T=>region(T.pts))};
+  const P=planeGeo();
+  if(P&&!P.empty){const [x0,y0,w0,h0]=P.rect,m=P.s*0.75;body.push('%LPD*%');region([[x0,y0],[x0+w0,y0],[x0+w0,y0+h0],[x0,y0+h0]]);
+    const grow=(S,E)=>{const p=S.pts;if(p.length===1)flash(C(2*(S.r+E)),p[0][0],p[0][1]);else if(p.length===2)stroke(C(2*(S.r+E)),p);else{region(p);if(S.r+E>0)stroke(C(2*(S.r+E)),[...p,p[0]])}};
+    body.push('%LPC*%');P.thermal.forEach(t=>grow(t.it,0.6+m));
+    body.push('%LPD*%');P.thermal.forEach(t=>t.dirs.forEach(([ux,uy])=>{const L=(ux?t.hx:t.hy)+1.2,[x,y]=t.pc;
+      if(ux){const a=ux>0?x:x-L;region([[a,y-0.4],[a+L,y-0.4],[a+L,y+0.4],[a,y+0.4]])}else{const b=uy>0?y:y-L;region([[x-0.4,b],[x+0.4,b],[x+0.4,b+L],[x-0.4,b+L]])}}));
+    body.push('%LPC*%');P.foreign.forEach(S=>grow(S,PLANE_CLR+m));P.holes.forEach(h=>flash(C(2*(h.keep+m)),h.x,h.y));
+    P.drop.forEach(([x,y,w,h])=>region([[x,y],[x+w,y],[x+w,y+h],[x,y+h]]));body.push('%LPD*%')}
+  else body.push('%LPD*%');
+  copper();
+  const head=t=>['G04 Mesa PCB*',`G04 ${t}*`,'%FSLAX46Y46*%','%MOMM*%',...[...ap].map(([def,n])=>`%ADD${n}${def}*%`),'G01*'];
+  const cu=[...head('Cobre (cara de abajo, vista desde arriba)'),...body,'M02*'].join('\n');
+  // contorno
+  const o=doc.outline||(()=>{const b=sheetBox();return {x:b[0],y:b[1],w:b[2]-b[0],h:b[3]-b[1]}})();
+  ap.clear();dn=10;body.length=0;stroke(C(0.1),[[o.x,o.y],[o.x+o.w,o.y],[o.x+o.w,o.y+o.h],[o.x,o.y+o.h],[o.x,o.y]]);
+  const edge=[...head('Contorno de la placa'),...body,'M02*'].join('\n');
+  // agujeros (Excellon)
+  const drills=new Map(),add=(d,x,y)=>{const k=(+d).toFixed(2);if(!drills.has(k))drills.set(k,[]);drills.get(k).push([x,y])};
+  doc.comps.forEach(c=>{const fp=fpOf(c);if(fp)fp.pads.forEach(p=>{const [x,y]=padWorld(c,p);add(p.drill||0.8,x,y)})});
+  jumperPads().forEach(q=>add(JDRILL,q.x,q.y));holeList().forEach(h=>add(h.d,h.x,h.y));
+  const T=[...drills.keys()];const n3=v=>(Math.round(v*1000)/1000).toFixed(3);
+  const drl=['M48','; Mesa PCB - agujeros','METRIC,TZ',...T.map((d,i)=>`T${i+1}C${d}`),'%','G90','G05',...T.flatMap((d,i)=>[`T${i+1}`,...drills.get(d).map(([x,y])=>`X${n3(x)}Y${n3(-y)}`)]),'M30'].join('\n');
+  const base=fileBase();
+  download(base+'-gerber.zip',zipStore([[base+'-cobre.gbl',cu],[base+'-contorno.gko',edge],[base+'-agujeros.drl',drl]]),'application/zip');
+  toast('Gerber descargado: cobre, contorno y agujeros');
+}
+// ZIP sin compresión (método "stored"), suficiente para tres archivos de texto
+function zipStore(files){
+  const crcT=new Uint32Array(256).map((_,n)=>{let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;return c>>>0});
+  const crc=u=>{let c=0xFFFFFFFF;for(const b of u)c=crcT[(c^b)&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0};
+  const te=new TextEncoder(),parts=[],cen=[];let off=0;
+  const le=(n,b)=>{const a=new Uint8Array(b);for(let i=0;i<b;i++)a[i]=(n>>>(8*i))&255;return a};
+  files.forEach(([name,text])=>{const nm=te.encode(name),data=te.encode(text),c=crc(data);
+    const lh=[le(0x04034b50,4),le(20,2),le(0x0800,2),le(0,2),le(0,2),le(0,2),le(c,4),le(data.length,4),le(data.length,4),le(nm.length,2),le(0,2),nm,data];
+    cen.push([le(0x02014b50,4),le(20,2),le(20,2),le(0x0800,2),le(0,2),le(0,2),le(0,2),le(c,4),le(data.length,4),le(data.length,4),le(nm.length,2),le(0,2),le(0,2),le(0,2),le(0,2),le(0,4),le(off,4),nm]);
+    lh.forEach(u=>{parts.push(u);off+=u.length})});
+  const cdOff=off;let cdLen=0;cen.flat().forEach(u=>{parts.push(u);cdLen+=u.length});
+  parts.push(le(0x06054b50,4),le(0,2),le(0,2),le(files.length,2),le(files.length,2),le(cdLen,4),le(cdOff,4),le(0,2));
+  return new Blob(parts,{type:'application/zip'});
+}
+
 /* ================= menús ================= */
 const MENUS=[
  ['Archivo',[
    {t:'Nuevo diseño',f:newDoc},{t:'Abrir…',f:openDlg},{t:'Guardar',k:'Ctrl+S',f:()=>save(false)},{t:'Guardar como…',f:()=>save(true)},'-',
    {t:'Abrir ejemplo (555 con conexiones)',f:()=>{pushUndo();example();sel.clear();trackSel=null;outlineSel=false;changed();fit()}},
    {t:'Importar archivo…',f:()=>document.getElementById('fileIn').click()},{t:'Exportar diseño…',f:exportDlg},'-',
-   {t:'Imprimir hoja para planchar',soon:1,f:soon('Imprimir 1:1')},{t:'Exportar PDF a escala 1:1',soon:1,f:soon('PDF 1:1')},{t:'Exportar Gerber',soon:1,f:soon('Gerber')}]],
+   {t:'Imprimir hoja para planchar',k:'Ctrl+P',f:printSheet},{t:'Exportar PDF a escala 1:1',f:exportPdf},{t:'Exportar Gerber (para fabricar)',f:exportGerber}]],
  ['Editar',[
    {t:'Deshacer',k:'Ctrl+Z',f:doUndo,d:()=>!undo.length},{t:'Rehacer',k:'Ctrl+Y',f:doRedo,d:()=>!redo.length},'-',
    {t:'Rotar 90°',k:'R',f:rotateSel,d:()=>!sel.size},{t:'Duplicar',k:'Ctrl+D',f:duplicateSel,d:()=>!sel.size},{t:'Borrar',k:'Supr',f:deleteSel,d:()=>!sel.size&&!outlineSel},'-',
@@ -1698,6 +1804,7 @@ document.addEventListener('keydown',e=>{
   else if(mod&&k==='a'){e.preventDefault();selectAll()}
   else if(mod&&k==='g'){e.preventDefault();e.shiftKey?ungroupSel():groupSel()}
   else if(mod&&k==='s'){e.preventDefault();save(false)}
+  else if(mod&&k==='p'){e.preventDefault();printSheet()}
   else if(mod)return;
   else if(k==='escape'){closeMenu();if(trackDraw){finishTrack();return}if(linkFrom){linkFrom=null;hint(HINTS.link);draw();return}if(placing){placing=null;hint(null)}else if(tool!=='select')setTool('select');else{sel.clear();outlineSel=false;holeSel=null;trackSel=null;linkSel=null}measure=null;refreshUI();draw()}
   else if(k==='r'){rotateSel()}

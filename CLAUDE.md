@@ -75,12 +75,16 @@ Hecho:
 - **Agujeros de fijación (opcionales, se apagan)**: por defecto **3 mm** en las cuatro esquinas, a 4 mm de cada borde, sin cobre hasta 2 mm más allá del agujero. `doc.holes=[{id,corner,x,y,d}]`: los de esquina (`corner` 0-3) siguen al contorno; **se arrastran** con el mouse y desde ahí quedan donde los dejás (`corner:null`). **Clic derecho** en un agujero: diámetro (2,5 / 3 / 3,2 / 3,5 / 4 / 4,5 mm u otro), volver a la esquina, borrar. Clic derecho en el tablero: agregar un agujero ahí. El autorruteador, el reacomodo, el plano y la revisión de reglas los respetan.
 - **No se suelta nada encima de otro**: ni un componente sobre otro componente o sobre la zona de un agujero, ni un agujero sobre un componente u otro agujero. Vale para arrastrar, colocar, soltar desde la biblioteca, rotar, flechas, duplicar (busca lugar libre) y la barra de propiedades. El fantasma se pinta en rojo donde no se puede. Si se suelta igual, vuelve a donde estaba (`compBlocked`, `holeBlocked`).
 - **Ancho por corriente**: clic derecho en una conexión → Corriente 1/2/3 A (`link.amps`). El autorruteador usa 1 / 1,5 / 2 mm para esa red y nunca baja de ese ancho.
+- **Imprimir y exportar** (menú Archivo):
+  - **Imprimir hoja para planchar** (Ctrl+P, `printSheet`): dibuja la vista "plancha" en un lienzo aparte a ~600 ppp (`renderSheet`) y la imprime a tamaño real en A4 (apaisada si la placa es ancha), con título y una **barra de 5 cm** para comprobar que la impresora no cambió la escala (hay que imprimir al 100 %).
+  - **Exportar PDF a escala 1:1** (`exportPdf`): PDF armado a mano (sin librerías): A4 o más grande si la placa no entra, la hoja como JPEG a escala exacta, título y barra de 5 cm.
+  - **Exportar Gerber** (`exportGerber`): ZIP (`zipStore`, sin compresión) con cobre `.gbl` (RS-274X, mm; el plano se arma con polaridad oscura/clara igual que en pantalla, con alivios térmicos), contorno `.gko` y agujeros `.drl` (Excellon). Probado con un lector de Gerber aparte.
+  - **Exportar diseño**: botón para descargar el `.json` además de copiar el texto.
 - Contorno en **centímetros con decimales** (barra de propiedades y etiquetas). Internamente sigue en mm.
 
 Próximos pasos, en este orden:
 1. Pads más grandes donde sobre lugar, zonas prohibidas, varias alternativas para elegir.
-2. Imprimir / exportar PDF a escala 1:1 para planchar.
-3. Asistente con IA.
+2. Asistente con IA.
 
 Pendiente de v2: "entrada de audio lejos de la salida" (falta saber qué pata es entrada/salida de audio en la biblioteca).
 
