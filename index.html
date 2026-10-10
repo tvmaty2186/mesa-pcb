@@ -163,6 +163,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .radio{display:flex;gap:6px;flex-wrap:wrap}
 .radio button{border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:6px 12px}
 .radio button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.dlg .field{display:flex;flex-direction:column;align-items:stretch;gap:6px}
+.dlg .field label{font-size:.85rem;width:auto}
+.tb .lbl{display:none} /* barra solo con íconos: el nombre sale al pasar el mouse (title) */
 
 @media (max-width:820px){
   .left{position:absolute;inset:0 auto 0 0;z-index:20;box-shadow:8px 0 24px rgba(0,0,0,.2);width:min(290px,85vw)}
@@ -232,6 +235,7 @@ const I={
  zout:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M8 11h6"/>',
  fit:'<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',
  check:'<path d="m5 12 5 5 9-10"/>',
+ route:'<circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M7 19h3l7-7V7"/>',
  drc:'<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/>'
 };
 const ico=(k)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[k]}</svg>`;
@@ -797,8 +801,8 @@ function prefsDlg(){
   ov.querySelectorAll('#pg button').forEach(b=>b.onclick=()=>{prefs.grid=+b.dataset.v;LS.set('pcb.prefs',prefs);mark();refreshUI();draw()});
   ov.querySelectorAll('#pt button').forEach(b=>b.onclick=()=>{prefs.theme=b.dataset.v;LS.set('pcb.prefs',prefs);mark();applyTheme()});mark();
 }
-function keysDlg(){dialog('Atajos de teclado',`<table>${[['V','Seleccionar'],['H  /  Espacio','Mover la vista'],['B','Contorno de placa'],['M','Medir'],['C','Conectar pad con pad'],['T','Pista'],['Retroceso','Pista: borrar el último tramo'],['D','Revisar reglas de diseño'],['Enter / doble clic','Pista: terminar'],['R','Rotar 90°'],['Supr','Borrar lo seleccionado'],['Ctrl + Z','Deshacer'],['Ctrl + Y','Rehacer'],['Ctrl + D','Duplicar'],['Ctrl + A','Seleccionar todo'],['Ctrl + S','Guardar'],['F','Ajustar a la pantalla'],['Rueda','Zoom'],['Shift + clic','Sumar a la selección'],['Shift al colocar','Colocar varios iguales'],['Esc','Cancelar']].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>`,[{t:'Cerrar',pri:1}])}
-function aboutDlg(){dialog('Mesa PCB',`<p class="muted">Primera versión de la mesa de trabajo. Diseño de plaquetas de una cara para hacer en casa con planchado y percloruro.</p><p class="muted">Biblioteca: ${DB.length} componentes de agujero pasante. Próximos pasos: autorruteador, impresión 1:1 y asistente con IA.</p>`,[{t:'Cerrar',pri:1}])}
+function keysDlg(){dialog('Atajos de teclado',`<table>${[['V','Seleccionar'],['H  /  Espacio','Mover la vista'],['B','Contorno de placa'],['M','Medir'],['C','Conectar pad con pad'],['T','Pista'],['Retroceso','Pista: borrar el último tramo'],['A','Autorruteador'],['D','Revisar reglas de diseño'],['Enter / doble clic','Pista: terminar'],['R','Rotar 90°'],['Supr','Borrar lo seleccionado'],['Ctrl + Z','Deshacer'],['Ctrl + Y','Rehacer'],['Ctrl + D','Duplicar'],['Ctrl + A','Seleccionar todo'],['Ctrl + S','Guardar'],['F','Ajustar a la pantalla'],['Rueda','Zoom'],['Shift + clic','Sumar a la selección'],['Shift al colocar','Colocar varios iguales'],['Esc','Cancelar']].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>`,[{t:'Cerrar',pri:1}])}
+function aboutDlg(){dialog('Mesa PCB',`<p class="muted">Primera versión de la mesa de trabajo. Diseño de plaquetas de una cara para hacer en casa con planchado y percloruro.</p><p class="muted">Biblioteca: ${DB.length} componentes de agujero pasante. Próximos pasos: puentes, plano de masa, impresión 1:1 y asistente con IA.</p>`,[{t:'Cerrar',pri:1}])}
 
 /* ================= revisión de reglas (DRC) ================= */
 const DRC={gap:0.6,minW:0.5,edge:2};
@@ -882,6 +886,109 @@ function drcDlg(){
   ov.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{const e=drcList[+b.dataset.i];drcFocus=+b.dataset.i;ov.remove();goTo(e.x,e.y)});
 }
 
+/* ================= autorruteador ================= */
+// Grilla de 0,635 mm y A* con costos (largo, quiebres, cercanía). Solo giros de 45° entre tramos,
+// así las pistas cumplen la regla sin pasar por chamfer. Las pistas salen y llegan siempre a un pad.
+const POWER_PIN=/^(GND|VCC|VDD|VSS|VEE|VS|\+VS|−VS|V\+|V−|VOUT)$/;
+function pinName(k){const [cid,n]=k.split(':');const c=doc.comps.find(x=>x.id===cid);const comp=c&&DB.find(d=>d.nombre===c.name);return comp&&comp.pines?(comp.pines[+n-1]||'').split(' ')[0]:''}
+function isPowerNet(keys){return keys.some(k=>{const p=pinName(k);if(POWER_PIN.test(p))return true;const c=doc.comps.find(x=>x.id===k.split(':')[0]);return !!c&&/^Regulador/.test(c.name)&&/^(IN|OUT)$/.test(p)})}
+function shapePtDist(S,x,y){const P=S.pts;let d;
+  if(P.length===1)d=Math.hypot(x-P[0][0],y-P[0][1]);else if(P.length===2)d=segDist(x,y,P[0],P[1]);
+  else d=inPoly([x,y],P)?0:Math.min(...P.map((p,i)=>segDist(x,y,p,P[(i+1)%P.length])));
+  return d-S.r}
+function autoroute(opt){
+  const g=0.635,M=0.05,TURN=1.5,NEAR=0.6,DX=[1,1,0,-1,-1,-1,0,1],DY=[0,1,1,1,0,-1,-1,-1];
+  const NETS=nets(),base=opt.keep?doc.tracks.slice():[];
+  let X0,Y0,X1,Y1;
+  if(doc.outline){const o=doc.outline;[X0,Y0,X1,Y1]=[o.x,o.y,o.x+o.w,o.y+o.h]}
+  else{const bs=doc.comps.map(compBox);X0=Math.min(...bs.map(b=>b[0]))-6;Y0=Math.min(...bs.map(b=>b[1]))-6;X1=Math.max(...bs.map(b=>b[2]))+6;Y1=Math.max(...bs.map(b=>b[3]))+6}
+  const gx0=Math.floor(X0/g)*g,gy0=Math.floor(Y0/g)*g,NX=Math.ceil((X1-gx0)/g)+1,NY=Math.ceil((Y1-gy0)/g)+1,N=NX*NY;
+  const netOf=new Map();NETS.forEach((ks,i)=>ks.forEach(k=>netOf.set(k,i)));
+  const box=S=>{const xs=S.pts.map(p=>p[0]),ys=S.pts.map(p=>p[1]);S.b=[Math.min(...xs)-S.r,Math.min(...ys)-S.r,Math.max(...xs)+S.r,Math.max(...ys)+S.r];return S};
+  const pads=[],padBy=new Map();
+  doc.comps.forEach(c=>{const fp=fpOf(c);if(!fp)return;fp.pads.forEach(p=>{const k=pkey(c.id,p.n),[x,y]=padWorld(c,p);
+    const S=box({...padShape(c,p),x,y,k,n:netOf.has(k)?netOf.get(k):-1,rin:Math.min(p.w||p.d,p.h||p.d)/2});pads.push(S);padBy.set(k,S)})});
+  const keepT=doc.tracks;doc.tracks=base;const ph0=physical();doc.tracks=keepT;
+  const grpNet=new Map();netOf.forEach((i,k)=>{const r=ph0.f(k);if(!grpNet.has(r))grpNet.set(r,i)});
+  const segsOf=(t,n)=>{const o=[];for(let j=1;j<t.pts.length;j++)o.push(box({pts:[t.pts[j-1],t.pts[j]],r:t.w/2,n}));return o};
+  const baseSegs=base.flatMap(t=>{const r=ph0.f('t:'+t.id);return segsOf(t,grpNet.has(r)?grpNet.get(r):-1)});
+  const power=NETS.map(isPowerNet);
+  const ci=x=>Math.round((x-gx0)/g),cj=y=>Math.round((y-gy0)/g);
+  function routeOne(src,dst,n,w,segs){
+    const thr=DRC.gap+w/2+M,blk=new Uint8Array(N),near=new Uint8Array(N),e=(doc.outline?DRC.edge:0)+w/2+M;
+    for(let j=0;j<NY;j++)for(let i=0;i<NX;i++){const x=gx0+i*g,y=gy0+j*g;if(x<X0+e||x>X1-e||y<Y0+e||y>Y1-e)blk[j*NX+i]=1}
+    const mark=S=>{if(n>=0&&S.n===n)return;const R=thr+0.8;
+      for(let j=Math.max(0,cj(S.b[1]-R));j<=Math.min(NY-1,cj(S.b[3]+R));j++)for(let i=Math.max(0,ci(S.b[0]-R));i<=Math.min(NX-1,ci(S.b[2]+R));i++){
+        const c=j*NX+i;if(blk[c])continue;const d=shapePtDist(S,gx0+i*g,gy0+j*g);if(d<thr)blk[c]=1;else if(d<R)near[c]=1}};
+    pads.forEach(mark);segs.forEach(mark);
+    const cellsIn=P=>{const out=[];P.forEach(S=>{const lim=Math.max(S.rin-0.15,0);let bestC=-1,bd=1e9;
+      for(let j=cj(S.y-S.rin);j<=cj(S.y+S.rin);j++)for(let i=ci(S.x-S.rin);i<=ci(S.x+S.rin);i++){if(i<0||j<0||i>=NX||j>=NY)continue;
+        const d=Math.hypot(gx0+i*g-S.x,gy0+j*g-S.y),c=j*NX+i;if(blk[c])continue;if(d<=lim)out.push(c);if(d<bd){bd=d;bestC=c}}
+      if(bestC>=0&&!out.includes(bestC)&&bd<S.rin)out.push(bestC)});return out};
+    const starts=cellsIn(src),goals=cellsIn(dst);if(!starts.length||!goals.length)return null;
+    const isT=new Uint8Array(N);goals.forEach(c=>isT[c]=1);
+    const tg=dst.map(S=>[(S.x-gx0)/g,(S.y-gy0)/g,S.rin/g]);
+    const h=c=>{const i=c%NX,j=(c-i)/NX;let m=1e9;for(const [x,y,r] of tg){const a=Math.abs(i-x),b=Math.abs(j-y);m=Math.min(m,Math.max(a,b)+0.414*Math.min(a,b)-r)}return Math.max(0,m)};
+    const G=new Float64Array(N*8).fill(Infinity),par=new Int32Array(N*8).fill(-1);
+    const H=[];const push=(f,gv,v)=>{H.push([f,gv,v]);let i=H.length-1;while(i){const p=(i-1)>>1;if(H[p][0]<=H[i][0])break;[H[p],H[i]]=[H[i],H[p]];i=p}};
+    const pop=()=>{const top=H[0],last=H.pop();if(H.length){H[0]=last;let i=0;for(;;){const l=2*i+1,r=l+1;let m=i;if(l<H.length&&H[l][0]<H[m][0])m=l;if(r<H.length&&H[r][0]<H[m][0])m=r;if(m===i)break;[H[m],H[i]]=[H[i],H[m]];i=m}}return top};
+    starts.forEach(c=>{for(let d=0;d<8;d++){G[c*8+d]=0;push(h(c),0,c*8+d)}});
+    let end=-1,steps=0;
+    while(H.length&&steps++<N*12){const [,gv,v]=pop();if(gv>G[v])continue;const c=v>>3,d=v&7;if(isT[c]){end=v;break}
+      const i=c%NX,j=(c-i)/NX;
+      for(const dd of [-1,0,1]){const nd=(d+dd+8)&7,ni=i+DX[nd],nj=j+DY[nd];if(ni<0||nj<0||ni>=NX||nj>=NY)continue;const c2=nj*NX+ni;if(blk[c2])continue;
+        const ng=gv+(nd&1?1.414:1)+(dd?TURN:0)+(near[c2]?NEAR:0),v2=c2*8+nd;if(ng<G[v2]){G[v2]=ng;par[v2]=v;push(ng+h(c2),ng,v2)}}}
+    if(end<0)return null;
+    const cells=[];for(let v=end;v>=0;v=par[v])cells.push(v>>3);cells.reverse();
+    const pts=cells.map(c=>{const i=c%NX;return [gx0+i*g,gy0+(c-i)/NX*g]});
+    const out=[pts[0]];for(let k=1;k<pts.length-1;k++){const a=out[out.length-1],b=pts[k],c=pts[k+1];if(Math.abs((b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]))>1e-9)out.push(b)}
+    if(pts.length>1)out.push(pts[pts.length-1]);
+    return out.length>1?out:null;
+  }
+  function pass(order){
+    const segs=baseSegs.slice(),newT=[],fail=[],uf=UF();let len=0,total=0;
+    for(const n of order){const root=k=>uf.f(ph0.f(k));
+      for(;;){const grp=new Map();NETS[n].forEach(k=>{if(!padBy.has(k))return;const r=root(k);if(!grp.has(r))grp.set(r,[]);grp.get(r).push(padBy.get(k))});
+        const G=[...grp.values()];if(G.length<2)break;
+        let best=null;for(let a=0;a<G.length;a++)for(let b=a+1;b<G.length;b++)G[a].forEach(p=>G[b].forEach(q=>{const d=Math.hypot(p.x-q.x,p.y-q.y);if(!best||d<best.d)best={d,a,b,p,q}}));
+        total++;const A=G[best.a],B=G[best.b];
+        let w=power[n]?opt.powW:opt.sigW,pts=routeOne(A,B,n,w,segs);
+        if(!pts&&w>opt.sigW){w=opt.sigW;pts=routeOne(A,B,n,w,segs)}
+        if(pts){const t={id:uid(),w,pts};newT.push(t);segs.push(...segsOf(t,n));len+=trackLen(t)}else fail.push(n);
+        uf.u(root(best.p.k),root(best.q.k))}}
+    return {newT,fail,len,total};
+  }
+  const est=n=>{const P=NETS[n].map(k=>padBy.get(k)).filter(Boolean);const xs=P.map(p=>p.x),ys=P.map(p=>p.y);return P.length?Math.max(...xs)-Math.min(...xs)+Math.max(...ys)-Math.min(...ys):0};
+  let order=NETS.map((_,i)=>i).sort((a,b)=>(opt.powerFirst?(power[b]-power[a]):0)||est(a)-est(b));
+  let best=null;
+  let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647; // azar repetible: mismo diseño, mismo resultado
+  for(let p=0;p<12;p++){const r=pass(order);if(!best||r.fail.length<best.fail.length||(r.fail.length===best.fail.length&&r.len<best.len))best=r;if(!r.fail.length)break;
+    const f=[...new Set(r.fail)];order=[...f,...order.filter(n=>!f.includes(n))]; // arrancar y rerutear: las que fallaron van primero
+    if(p>=3)for(let i=order.length-1;i>f.length;i--){const j=f.length+Math.floor(rnd()*(i-f.length+1));[order[i],order[j]]=[order[j],order[i]]}} // y el resto en otro orden
+  return {tracks:base.concat(best.newT),done:best.total-best.fail.length,total:best.total};
+}
+function routeDlg(){
+  if(!doc.links.length){toast('Primero uní los pads con Conectar (C)');return}
+  const o=Object.assign({sigW:0.8,powW:1.5,powerFirst:true,keep:true},prefs.route||{});
+  const widths=[0.5,0.8,1,1.5,2,2.5].map(v=>`<button data-v="${v}">${f2(v)} mm</button>`).join('');
+  const ov=dialog('Autorruteador',`
+   <div class="field"><label>Ancho de señal</label><div class="radio" id="rs">${widths}</div></div>
+   <div class="field"><label>Ancho de alimentación y masa</label><div class="radio" id="rp">${widths}</div></div>
+   <div class="field"><label>Rutear primero alimentación y masa</label><div class="radio" id="rf"><button data-v="1">Sí</button><button data-v="0">No</button></div></div>
+   <div class="field"><label>Pistas que ya están dibujadas</label><div class="radio" id="rk"><button data-v="1">Conservarlas</button><button data-v="0">Borrarlas y rutear todo</button></div></div>
+   <p class="muted">Puentes y plano de masa: próximamente.</p>`,
+   [{t:'Cancelar'},{t:'Rutear',pri:1,f:()=>{prefs.route=o;LS.set('pcb.prefs',prefs);toast('Ruteando…');setTimeout(()=>runRoute(o),30)}}]);
+  const bind=(id,k,num)=>{const bs=ov.querySelectorAll(`#${id} button`);const mark=()=>bs.forEach(b=>b.setAttribute('aria-pressed',String((num?+b.dataset.v:b.dataset.v==='1')===o[k])));
+    bs.forEach(b=>b.onclick=()=>{o[k]=num?+b.dataset.v:b.dataset.v==='1';mark()});mark()};
+  bind('rs','sigW',1);bind('rp','powW',1);bind('rf','powerFirst',0);bind('rk','keep',0);
+}
+function runRoute(o){
+  const r=autoroute(o);pushUndo();doc.tracks=r.tracks;trackSel=null;changed();
+  if(!r.total){toast('No había conexiones para rutear');return}
+  if(r.done===r.total)toast(`Listo: ${r.done} de ${r.total} conexiones`);
+  else dialog('Autorruteador',`<p>Se rutearon ${r.done} de ${r.total} conexiones. Las que faltan siguen como línea punteada.</p><p class="muted">Probá separar un poco los componentes o bajar el ancho de las pistas y volvé a rutear.</p>`,[{t:'Deshacer',f:doUndo},{t:'Cerrar',pri:1}]);
+}
+
 /* ================= menús ================= */
 const MENUS=[
  ['Archivo',[
@@ -902,7 +1009,7 @@ const MENUS=[
  ['Herramientas',[
    ...TOOLS.map(t=>t.soon?{t:t.name+' (próximamente)',f:soon(t.name),soon:1}:{t:t.name,k:t.key,c:()=>tool===t.id,f:()=>setTool(t.id)}),'-',
    {t:'Enganche a la grilla',c:()=>prefs.snap,f:()=>toggle('snap','Enganche')},'-',
-   {t:'Revisar reglas de diseño',k:'D',f:drcDlg},{t:'Asistente con IA',soon:1,f:soon('Asistente con IA')}]],
+   {t:'Autorruteador…',k:'A',f:routeDlg},{t:'Revisar reglas de diseño',k:'D',f:drcDlg},{t:'Asistente con IA',soon:1,f:soon('Asistente con IA')}]],
  ['Preferencias',[{t:'Preferencias…',f:prefsDlg},'-',{t:'Grilla fina 2,54 mm',c:()=>prefs.grid===2.54,f:()=>{prefs.grid=2.54;LS.set('pcb.prefs',prefs);draw();refreshUI()}},{t:'Grilla fina 1,27 mm',c:()=>prefs.grid===1.27,f:()=>{prefs.grid=1.27;LS.set('pcb.prefs',prefs);draw();refreshUI()}}]],
  ['Ayuda',[{t:'Atajos de teclado',f:keysDlg},{t:'Acerca de Mesa PCB',f:aboutDlg}]]
 ];
@@ -940,7 +1047,7 @@ const TB=[
  {k:'major',l:'1 cm',f:()=>toggle('major','Líneas de 1 cm'),p:()=>prefs.major,tip:'Líneas guía de 1 cm'},{k:'fine',l:'Grilla',f:()=>toggle('fine','Grilla fina'),p:()=>prefs.fine,tip:'Grilla fina de 2,54 mm'},
  {k:'ruler',l:'Reglas',f:()=>toggle('rulers','Reglas'),p:()=>prefs.rulers,tip:'Reglas en los bordes'},{k:'snap',l:'Enganche',f:()=>toggle('snap','Enganche'),p:()=>prefs.snap,tip:'Enganchar a la grilla'},'|',
  {k:'rotate',l:'Rotar',f:rotateSel,d:()=>!sel.size&&!placing,tip:'Rotar 90° (R)'},{k:'trash',l:'Borrar',f:deleteSel,d:()=>!sel.size&&!outlineSel&&!trackSel&&!linkSel,tip:'Borrar (Supr)'},'|',
- {k:'drc',l:'Reglas',f:drcDlg,tip:'Revisar reglas de diseño (D)'},'|',
+ {k:'route',l:'Rutear',f:routeDlg,tip:'Autorruteador (A)'},{k:'drc',l:'Reglas',f:drcDlg,tip:'Revisar reglas de diseño (D)'},'|',
  {k:'zout',l:'',f:()=>{zoomAt(W/2,H/2,.8);draw()},tip:'Alejar'},{zoom:1},{k:'zin',l:'',f:()=>{zoomAt(W/2,H/2,1.25);draw()},tip:'Acercar'},{k:'fit',l:'Ajustar',f:fit,tip:'Ajustar a la pantalla (F)'},'|',
  {k:'props',l:'Propiedades',f:()=>toggle('props'),p:()=>prefs.props,tip:'Barra de propiedades al seleccionar'}
 ];
@@ -1059,7 +1166,7 @@ document.addEventListener('keydown',e=>{
   else if(k==='backspace'&&trackDraw){e.preventDefault();if(trackDraw.pts.length>1)trackDraw.pts.pop();else trackDraw=null;draw()}
   else if(k==='enter'&&trackDraw){finishTrack()}
   else if(k==='delete'||k==='backspace'){e.preventDefault();deleteSel()}
-  else if(k==='v')setTool('select');else if(k==='h')setTool('hand');else if(k==='b')setTool('outline');else if(k==='m')setTool('measure');else if(k==='c')setTool('link');else if(k==='t')setTool('track');else if(k==='d')drcDlg();
+  else if(k==='v')setTool('select');else if(k==='h')setTool('hand');else if(k==='b')setTool('outline');else if(k==='m')setTool('measure');else if(k==='c')setTool('link');else if(k==='t')setTool('track');else if(k==='d')drcDlg();else if(k==='a')routeDlg();
   else if(k==='f')fit();else if(k==='+'||k==='=')(zoomAt(W/2,H/2,1.25),draw());else if(k==='-')(zoomAt(W/2,H/2,.8),draw());
   else if(k===' '&&!spaceDown){spaceDown=true;cv.style.cursor='grab';e.preventDefault()}
   else if(e.key.startsWith('Arrow')&&sel.size){e.preventDefault();pushUndo();const g=prefs.snap?prefs.grid:0.1;const d={arrowleft:[-g,0],arrowright:[g,0],arrowup:[0,-g],arrowdown:[0,g]}[k];selComps().forEach(c=>{c.x+=d[0];c.y+=d[1]});changed()}

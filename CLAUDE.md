@@ -38,6 +38,7 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 
 - Tablero casi a pantalla completa. Líneas de 1 cm, grilla fina, reglas y enganche: **cada una se prende y apaga**.
 - Menús clásicos arriba (Archivo, Editar, Ver, Herramientas, Preferencias, Ayuda) y barra de herramientas con deshacer/rehacer.
+- **Barra de herramientas solo con íconos**: el nombre aparece al pasar el mouse (atributo `title`), nunca como texto visible.
 - **Panel izquierdo solo con la biblioteca** (por categorías, tipo acordeón) y una vista previa abajo. Ancho ajustable arrastrando el borde. Sin sección de herramientas en el panel.
 - Se arrastra al tablero **desde la lista o desde la vista previa**, con fantasma enganchado a la grilla.
 - **Barra de propiedades fina (32 px) arriba, dentro de la mesa**, al seleccionar algo. Nunca un panel lateral. Botones con ícono. El dibujo no se mueve cuando aparece.
@@ -57,8 +58,10 @@ Hecho:
 - Conexiones editables y pista manual con quiebres de 45° automáticos y selector de ancho.
 - Revisión de reglas (DRC): Herramientas → Revisar reglas, tecla D o botón Reglas. Marca en rojo separación < 0,6 mm entre redes distintas, pista < 0,5 mm, cobre a menos de 2 mm del borde, esquinas y uniones de pistas fuera de la regla de 45°, y conexiones sin rutear. La lista lleva a cada problema. Código en `runDrc` (`index.html`); las marcas se apagan en Ver.
 
+- Autorruteador v1 (parte 1): Herramientas → Autorruteador, tecla A o botón de la barra. Grilla de 0,635 mm, A* con costos (largo, quiebres, cercanía), solo giros de 45°, separación y borde según las reglas. Opciones: ancho de señal, ancho de alimentación y masa (detecta GND/VCC/VDD/VSS/V+/V− por nombre de pata y la entrada/salida de reguladores), rutear primero alimentación y masa, conservar o borrar las pistas ya dibujadas. Hasta 12 pasadas de arrancar y rerutear (las que fallan van primero, después cambia el orden con azar repetible). Las pistas siempre salen y llegan a un pad (sin uniones en T). Código en `autoroute` (`index.html`).
+
 Próximos pasos, en este orden:
-1. **Autorruteador v1** (ver opciones abajo).
+1. **Autorruteador v1, parte 2**: puentes (sí/no, máximo, largos 7,62 / 10,16 mm), plano de masa al final y candado para fijar componentes y pistas.
 2. Imprimir / exportar PDF a escala 1:1 para planchar.
 3. Asistente con IA.
 
