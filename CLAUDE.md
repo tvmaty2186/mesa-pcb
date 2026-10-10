@@ -42,6 +42,7 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 - **Panel izquierdo solo con la biblioteca** (por categorías, tipo acordeón) y una vista previa abajo. Ancho ajustable arrastrando el borde. Sin sección de herramientas en el panel.
 - Se arrastra al tablero **desde la lista o desde la vista previa**, con fantasma enganchado a la grilla.
 - **Barra de propiedades fina (32 px) arriba, dentro de la mesa**, al seleccionar algo. Nunca un panel lateral. Botones con ícono. El dibujo no se mueve cuando aparece.
+- **Clic derecho** abre un menú con las acciones de lo que está debajo: componente (rotar, candado, desconectar, duplicar, borrar), pista (ancho, candado, borrar), conexión (corriente, invertir, borrar), contorno (ajustar al mínimo, agujeros, plano, borrar) y tablero vacío (autorruteador, reglas, plano, alivio térmico, lágrimas, agujeros). Si el clic cae justo sobre el cobre de una pista, gana la pista aunque esté debajo de un componente. Código en `showCtx` y el listener `contextmenu`.
 - **Sin textos de ayuda automáticos** (nada de carteles que expliquen cómo usar una herramienta). Solo avisos cortos de confirmación.
 - **Sin barra de estado** abajo (se sacó para ganar espacio).
 - **Franja publicitaria reservada abajo de todo**: 468 × 60 en computadora, 320 × 50 en celular. Ver comentario en `index.html` donde va el código del aviso.
@@ -66,13 +67,15 @@ Hecho:
   - Lágrimas en los pads (`doc.tears`), plano de masa al terminar (`doc.plane={key}`), esfuerzo Rápido/Normal/A fondo (4/12/30 pasadas de arrancar y rerutear).
 - Candado: botón en la barra de propiedades para componentes (uno o varios) y pistas. Lo fijo no se mueve, no se rota ni se borra.
 - Lágrimas: se calculan al vuelo (`tearShapes`), solo si respetan 0,6 mm. También en Herramientas → Lágrimas en los pads.
-- Plano de masa: cobre en lo que sobra, a 0,8 mm de todo, unido a GND, sin islas ni tiras finas (grilla de 0,25 mm). Une las patas de masa que toca. Va atado al contorno: lo llena hasta 2 mm del borde y se recalcula solo si el contorno cambia. También en Herramientas → Plano de masa. Sin alivios térmicos todavía.
+- Plano de masa: cobre en lo que sobra, a 0,8 mm de todo, unido a GND, sin islas ni tiras finas (grilla de 0,25 mm). Une las patas de masa que toca. Va atado al contorno: lo llena hasta 2 mm del borde y se recalcula solo si el contorno cambia. También en Herramientas → Plano de masa. Con **alivio térmico** (por defecto sí, `doc.plane.thermal`): las patas de masa quedan rodeadas de 0,6 mm libres y unidas por 4 rayos de 0,8 mm, para que no disipen tanto y se suelden fácil.
 - Reacomodar componentes (opción del autorruteador, `placeComps`): recocido simulado en grilla de 2,54 mm. Mueve, rota e intercambia lo que no tiene candado (ni lo unido a una pista fija). Costo: largo de conexiones, cruces de líneas de aire (cada cruce es un puente en una cara), superposición, salirse de la placa, capacitor de desacople cerca de la pata VCC del integrado, reguladores y borneras/jack al borde. Borra las pistas sin candado antes de reacomodar.
 - Tamaño de la placa (opción del autorruteador): No tocar el contorno / Ajustar al mínimo (achica el contorno a lo que ocupa todo + 2 mm, `shrinkOutline`) / Placa estándar 5×5, 5×7, 7×9, 7,5×10, 10×10, 10×15, 15×20 cm (`STD_BOARDS`).
+- **Agujeros de fijación (opcionales, se apagan)**: M3 (3,2 mm) en las cuatro esquinas, a 4 mm de cada borde, sin cobre en 3,5 mm alrededor. Siguen al contorno (`doc.holes`, `holeList`). El autorruteador, el reacomodo, el plano y la revisión de reglas los respetan.
+- **Ancho por corriente**: clic derecho en una conexión → Corriente 1/2/3 A (`link.amps`). El autorruteador usa 1 / 1,5 / 2 mm para esa red y nunca baja de ese ancho.
 - Contorno en **centímetros con decimales** (barra de propiedades y etiquetas). Internamente sigue en mm.
 
 Próximos pasos, en este orden:
-1. Ancho por corriente, pads más grandes donde sobre lugar, agujeros de fijación (**opcionales, se tienen que poder desactivar**: pedido de Matías), zonas prohibidas, varias alternativas para elegir.
+1. Pads más grandes donde sobre lugar, zonas prohibidas, varias alternativas para elegir.
 2. Imprimir / exportar PDF a escala 1:1 para planchar.
 3. Asistente con IA.
 
