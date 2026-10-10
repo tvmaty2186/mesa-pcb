@@ -81,6 +81,7 @@ Hecho:
   - **Exportar PDF a escala 1:1** (`exportPdf`): PDF armado a mano (sin librerías): A4 o más grande si la placa no entra, la hoja como JPEG a escala exacta, título y barra de 5 cm.
   - **Exportar Gerber** (`exportGerber`): ZIP (`zipStore`, sin compresión) con cobre `.gbl` (RS-274X, mm; el plano se arma con polaridad oscura/clara igual que en pantalla, con alivios térmicos), contorno `.gko` y agujeros `.drl` (Excellon). Probado con un lector de Gerber aparte.
   - **Exportar diseño**: botón para descargar el `.json` además de copiar el texto.
+- **Cuentas con Google y proyectos en la nube** (Firebase, pedido de Matías): `firebase-config.js` trae `window.FIREBASE_CONFIG` (en `null` = sin cuentas: todo como antes, guardado en el navegador). Con configuración: botón **Entrar con Google** arriba a la derecha (con sesión: foto/inicial, nombre y menú Mis proyectos / Guardar / Salir). **Sin cuenta solo se dibuja y diseña**: guardar, abrir, imprimir, varias por hoja, PDF, Gerber y exportar diseño piden entrar (`needAccount`). Proyectos en Firestore `users/{uid}/projects/{id}` = `{name, data (JSON del diseño), comps, updated}` (`cloudSave`, `cloudOpen`); `doc.cloudId` recuerda cuál está abierto. SDK compat 10.12.2 cargado desde gstatic solo si hay configuración. Reglas en `firestore.rules`; pasos para Matías en `docs/configurar_firebase.md`. Los diseños guardados antes en el navegador aparecen en Mis proyectos para pasarlos a la cuenta.
 - Contorno en **centímetros con decimales** (barra de propiedades y etiquetas). Internamente sigue en mm.
 
 Próximos pasos, en este orden:
@@ -104,6 +105,9 @@ Pendiente de v2: "entrada de audio lejos de la salida" (falta saber qué pata es
 | `biblioteca/build_lib.py` | **Fuente de verdad de la biblioteca.** Genera `componentes.json` y `componentes.js`. Verifica pines por huella y separación mínima. |
 | `biblioteca/componentes.json` / `.js` | Biblioteca generada. **No editar a mano**: cambiar `build_lib.py` y correr `python3 build_lib.py` dentro de `biblioteca/`. |
 | `docs/investigacion_ruteo.md` | Investigación de reglas y algoritmos de ruteo, con fuentes. |
+| `firebase-config.js` | Configuración de Firebase (cuentas con Google). En `null` la página funciona sin cuentas. |
+| `firestore.rules` | Reglas de seguridad de Firestore: cada usuario ve solo sus proyectos. |
+| `docs/configurar_firebase.md` | Pasos para crear el proyecto de Firebase y conectarlo. |
 
 `componentes.js` existe para que la página funcione abriéndola con doble clic (sin servidor). En GitHub Pages también sirve el `.json`.
 

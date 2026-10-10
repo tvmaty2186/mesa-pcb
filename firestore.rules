@@ -1,0 +1,12 @@
+rules_version = '2';
+// Reglas de Firestore para Mesa PCB: cada usuario lee y escribe solo sus propios proyectos.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid}/projects/{pid} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.data is string
+        && request.resource.data.data.size() < 1000000;
+    }
+  }
+}
