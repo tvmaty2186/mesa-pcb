@@ -235,6 +235,8 @@ const I={
  zout:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M8 11h6"/>',
  fit:'<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',
  check:'<path d="m5 12 5 5 9-10"/>',
+ lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+ unlock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/>',
  route:'<circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M7 19h3l7-7V7"/>',
  drc:'<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/>'
 };
@@ -244,7 +246,7 @@ const ico=(k)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const prefs=Object.assign({copperTool:'track',trackW:0.8,leftW:290,major:true,fine:true,rulers:true,snap:true,refs:true,grid:2.54,left:innerWidth>820,props:true,theme:'system'},LS.get('pcb.prefs',{}));
 let LIB=null,DB=[];
-let doc={name:null,comps:[],outline:null,tracks:[],links:[]};
+let doc={name:null,comps:[],outline:null,tracks:[],links:[],jumpers:[],tears:false,plane:null};
 let trackSel=null, trackDraw=null, linkFrom=null, hoverPad=null, linkSel=null, copperMenu=null;
 let sel=new Set(); let outlineSel=false;
 let tool='select', placing=null, view='arriba', mirC=0;
@@ -297,13 +299,15 @@ function applyTheme(){
 try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{readColors();draw();drawPreview()})}catch(e){}
 
 /* ================= deshacer / rehacer ================= */
-const snapshot=()=>JSON.stringify({comps:doc.comps,outline:doc.outline,tracks:doc.tracks,links:doc.links});
+const docData=()=>({comps:doc.comps,outline:doc.outline,tracks:doc.tracks,links:doc.links,jumpers:doc.jumpers||[],tears:!!doc.tears,plane:doc.plane||null});
+const docFrom=(o,name)=>({name,comps:o.comps,outline:o.outline||null,tracks:o.tracks||[],links:o.links||[],jumpers:o.jumpers||[],tears:!!o.tears,plane:o.plane||null});
+const snapshot=()=>JSON.stringify(docData());
 function pushUndo(){doc.example=false;undo.push(snapshot());if(undo.length>200)undo.shift();redo=[];refreshUI()}
-function restore(s){const o=JSON.parse(s);doc.comps=o.comps;doc.outline=o.outline;doc.tracks=o.tracks||[];doc.links=o.links||[];if(trackSel&&!doc.tracks.some(t=>t.id===trackSel))trackSel=null;sel=new Set([...sel].filter(id=>doc.comps.some(c=>c.id===id)));if(!doc.outline)outlineSel=false;changed()}
+function restore(s){const o=JSON.parse(s);doc.comps=o.comps;doc.outline=o.outline;doc.tracks=o.tracks||[];doc.links=o.links||[];doc.jumpers=o.jumpers||[];doc.tears=!!o.tears;doc.plane=o.plane||null;if(trackSel&&!doc.tracks.some(t=>t.id===trackSel))trackSel=null;sel=new Set([...sel].filter(id=>doc.comps.some(c=>c.id===id)));if(!doc.outline)outlineSel=false;changed()}
 function doUndo(){if(!undo.length)return;redo.push(snapshot());restore(undo.pop());toast('Deshecho')}
 function doRedo(){if(!redo.length)return;undo.push(snapshot());restore(redo.pop());toast('Rehecho')}
 function ensureLinkIds(){(doc.links||[]).forEach(l=>{if(!l.id)l.id=uid()})}
-function changed(){drcDirty=true;drcFocus=-1;ensureLinkIds();if(linkSel&&!doc.links.some(l=>l.id===linkSel))linkSel=null;LS.set('pcb.actual',doc);refreshUI();draw()}
+function changed(){drcDirty=true;geoVer++;drcFocus=-1;ensureLinkIds();if(linkSel&&!doc.links.some(l=>l.id===linkSel))linkSel=null;LS.set('pcb.actual',doc);refreshUI();draw()}
 
 /* ================= referencias (R1, C1, U1…) ================= */
 function prefixOf(comp){
@@ -337,12 +341,14 @@ function nets(){ // grupos lógicos de patas (lo que debería estar unido)
   const uf=UF(),keys=new Set();doc.links.forEach(l=>{if(padPos(l.a)&&padPos(l.b)){uf.u(l.a,l.b);keys.add(l.a);keys.add(l.b)}});
   const g=new Map();keys.forEach(k=>{const r=uf.f(k);if(!g.has(r))g.set(r,[]);g.get(r).push(k)});return [...g.values()];
 }
-function physical(){ // patas unidas de verdad por cobre (pistas)
+function physical(noPlane){ // patas unidas de verdad por cobre (pistas, puentes y plano de masa)
   const uf=UF(),pads=padsAll();const near=(x,y)=>pads.filter(q=>Math.hypot(q.x-x,q.y-y)<=q.r+.01);
   doc.tracks.forEach(t=>{const tk='t:'+t.id;[t.pts[0],t.pts[t.pts.length-1]].forEach(([x,y])=>near(x,y).forEach(q=>uf.u(q.k,tk)))});
   for(let i=0;i<doc.tracks.length;i++)for(let j=i+1;j<doc.tracks.length;j++){const A=doc.tracks[i],B=doc.tracks[j];
     const ends=(T)=>[T.pts[0],T.pts[T.pts.length-1]];
     if(ends(A).some(e=>B.pts.some(p=>Math.hypot(p[0]-e[0],p[1]-e[1])<.01))||ends(B).some(e=>A.pts.some(p=>Math.hypot(p[0]-e[0],p[1]-e[1])<.01)))uf.u('t:'+A.id,'t:'+B.id)}
+  (doc.jumpers||[]).forEach(j=>{const jk='j:'+j.id;[j.a,j.b].forEach(p=>doc.tracks.forEach(t=>[t.pts[0],t.pts[t.pts.length-1]].forEach(e=>{if(Math.hypot(e[0]-p[0],e[1]-p[1])<=JR+.01)uf.u(jk,'t:'+t.id)})))});
+  if(!noPlane){const P=planeGeo();if(P)P.regions.forEach(ks=>ks.forEach(k=>uf.u(ks[0],k)))}
   return uf;
 }
 function ratsnest(){ // líneas de aire: árbol mínimo entre las partes de cada red que todavía no están unidas
@@ -514,9 +520,11 @@ function draw(){
   drawGrid();
   if(doc.outline)drawOutline(doc.outline,false);
   if(drag&&drag.type==='outline'&&drag.rect)drawOutline(drag.rect,true);
+  drawCopperExtra();
   drawTracks();
   worldT();
   doc.comps.forEach(c=>{const fp=fpOf(c);if(fp)drawFootprint(fp,c)});
+  drawJumperWires();
   drawAir();
   drawDrc();
   // selección y referencias
@@ -525,7 +533,7 @@ function draw(){
       const b=compBox(c);let [sx0,sy0]=toS(b[0],b[1]),[sx1,sy1]=toS(b[2],b[3]);if(sx0>sx1)[sx0,sx1]=[sx1,sx0];
       screenT();
       if(sel.has(c.id)){ctx.strokeStyle=C.sel;ctx.lineWidth=1.5;ctx.setLineDash([5,3]);ctx.strokeRect(sx0-4,sy0-4,sx1-sx0+8,sy1-sy0+8);ctx.setLineDash([])}
-      if(prefs.refs&&scale>=2.5){ctx.font=`700 ${Math.max(10,Math.min(14,scale*1.6))}px JetBrains Mono, monospace`;ctx.fillStyle=sel.has(c.id)?C.sel:C['ws-ref'];ctx.textAlign='left';ctx.textBaseline='bottom';ctx.fillText(c.ref,sx0,sy0-6)}
+      if(prefs.refs&&scale>=2.5){ctx.font=`700 ${Math.max(10,Math.min(14,scale*1.6))}px JetBrains Mono, monospace`;ctx.fillStyle=sel.has(c.id)?C.sel:C['ws-ref'];ctx.textAlign='left';ctx.textBaseline='bottom';ctx.fillText(c.ref+(c.lock?' 🔒':''),sx0,sy0-6)}
     });
   }
   // fantasma al colocar
@@ -676,6 +684,7 @@ cv.addEventListener('pointermove',e=>{
     if(drag.type==='pan'){ox=drag.ox+sx-drag.sx;oy=drag.oy+sy-drag.sy}
     else if(drag.type==='move'){
       const dx=wx-drag.w0[0],dy=wy-drag.w0[1];if(!drag.moved&&Math.hypot(dx,dy)*scale<3){draw();return}
+      if(selComps().some(k=>k.lock)){if(!drag.warned){drag.warned=1;toast('Tiene candado: no se mueve')}draw();return}
       if(!drag.moved){pushUndo();drag.moved=true}
       const [px0,py0]=drag.start.get(drag.prim.id);const p=drag.prim;p.x=px0+dx;p.y=py0+dy;const bx=p.x,by=p.y;snapComp(p);const ax=p.x-bx,ay=p.y-by;
       doc.comps.forEach(k=>{if(sel.has(k.id)&&k!==p){const s=drag.start.get(k.id);k.x=s[0]+dx+ax;k.y=s[1]+dy+ay}});
@@ -723,7 +732,7 @@ cv.addEventListener('dblclick',e=>{if(tool==='track'){finishTrack();return}const
 function selComps(){return doc.comps.filter(c=>sel.has(c.id))}
 function rotateSel(){
   if(placing){placing.c.rot=(placing.c.rot+1)%4;snapComp(placing.c);draw();return}
-  const s=selComps();if(!s.length)return;pushUndo();
+  const s=selComps();if(!s.length)return;if(s.some(c=>c.lock)){toast('Tiene candado: no se rota');return}pushUndo();
   if(s.length===1){s[0].rot=(s[0].rot+1)%4;snapComp(s[0])}
   else{const b=s.map(compBox);const cx=(Math.min(...b.map(q=>q[0]))+Math.max(...b.map(q=>q[2])))/2,cy=(Math.min(...b.map(q=>q[1]))+Math.max(...b.map(q=>q[3])))/2;
     s.forEach(c=>{const [x,y]=rot(c.x-cx,c.y-cy,1);c.x=cx+x;c.y=cy+y;c.rot=(c.rot+1)%4;snapComp(c)})}
@@ -731,8 +740,10 @@ function rotateSel(){
 }
 function deleteSel(){
   if(linkSel){pushUndo();doc.links=doc.links.filter(l=>l.id!==linkSel);linkSel=null;toast('Conexión borrada');changed();return}
+  if(trackSel&&(doc.tracks.find(t=>t.id===trackSel)||{}).lock){toast('Pista con candado: no se borra');return}
   if(trackSel){pushUndo();doc.tracks=doc.tracks.filter(t=>t.id!==trackSel);trackSel=null;toast('Pista borrada');changed();return}
   if(outlineSel&&doc.outline){pushUndo();doc.outline=null;outlineSel=false;toast('Contorno borrado');changed();return}
+  if(selComps().some(c=>c.lock)){toast('Tiene candado: no se borra');return}
   const n=sel.size;if(!n)return;pushUndo();doc.comps=doc.comps.filter(c=>!sel.has(c.id));doc.links=doc.links.filter(l=>!sel.has(l.a.split(':')[0])&&!sel.has(l.b.split(':')[0]));sel.clear();toast(n===1?'Componente borrado':`${n} componentes borrados`);changed();
 }
 function clearLinksOf(cid){pushUndo();const n=doc.links.length;doc.links=doc.links.filter(l=>l.a.split(':')[0]!==cid&&l.b.split(':')[0]!==cid);toast(`${n-doc.links.length} conexiones quitadas`);changed()}
@@ -763,23 +774,23 @@ function saved(){return LS.get('pcb.disenos',{})}
 function save(asNew){
   if(!doc.name||asNew){dialog('Guardar diseño',`<div class="field"><label for="dn">Nombre del diseño</label><input id="dn" value="${(doc.name||'Mi plaqueta').replace(/"/g,'')}"></div><p class="muted">Se guarda en este navegador. Para pasarlo a otra compu usá Archivo → Exportar diseño.</p>`,
     [{t:'Cancelar'},{t:'Guardar',pri:1,f:()=>{const v=document.getElementById('dn').value.trim();if(!v)return false;doc.name=v;save(false)}}]);setTimeout(()=>{const i=document.getElementById('dn');i&&i.select()},30);return}
-  const all=saved();all[doc.name]={comps:doc.comps,outline:doc.outline,tracks:doc.tracks,links:doc.links,fecha:new Date().toISOString()};LS.set('pcb.disenos',all);changed();toast(`Guardado: ${doc.name}`);
+  const all=saved();all[doc.name]={...docData(),fecha:new Date().toISOString()};LS.set('pcb.disenos',all);changed();toast(`Guardado: ${doc.name}`);
 }
 function openDlg(){
   const all=saved(),names=Object.keys(all);
   const body=names.length?`<div class="saved">${names.map((n,i)=>`<div><button data-o="${i}">${n.replace(/</g,'&lt;')}<br><small class="muted">${new Date(all[n].fecha).toLocaleString('es-AR')} · ${all[n].comps.length} componentes</small></button><button class="x" data-x="${i}" aria-label="Borrar ${n.replace(/"/g,'')}">Borrar</button></div>`).join('')}</div>`:'<p class="muted">Todavía no guardaste ningún diseño en este navegador.</p>';
   const ov=dialog('Abrir diseño',body,[{t:'Importar archivo…',f:()=>{document.getElementById('fileIn').click()}},{t:'Cerrar',pri:1}]);
-  ov.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{const n=names[+b.dataset.o];pushUndo();doc={name:n,comps:all[n].comps,outline:all[n].outline,tracks:all[n].tracks||[],links:all[n].links||[]};sel.clear();outlineSel=false;ov.remove();changed();fit();toast(`Abierto: ${n}`)});
+  ov.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{const n=names[+b.dataset.o];pushUndo();doc=docFrom(all[n],n);sel.clear();outlineSel=false;ov.remove();changed();fit();toast(`Abierto: ${n}`)});
   ov.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{const n=names[+b.dataset.x];if(b.dataset.ok){const a=saved();delete a[n];LS.set('pcb.disenos',a);ov.remove();openDlg()}else{b.dataset.ok=1;b.textContent='¿Seguro?'}});
 }
-function newDoc(){dialog('Diseño nuevo','<p class="muted">Se va a vaciar el tablero. Podés recuperarlo con Deshacer.</p>',[{t:'Cancelar'},{t:'Empezar de cero',pri:1,f:()=>{pushUndo();doc={name:null,comps:[],outline:null,tracks:[],links:[]};sel.clear();trackSel=null;outlineSel=false;changed();fit()}}])}
+function newDoc(){dialog('Diseño nuevo','<p class="muted">Se va a vaciar el tablero. Podés recuperarlo con Deshacer.</p>',[{t:'Cancelar'},{t:'Empezar de cero',pri:1,f:()=>{pushUndo();doc=docFrom({comps:[]},null);sel.clear();trackSel=null;outlineSel=false;changed();fit()}}])}
 function exportDlg(){
-  const txt=JSON.stringify({app:'Mesa PCB',version:1,nombre:doc.name,comps:doc.comps,outline:doc.outline,tracks:doc.tracks,links:doc.links},null,1);
+  const txt=JSON.stringify({app:'Mesa PCB',version:1,nombre:doc.name,...docData()},null,1);
   const ov=dialog('Exportar diseño',`<p class="muted">Copiá este texto y guardalo en un archivo .json. Después lo abrís con Archivo → Abrir → Importar archivo.</p><textarea id="ex" readonly></textarea>`,[{t:'Copiar',f:()=>{const t=document.getElementById('ex');navigator.clipboard.writeText(t.value).then(()=>toast('Copiado'),()=>{t.select();toast('Seleccionado: usá Ctrl+C')});return false}},{t:'Cerrar',pri:1}]);
   ov.querySelector('#ex').value=txt;
 }
 document.getElementById('fileIn').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);if(!Array.isArray(o.comps))throw 0;
-  pushUndo();doc={name:o.nombre||f.name.replace(/\.json$/,''),comps:o.comps,outline:o.outline||null,tracks:o.tracks||[],links:o.links||[]};sel.clear();document.querySelectorAll('.ov').forEach(x=>x.remove());changed();fit();toast('Diseño importado')}catch(err){toast('Ese archivo no es un diseño de Mesa PCB')}};r.readAsText(f);e.target.value=''};
+  pushUndo();doc=docFrom(o,o.nombre||f.name.replace(/\.json$/,''));sel.clear();document.querySelectorAll('.ov').forEach(x=>x.remove());changed();fit();toast('Diseño importado')}catch(err){toast('Ese archivo no es un diseño de Mesa PCB')}};r.readAsText(f);e.target.value=''};
 
 /* ================= diálogos y avisos ================= */
 function dialog(title,html,btns){
@@ -802,7 +813,7 @@ function prefsDlg(){
   ov.querySelectorAll('#pt button').forEach(b=>b.onclick=()=>{prefs.theme=b.dataset.v;LS.set('pcb.prefs',prefs);mark();applyTheme()});mark();
 }
 function keysDlg(){dialog('Atajos de teclado',`<table>${[['V','Seleccionar'],['H  /  Espacio','Mover la vista'],['B','Contorno de placa'],['M','Medir'],['C','Conectar pad con pad'],['T','Pista'],['Retroceso','Pista: borrar el último tramo'],['A','Autorruteador'],['D','Revisar reglas de diseño'],['Enter / doble clic','Pista: terminar'],['R','Rotar 90°'],['Supr','Borrar lo seleccionado'],['Ctrl + Z','Deshacer'],['Ctrl + Y','Rehacer'],['Ctrl + D','Duplicar'],['Ctrl + A','Seleccionar todo'],['Ctrl + S','Guardar'],['F','Ajustar a la pantalla'],['Rueda','Zoom'],['Shift + clic','Sumar a la selección'],['Shift al colocar','Colocar varios iguales'],['Esc','Cancelar']].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>`,[{t:'Cerrar',pri:1}])}
-function aboutDlg(){dialog('Mesa PCB',`<p class="muted">Primera versión de la mesa de trabajo. Diseño de plaquetas de una cara para hacer en casa con planchado y percloruro.</p><p class="muted">Biblioteca: ${DB.length} componentes de agujero pasante. Próximos pasos: puentes, plano de masa, impresión 1:1 y asistente con IA.</p>`,[{t:'Cerrar',pri:1}])}
+function aboutDlg(){dialog('Mesa PCB',`<p class="muted">Primera versión de la mesa de trabajo. Diseño de plaquetas de una cara para hacer en casa con planchado y percloruro.</p><p class="muted">Biblioteca: ${DB.length} componentes de agujero pasante. Próximos pasos: reacomodar componentes, optimizar tamaño, impresión 1:1 y asistente con IA.</p>`,[{t:'Cerrar',pri:1}])}
 
 /* ================= revisión de reglas (DRC) ================= */
 const DRC={gap:0.6,minW:0.5,edge:2};
@@ -830,34 +841,28 @@ function shapeDist(A,B){ // separación entre bordes de cobre y punto medio de l
 function padName(k){const [cid,n]=k.split(':');const c=doc.comps.find(x=>x.id===cid);return c?`${c.ref}.${n}`:'?'}
 function runDrc(){
   const out=[],add=(t,m,x,y)=>out.push({t,m,x,y});
-  const ph=physical(),netOf=new Map();nets().forEach((g,i)=>g.forEach(k=>netOf.set(k,i)));
-  const grpNet=new Map();netOf.forEach((i,k)=>{const r=ph.f(k);if(!grpNet.has(r))grpNet.set(r,i)});
-  const items=[];
-  doc.comps.forEach(c=>{const fp=fpOf(c);if(!fp)return;fp.pads.forEach(p=>{const k=pkey(c.id,p.n);items.push({k,cid:c.id,name:`${c.ref}.${p.n}`,...padShape(c,p)})})});
-  doc.tracks.forEach(t=>{for(let j=1;j<t.pts.length;j++)items.push({k:'t:'+t.id,tid:t.id,name:'pista',pts:[t.pts[j-1],t.pts[j]],r:t.w/2})});
-  items.forEach(o=>{const xs=o.pts.map(p=>p[0]),ys=o.pts.map(p=>p[1]);o.b=[Math.min(...xs)-o.r,Math.min(...ys)-o.r,Math.max(...xs)+o.r,Math.max(...ys)+o.r];
-    o.g=ph.f(o.k);o.n=netOf.has(o.k)?netOf.get(o.k):grpNet.has(o.g)?grpNet.get(o.g):null});
+  const ph=physical(),items=copperItems(ph,{tears:true});
   // 1. separación entre cobres de distinta red
   const seen=new Set();
   for(let i=0;i<items.length;i++)for(let j=i+1;j<items.length;j++){const A=items[i],B=items[j];
     if(A.b[0]>B.b[2]+DRC.gap||B.b[0]>A.b[2]+DRC.gap||A.b[1]>B.b[3]+DRC.gap||B.b[1]>A.b[3]+DRC.gap)continue;
     if(A.cid&&A.cid===B.cid)continue; // dentro de una huella ya lo verifica la biblioteca
-    if(A.g===B.g||(A.n!==null&&A.n===B.n))continue;
+    if(sameNet(A,B))continue;
     const r=shapeDist(A,B);if(r.d>=DRC.gap-1e-6)continue;
-    const key=[A.tid||A.k,B.tid||B.k].sort().join('|');if(seen.has(key))continue;seen.add(key);
+    const key=[A.tid||A.jid||A.k,B.tid||B.jid||B.k].sort().join('|');if(seen.has(key))continue;seen.add(key);
     add('Separación',`${A.name} y ${B.name}: ${r.d<=0?'se tocan':f2(r.d)+' mm'}`,r.x,r.y)}
   // 2. ancho de pista
   doc.tracks.forEach(t=>{if(t.w<DRC.minW-1e-6){const p=t.pts[Math.floor(t.pts.length/2)];add('Ancho',`Pista de ${f2(t.w)} mm`,p[0],p[1])}});
   // 3. borde de placa
   if(doc.outline){const o=doc.outline,worst=new Map();
     items.forEach(it=>{const m=Math.min(it.b[0]-o.x,it.b[1]-o.y,o.x+o.w-it.b[2],o.y+o.h-it.b[3]);if(m>=DRC.edge-1e-6)return;
-      const id=it.cid||it.tid;if(!worst.has(id)||m<worst.get(id).m)worst.set(id,{m,it})});
+      const id=it.cid||it.tid||it.jid;if(!worst.has(id)||m<worst.get(id).m)worst.set(id,{m,it})});
     worst.forEach(({m,it})=>{const c=it.cid&&doc.comps.find(x=>x.id===it.cid);const x=(it.b[0]+it.b[2])/2,y=(it.b[1]+it.b[3])/2;
-      add('Borde',`${c?c.ref:'Pista'}: ${m<0?'fuera de la placa':f2(m)+' mm del borde'}`,x,y)})}
+      add('Borde',`${c?c.ref:it.jid?'Puente':'Pista'}: ${m<0?'fuera de la placa':f2(m)+' mm del borde'}`,x,y)})}
   // 4. esquinas: quiebres de 45° como máximo, también en uniones entre pistas
   const turnOk=(u,v)=>u[0]*v[0]+u[1]*v[1]>=0.69;
   doc.tracks.forEach(t=>{for(let i=1;i<t.pts.length-1;i++)if(!turnOk(dirOf(t.pts[i-1],t.pts[i]),dirOf(t.pts[i],t.pts[i+1]))){add('Esquina','Pista con esquina fuera de regla',t.pts[i][0],t.pts[i][1]);break}});
-  const pads=padsAll(),joints=new Set();
+  const pads=[...padsAll(),...jumperPads()],joints=new Set();
   doc.tracks.forEach(t=>{[[0,1],[t.pts.length-1,t.pts.length-2]].forEach(([e,nb])=>{const E=t.pts[e];if(t.pts.length<2||pads.some(q=>Math.hypot(q.x-E[0],q.y-E[1])<=q.r+.01))return;
     const u=dirOf(t.pts[nb],E);let touch=false,ok=false;
     doc.tracks.forEach(T=>{if(T===t)return;for(let j=1;j<T.pts.length;j++){const a=T.pts[j-1],b=T.pts[j];if(segDist(E[0],E[1],a,b)>.01)continue;touch=true;
@@ -888,7 +893,8 @@ function drcDlg(){
 
 /* ================= autorruteador ================= */
 // Grilla de 0,635 mm y A* con costos (largo, quiebres, cercanía). Solo giros de 45° entre tramos,
-// así las pistas cumplen la regla sin pasar por chamfer. Las pistas salen y llegan siempre a un pad.
+// así las pistas cumplen la regla sin pasar por chamfer. Las pistas salen y llegan siempre a un pad
+// (de componente o de puente). Un puente salta 7,62 o 10,16 mm en recto por el lado de los componentes.
 const POWER_PIN=/^(GND|VCC|VDD|VSS|VEE|VS|\+VS|−VS|V\+|V−|VOUT)$/;
 function pinName(k){const [cid,n]=k.split(':');const c=doc.comps.find(x=>x.id===cid);const comp=c&&DB.find(d=>d.nombre===c.name);return comp&&comp.pines?(comp.pines[+n-1]||'').split(' ')[0]:''}
 function isPowerNet(keys){return keys.some(k=>{const p=pinName(k);if(POWER_PIN.test(p))return true;const c=doc.comps.find(x=>x.id===k.split(':')[0]);return !!c&&/^Regulador/.test(c.name)&&/^(IN|OUT)$/.test(p)})}
@@ -897,8 +903,9 @@ function shapePtDist(S,x,y){const P=S.pts;let d;
   else d=inPoly([x,y],P)?0:Math.min(...P.map((p,i)=>segDist(x,y,p,P[(i+1)%P.length])));
   return d-S.r}
 function autoroute(opt){
-  const g=0.635,M=0.05,TURN=1.5,NEAR=0.6,DX=[1,1,0,-1,-1,-1,0,1],DY=[0,1,1,1,0,-1,-1,-1];
-  const NETS=nets(),base=opt.keep?doc.tracks.slice():[];
+  const g=0.635,M=0.05,TURN=1.5,NEAR=0.6,COMF=3,JUMP=40,DX=[1,1,0,-1,-1,-1,0,1],DY=[0,1,1,1,0,-1,-1,-1];
+  const JL=(opt.jLen==='7.62'?[12]:opt.jLen==='10.16'?[16]:[12,16]);
+  const NETS=nets(),base=opt.keep==='all'?doc.tracks.slice():doc.tracks.filter(t=>t.lock),baseJ=opt.keep==='all'?(doc.jumpers||[]).slice():[];
   let X0,Y0,X1,Y1;
   if(doc.outline){const o=doc.outline;[X0,Y0,X1,Y1]=[o.x,o.y,o.x+o.w,o.y+o.h]}
   else{const bs=doc.comps.map(compBox);X0=Math.min(...bs.map(b=>b[0]))-6;Y0=Math.min(...bs.map(b=>b[1]))-6;X1=Math.max(...bs.map(b=>b[2]))+6;Y1=Math.max(...bs.map(b=>b[3]))+6}
@@ -908,85 +915,198 @@ function autoroute(opt){
   const pads=[],padBy=new Map();
   doc.comps.forEach(c=>{const fp=fpOf(c);if(!fp)return;fp.pads.forEach(p=>{const k=pkey(c.id,p.n),[x,y]=padWorld(c,p);
     const S=box({...padShape(c,p),x,y,k,n:netOf.has(k)?netOf.get(k):-1,rin:Math.min(p.w||p.d,p.h||p.d)/2});pads.push(S);padBy.set(k,S)})});
-  const keepT=doc.tracks;doc.tracks=base;const ph0=physical();doc.tracks=keepT;
+  const keepT=doc.tracks,keepJ=doc.jumpers;doc.tracks=base;doc.jumpers=baseJ;const ph0=physical(true);doc.tracks=keepT;doc.jumpers=keepJ;
   const grpNet=new Map();netOf.forEach((i,k)=>{const r=ph0.f(k);if(!grpNet.has(r))grpNet.set(r,i)});
   const segsOf=(t,n)=>{const o=[];for(let j=1;j<t.pts.length;j++)o.push(box({pts:[t.pts[j-1],t.pts[j]],r:t.w/2,n}));return o};
-  const baseSegs=base.flatMap(t=>{const r=ph0.f('t:'+t.id);return segsOf(t,grpNet.has(r)?grpNet.get(r):-1)});
+  const jpOf=(j,n)=>[j.a,j.b].map(p=>box({pts:[p],r:JR,n,jp:1}));
+  const netOfKey=k=>{const r=ph0.f(k);return grpNet.has(r)?grpNet.get(r):-1};
+  const baseSegs=[...base.flatMap(t=>segsOf(t,netOfKey('t:'+t.id))),...baseJ.flatMap(j=>jpOf(j,netOfKey('j:'+j.id)))];
   const power=NETS.map(isPowerNet);
   const ci=x=>Math.round((x-gx0)/g),cj=y=>Math.round((y-gy0)/g);
-  function routeOne(src,dst,n,w,segs){
-    const thr=DRC.gap+w/2+M,blk=new Uint8Array(N),near=new Uint8Array(N),e=(doc.outline?DRC.edge:0)+w/2+M;
-    for(let j=0;j<NY;j++)for(let i=0;i<NX;i++){const x=gx0+i*g,y=gy0+j*g;if(x<X0+e||x>X1-e||y<Y0+e||y>Y1-e)blk[j*NX+i]=1}
-    const mark=S=>{if(n>=0&&S.n===n)return;const R=thr+0.8;
+  function routeOne(src,dst,n,w,segs,jumps){
+    const thr=DRC.gap+w/2+M,thrJ=DRC.gap+JR+M,R=Math.max(thr+0.8,thrJ);
+    const blk=new Uint8Array(N),near=new Uint8Array(N),noJ=new Uint8Array(N),e=(doc.outline?DRC.edge:0)+w/2+M,eJ=(doc.outline?DRC.edge:0)+JR+M;
+    for(let j=0;j<NY;j++)for(let i=0;i<NX;i++){const x=gx0+i*g,y=gy0+j*g,c=j*NX+i;if(x<X0+e||x>X1-e||y<Y0+e||y>Y1-e)blk[c]=1;if(x<X0+eJ||x>X1-eJ||y<Y0+eJ||y>Y1-eJ)noJ[c]=1}
+    const mark=(S,all)=>{const mine=n>=0&&S.n===n;if(mine&&!all)return;
       for(let j=Math.max(0,cj(S.b[1]-R));j<=Math.min(NY-1,cj(S.b[3]+R));j++)for(let i=Math.max(0,ci(S.b[0]-R));i<=Math.min(NX-1,ci(S.b[2]+R));i++){
-        const c=j*NX+i;if(blk[c])continue;const d=shapePtDist(S,gx0+i*g,gy0+j*g);if(d<thr)blk[c]=1;else if(d<R)near[c]=1}};
-    pads.forEach(mark);segs.forEach(mark);
+        const c=j*NX+i,d=shapePtDist(S,gx0+i*g,gy0+j*g);if(d<thrJ)noJ[c]=1;if(mine)continue;
+        if(d<thr)blk[c]=1;else if(opt.comfort&&d<thr+0.2)near[c]=Math.max(near[c],2);else if(d<thr+0.8)near[c]=Math.max(near[c],1)}};
+    pads.forEach(S=>mark(S,true));segs.forEach(S=>mark(S,!!S.jp));
+    doc.comps.forEach(c=>{const b=compBox(c);for(let j=Math.max(0,cj(b[1]));j<=Math.min(NY-1,cj(b[3]));j++)for(let i=Math.max(0,ci(b[0]));i<=Math.min(NX-1,ci(b[2]));i++)noJ[j*NX+i]=1}); // nada de puentes debajo de un componente
     const cellsIn=P=>{const out=[];P.forEach(S=>{const lim=Math.max(S.rin-0.15,0);let bestC=-1,bd=1e9;
       for(let j=cj(S.y-S.rin);j<=cj(S.y+S.rin);j++)for(let i=ci(S.x-S.rin);i<=ci(S.x+S.rin);i++){if(i<0||j<0||i>=NX||j>=NY)continue;
         const d=Math.hypot(gx0+i*g-S.x,gy0+j*g-S.y),c=j*NX+i;if(blk[c])continue;if(d<=lim)out.push(c);if(d<bd){bd=d;bestC=c}}
       if(bestC>=0&&!out.includes(bestC)&&bd<S.rin)out.push(bestC)});return out};
     const starts=cellsIn(src),goals=cellsIn(dst);if(!starts.length||!goals.length)return null;
-    const isT=new Uint8Array(N);goals.forEach(c=>isT[c]=1);
+    const isT=new Uint8Array(N),isS=new Uint8Array(N);goals.forEach(c=>isT[c]=1);starts.forEach(c=>isS[c]=1);
     const tg=dst.map(S=>[(S.x-gx0)/g,(S.y-gy0)/g,S.rin/g]);
     const h=c=>{const i=c%NX,j=(c-i)/NX;let m=1e9;for(const [x,y,r] of tg){const a=Math.abs(i-x),b=Math.abs(j-y);m=Math.min(m,Math.max(a,b)+0.414*Math.min(a,b)-r)}return Math.max(0,m)};
-    const G=new Float64Array(N*8).fill(Infinity),par=new Int32Array(N*8).fill(-1);
+    // estado: (celda, dirección, ya usó puente)
+    const NS=N*16,G=new Float64Array(NS).fill(Infinity),par=new Int32Array(NS).fill(-1),jf=new Uint8Array(NS);
     const H=[];const push=(f,gv,v)=>{H.push([f,gv,v]);let i=H.length-1;while(i){const p=(i-1)>>1;if(H[p][0]<=H[i][0])break;[H[p],H[i]]=[H[i],H[p]];i=p}};
     const pop=()=>{const top=H[0],last=H.pop();if(H.length){H[0]=last;let i=0;for(;;){const l=2*i+1,r=l+1;let m=i;if(l<H.length&&H[l][0]<H[m][0])m=l;if(r<H.length&&H[r][0]<H[m][0])m=r;if(m===i)break;[H[m],H[i]]=[H[i],H[m]];i=m}}return top};
-    starts.forEach(c=>{for(let d=0;d<8;d++){G[c*8+d]=0;push(h(c),0,c*8+d)}});
+    const relax=(v,v2,ng,c2,isJ)=>{if(ng<G[v2]){G[v2]=ng;par[v2]=v;jf[v2]=isJ;push(ng+h(c2),ng,v2)}};
+    starts.forEach(c=>{for(let d=0;d<8;d++){const v=(c*8+d)*2;G[v]=0;push(h(c),0,v)}});
     let end=-1,steps=0;
-    while(H.length&&steps++<N*12){const [,gv,v]=pop();if(gv>G[v])continue;const c=v>>3,d=v&7;if(isT[c]){end=v;break}
+    while(H.length&&steps++<N*16){const [,gv,v]=pop();if(gv>G[v])continue;const used=v&1,cd=v>>1,c=cd>>3,d=cd&7;if(isT[c]){end=v;break}
       const i=c%NX,j=(c-i)/NX;
       for(const dd of [-1,0,1]){const nd=(d+dd+8)&7,ni=i+DX[nd],nj=j+DY[nd];if(ni<0||nj<0||ni>=NX||nj>=NY)continue;const c2=nj*NX+ni;if(blk[c2])continue;
-        const ng=gv+(nd&1?1.414:1)+(dd?TURN:0)+(near[c2]?NEAR:0),v2=c2*8+nd;if(ng<G[v2]){G[v2]=ng;par[v2]=v;push(ng+h(c2),ng,v2)}}}
+        relax(v,((c2*8+nd)<<1)|used,gv+(nd&1?1.414:1)+(dd?TURN:0)+(near[c2]===2?COMF:near[c2]?NEAR:0),c2,0)}
+      if(jumps&&!used&&!noJ[c]&&!isS[c])for(const nd of [0,2,4,6])for(const L of JL){const ni=i+DX[nd]*L,nj=j+DY[nd]*L;if(ni<0||nj<0||ni>=NX||nj>=NY)continue;const c2=nj*NX+ni;if(noJ[c2]||blk[c2]||isT[c2])continue;
+        for(let d2=0;d2<8;d2++)relax(v,((c2*8+d2)<<1)|1,gv+JUMP+L*0.3,c2,1)}}
     if(end<0)return null;
-    const cells=[];for(let v=end;v>=0;v=par[v])cells.push(v>>3);cells.reverse();
-    const pts=cells.map(c=>{const i=c%NX;return [gx0+i*g,gy0+(c-i)/NX*g]});
-    const out=[pts[0]];for(let k=1;k<pts.length-1;k++){const a=out[out.length-1],b=pts[k],c=pts[k+1];if(Math.abs((b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]))>1e-9)out.push(b)}
-    if(pts.length>1)out.push(pts[pts.length-1]);
-    return out.length>1?out:null;
+    const chain=[];for(let v=end;v>=0;v=par[v])chain.push({c:v>>4,j:jf[v]});chain.reverse();
+    const P=c=>{const i=c%NX;return [gx0+i*g,gy0+(c-i)/NX*g]};
+    const runs=[[P(chain[0].c)]],jl=[];
+    for(let k=1;k<chain.length;k++){if(chain[k].j){jl.push([P(chain[k-1].c),P(chain[k].c)]);runs.push([P(chain[k].c)])}else runs[runs.length-1].push(P(chain[k].c))}
+    const simp=pts=>{const out=[pts[0]];for(let k=1;k<pts.length-1;k++){const a=out[out.length-1],b=pts[k],c=pts[k+1];if(Math.abs((b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]))>1e-9)out.push(b)}if(pts.length>1)out.push(pts[pts.length-1]);return out};
+    const tr=runs.map(simp);if(tr.some(p=>p.length<2))return null;
+    return {tracks:tr,jumps:jl};
   }
   function pass(order){
-    const segs=baseSegs.slice(),newT=[],fail=[],uf=UF();let len=0,total=0;
+    const segs=baseSegs.slice(),newT=[],newJ=[],fail=[],uf=UF();let len=0,total=0;
     for(const n of order){const root=k=>uf.f(ph0.f(k));
       for(;;){const grp=new Map();NETS[n].forEach(k=>{if(!padBy.has(k))return;const r=root(k);if(!grp.has(r))grp.set(r,[]);grp.get(r).push(padBy.get(k))});
         const G=[...grp.values()];if(G.length<2)break;
         let best=null;for(let a=0;a<G.length;a++)for(let b=a+1;b<G.length;b++)G[a].forEach(p=>G[b].forEach(q=>{const d=Math.hypot(p.x-q.x,p.y-q.y);if(!best||d<best.d)best={d,a,b,p,q}}));
         total++;const A=G[best.a],B=G[best.b];
-        let w=power[n]?opt.powW:opt.sigW,pts=routeOne(A,B,n,w,segs);
-        if(!pts&&w>opt.sigW){w=opt.sigW;pts=routeOne(A,B,n,w,segs)}
-        if(pts){const t={id:uid(),w,pts};newT.push(t);segs.push(...segsOf(t,n));len+=trackLen(t)}else fail.push(n);
+        let w=power[n]?opt.powW:opt.sigW,r=routeOne(A,B,n,w,segs,false);
+        if(!r&&w>opt.sigW){w=opt.sigW;r=routeOne(A,B,n,w,segs,false)}
+        if(!r&&opt.jumps&&newJ.length<opt.maxJ)r=routeOne(A,B,n,w,segs,true);
+        if(r){r.tracks.forEach(pts=>{const t={id:uid(),w,pts};newT.push(t);segs.push(...segsOf(t,n));len+=trackLen(t)});
+          r.jumps.forEach(([a,b])=>{const j={id:uid(),a,b};newJ.push(j);segs.push(...jpOf(j,n))})}
+        else fail.push(n);
         uf.u(root(best.p.k),root(best.q.k))}}
-    return {newT,fail,len,total};
+    return {newT,newJ,fail,len,total};
   }
   const est=n=>{const P=NETS[n].map(k=>padBy.get(k)).filter(Boolean);const xs=P.map(p=>p.x),ys=P.map(p=>p.y);return P.length?Math.max(...xs)-Math.min(...xs)+Math.max(...ys)-Math.min(...ys):0};
   let order=NETS.map((_,i)=>i).sort((a,b)=>(opt.powerFirst?(power[b]-power[a]):0)||est(a)-est(b));
-  let best=null;
-  let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647; // azar repetible: mismo diseño, mismo resultado
-  for(let p=0;p<12;p++){const r=pass(order);if(!best||r.fail.length<best.fail.length||(r.fail.length===best.fail.length&&r.len<best.len))best=r;if(!r.fail.length)break;
+  const better=(r,b)=>!b||r.fail.length<b.fail.length||(r.fail.length===b.fail.length&&(r.newJ.length<b.newJ.length||(r.newJ.length===b.newJ.length&&r.len<b.len)));
+  let best=null,seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647; // azar repetible: mismo diseño, mismo resultado
+  const passes={fast:4,normal:12,deep:30}[opt.effort]||12;
+  for(let p=0;p<passes;p++){const r=pass(order);if(better(r,best))best=r;if(!r.fail.length&&!r.newJ.length)break;
     const f=[...new Set(r.fail)];order=[...f,...order.filter(n=>!f.includes(n))]; // arrancar y rerutear: las que fallaron van primero
     if(p>=3)for(let i=order.length-1;i>f.length;i--){const j=f.length+Math.floor(rnd()*(i-f.length+1));[order[i],order[j]]=[order[j],order[i]]}} // y el resto en otro orden
-  return {tracks:base.concat(best.newT),done:best.total-best.fail.length,total:best.total};
+  return {tracks:base.concat(best.newT),jumpers:baseJ.concat(best.newJ),done:best.total-best.fail.length,total:best.total,nj:best.newJ.length};
 }
 function routeDlg(){
   if(!doc.links.length){toast('Primero uní los pads con Conectar (C)');return}
-  const o=Object.assign({sigW:0.8,powW:1.5,powerFirst:true,keep:true},prefs.route||{});
+  const o=Object.assign({sigW:0.8,powW:1.5,powerFirst:true,keep:'all',comfort:true,effort:'normal',jumps:false,maxJ:2,jLen:'both',tears:!!doc.tears,plane:!!doc.plane},prefs.route||{});
+  if(typeof o.keep!=='string')o.keep=o.keep?'all':'locked';o.tears=!!doc.tears;o.plane=!!doc.plane;
   const widths=[0.5,0.8,1,1.5,2,2.5].map(v=>`<button data-v="${v}">${f2(v)} mm</button>`).join('');
+  const rad=(id,label,opts)=>`<div class="field"><label>${label}</label><div class="radio" id="${id}">${opts.map(([v,t])=>`<button data-v="${v}">${t}</button>`).join('')}</div></div>`;
+  const yn=[['1','Sí'],['0','No']];
   const ov=dialog('Autorruteador',`
    <div class="field"><label>Ancho de señal</label><div class="radio" id="rs">${widths}</div></div>
    <div class="field"><label>Ancho de alimentación y masa</label><div class="radio" id="rp">${widths}</div></div>
-   <div class="field"><label>Rutear primero alimentación y masa</label><div class="radio" id="rf"><button data-v="1">Sí</button><button data-v="0">No</button></div></div>
-   <div class="field"><label>Pistas que ya están dibujadas</label><div class="radio" id="rk"><button data-v="1">Conservarlas</button><button data-v="0">Borrarlas y rutear todo</button></div></div>
-   <p class="muted">Puentes y plano de masa: próximamente.</p>`,
+   ${rad('rf','Rutear primero alimentación y masa',yn)}
+   ${rad('rc','Separación',[['1','0,8 mm donde entre'],['0','0,6 mm siempre']])}
+   ${rad('rk','Pistas que ya están dibujadas',[['all','Conservarlas'],['locked','Conservar solo las fijas']])}
+   ${rad('rj','Puentes de alambre',yn)}
+   <div id="rjo">${rad('rm','Máximo de puentes',[['1','1'],['2','2'],['3','3'],['5','5']])}${rad('rl','Largo del puente',[['7.62','7,62 mm'],['10.16','10,16 mm'],['both','Los dos']])}</div>
+   ${rad('rt','Lágrimas en los pads',yn)}
+   ${rad('rg','Plano de masa al terminar',yn)}
+   ${rad('re','Esfuerzo',[['fast','Rápido'],['normal','Normal'],['deep','A fondo']])}`,
    [{t:'Cancelar'},{t:'Rutear',pri:1,f:()=>{prefs.route=o;LS.set('pcb.prefs',prefs);toast('Ruteando…');setTimeout(()=>runRoute(o),30)}}]);
-  const bind=(id,k,num)=>{const bs=ov.querySelectorAll(`#${id} button`);const mark=()=>bs.forEach(b=>b.setAttribute('aria-pressed',String((num?+b.dataset.v:b.dataset.v==='1')===o[k])));
-    bs.forEach(b=>b.onclick=()=>{o[k]=num?+b.dataset.v:b.dataset.v==='1';mark()});mark()};
-  bind('rs','sigW',1);bind('rp','powW',1);bind('rf','powerFirst',0);bind('rk','keep',0);
+  const bind=(id,k,kind)=>{const bs=ov.querySelectorAll(`#${id} button`),val=b=>kind==='n'?+b.dataset.v:kind==='b'?b.dataset.v==='1':b.dataset.v;
+    const mark=()=>{bs.forEach(b=>b.setAttribute('aria-pressed',String(val(b)===o[k])));ov.querySelector('#rjo').hidden=!o.jumps};
+    bs.forEach(b=>b.onclick=()=>{o[k]=val(b);mark()});mark()};
+  bind('rs','sigW','n');bind('rp','powW','n');bind('rf','powerFirst','b');bind('rc','comfort','b');bind('rk','keep','s');bind('rj','jumps','b');
+  bind('rm','maxJ','n');bind('rl','jLen','s');bind('rt','tears','b');bind('rg','plane','b');bind('re','effort','s');
 }
 function runRoute(o){
-  const r=autoroute(o);pushUndo();doc.tracks=r.tracks;trackSel=null;changed();
-  if(!r.total){toast('No había conexiones para rutear');return}
-  if(r.done===r.total)toast(`Listo: ${r.done} de ${r.total} conexiones`);
-  else dialog('Autorruteador',`<p>Se rutearon ${r.done} de ${r.total} conexiones. Las que faltan siguen como línea punteada.</p><p class="muted">Probá separar un poco los componentes o bajar el ancho de las pistas y volvé a rutear.</p>`,[{t:'Deshacer',f:doUndo},{t:'Cerrar',pri:1}]);
+  const r=autoroute(o);pushUndo();doc.tracks=r.tracks;doc.jumpers=r.jumpers;doc.tears=o.tears;trackSel=null;
+  let extra='';
+  if(o.plane){const k=gndKey();if(doc.outline&&k)doc.plane={key:k};else{doc.plane=null;extra=doc.outline?' · No encontré la masa (GND)':' · Plano de masa: falta el contorno'}}else doc.plane=null;
+  changed();
+  if(!r.total){toast('No había conexiones para rutear'+extra);return}
+  const pj=r.nj?` con ${r.nj} puente${r.nj>1?'s':''}`:'';
+  if(r.done===r.total)toast(`Listo: ${r.done} de ${r.total} conexiones${pj}${extra}`);
+  else dialog('Autorruteador',`<p>Se rutearon ${r.done} de ${r.total} conexiones${pj}. Las que faltan siguen como línea punteada.</p><p class="muted">Probá separar un poco los componentes, permitir más puentes o bajar el ancho de las pistas.${extra}</p>`,[{t:'Deshacer',f:doUndo},{t:'Cerrar',pri:1}]);
+}
+
+/* ================= cobre extra: puentes, lágrimas y plano de masa ================= */
+const JR=1.0,JDRILL=0.8; // pad de cada punta del puente
+let geoVer=0;
+function jumperPads(){const o=[];(doc.jumpers||[]).forEach(j=>[j.a,j.b].forEach(p=>o.push({x:p[0],y:p[1],r:JR,k:'j:'+j.id,jid:j.id})));return o}
+// todo el cobre como polígonos engordados, con su grupo físico (g) y su red lógica (n)
+function copperItems(ph,opt={}){
+  const netOf=new Map();nets().forEach((g,i)=>g.forEach(k=>netOf.set(k,i)));
+  const grpNet=new Map();netOf.forEach((i,k)=>{const r=ph.f(k);if(!grpNet.has(r))grpNet.set(r,i)});
+  const items=[];
+  doc.comps.forEach(c=>{const fp=fpOf(c);if(!fp)return;fp.pads.forEach(p=>{const k=pkey(c.id,p.n);items.push({k,cid:c.id,name:`${c.ref}.${p.n}`,...padShape(c,p)})})});
+  doc.tracks.forEach(t=>{for(let j=1;j<t.pts.length;j++)items.push({k:'t:'+t.id,tid:t.id,name:'pista',pts:[t.pts[j-1],t.pts[j]],r:t.w/2})});
+  jumperPads().forEach(q=>items.push({k:q.k,jid:q.jid,name:'puente',pts:[[q.x,q.y]],r:JR}));
+  if(opt.tears)tearShapes().forEach(T=>items.push({k:'t:'+T.tid,tid:T.tid,name:'pista',pts:T.pts,r:0}));
+  items.forEach(o=>{const xs=o.pts.map(p=>p[0]),ys=o.pts.map(p=>p[1]);o.b=[Math.min(...xs)-o.r,Math.min(...ys)-o.r,Math.max(...xs)+o.r,Math.max(...ys)+o.r];
+    o.g=ph.f(o.k);o.n=netOf.has(o.k)?netOf.get(o.k):grpNet.has(o.g)?grpNet.get(o.g):null});
+  return items;
+}
+const sameNet=(A,B)=>A.g===B.g||(A.n!==null&&A.n===B.n);
+// lágrimas: ensanchan la unión pista-pad para que no se corte al agujerear ni con el percloruro
+let tearCache={ver:-1,list:[]};
+function tearShapes(){
+  if(!doc.tears)return [];if(tearCache.ver===geoVer)return tearCache.list;
+  const ph=physical(true),items=copperItems(ph),out=[];
+  doc.tracks.forEach(t=>{if(t.pts.length<2)return;
+    [[0,1],[t.pts.length-1,t.pts.length-2]].forEach(([e,nb])=>{const E=t.pts[e],Nx=t.pts[nb];
+      const pad=items.find(it=>it.cid&&shapePtDist(it,E[0],E[1])<=0);if(!pad)return;
+      const pk=pad.pts.length===1?pad.pts[0]:[(pad.b[0]+pad.b[2])/2,(pad.b[1]+pad.b[3])/2];
+      const rin=Math.min(pad.b[2]-pad.b[0],pad.b[3]-pad.b[1])/2,d=dirOf(E,Nx),seg=Math.hypot(Nx[0]-E[0],Nx[1]-E[1]);
+      const L=rin+0.8;if(seg<L+0.3)return;const nx=-d[1],ny=d[0];const me={k:'t:'+t.id,g:ph.f('t:'+t.id)};me.n=(items.find(it=>it.k===me.k)||{}).n??null;
+      for(const wp of [Math.min(2*rin*0.85,t.w+1.4),t.w+0.5]){if(wp<=t.w)break;
+        const pts=[[E[0]+nx*wp/2,E[1]+ny*wp/2],[E[0]-nx*wp/2,E[1]-ny*wp/2],[E[0]+d[0]*L-nx*t.w/2,E[1]+d[1]*L-ny*t.w/2],[E[0]+d[0]*L+nx*t.w/2,E[1]+d[1]*L+ny*t.w/2]];
+        const T={pts,r:0};const bad=!sameNet(pad,me)||items.some(it=>!sameNet(it,me)&&shapeDist(T,it).d<DRC.gap-1e-6);
+        if(!bad){out.push({tid:t.id,pts});break}}})});
+  tearCache={ver:geoVer,list:out};return out;
+}
+// plano de masa: cobre en lo que sobra, unido a la red de masa, a 0,8 mm de todo lo demás y sin islas sueltas
+const PLANE_CLR=0.8;let planeCache={ver:-1,geo:null};
+function gndKey(){for(const g of nets())for(const k of g)if(/^(GND|VSS|0V)$/.test(pinName(k)))return k;return null}
+function planeGeo(){
+  if(!doc.plane||!doc.outline)return null;if(planeCache.ver===geoVer)return planeCache.geo;
+  planeCache={ver:geoVer,geo:null};
+  const gk=doc.plane.key,ph=physical(true);if(!padPos(gk))return null;
+  const items=copperItems(ph,{tears:true}),me={g:ph.f(gk),n:null};const NETS=nets();me.n=NETS.findIndex(g=>g.includes(gk));if(me.n<0)me.n=null;
+  const o=doc.outline,s=0.25,e=DRC.edge,X0=o.x+e,Y0=o.y+e,NX=Math.floor((o.w-2*e)/s),NY=Math.floor((o.h-2*e)/s);if(NX<2||NY<2)return null;
+  const free=new Uint8Array(NX*NY).fill(1),own=new Uint8Array(NX*NY),cx=i=>X0+(i+.5)*s,cy=j=>Y0+(j+.5)*s;
+  items.forEach(it=>{const mine=sameNet(it,me),R=mine?0:PLANE_CLR+s*0.75;
+    for(let j=Math.max(0,Math.floor((it.b[1]-R-Y0)/s));j<=Math.min(NY-1,Math.floor((it.b[3]+R-Y0)/s));j++)
+      for(let i=Math.max(0,Math.floor((it.b[0]-R-X0)/s));i<=Math.min(NX-1,Math.floor((it.b[2]+R-X0)/s));i++){const d=shapePtDist(it,cx(i),cy(j)),c=j*NX+i;
+        if(mine){if(d<=0)own[c]=1}else if(d<R)free[c]=0}});
+  // abrir (erosión + dilatación) para sacar tiras finas que no se pueden planchar
+  const er=new Uint8Array(NX*NY),fin=new Uint8Array(NX*NY);
+  for(let j=1;j<NY-1;j++)for(let i=1;i<NX-1;i++){let ok=1;for(let b=-1;b<=1&&ok;b++)for(let a=-1;a<=1;a++)if(!free[(j+b)*NX+i+a]){ok=0;break}er[j*NX+i]=ok}
+  for(let j=0;j<NY;j++)for(let i=0;i<NX;i++){const c=j*NX+i;if(!free[c])continue;let k=0;for(let b=-1;b<=1&&!k;b++)for(let a=-1;a<=1;a++){const ii=i+a,jj=j+b;if(ii>=0&&jj>=0&&ii<NX&&jj<NY&&er[jj*NX+ii]){k=1;break}}fin[c]=k}
+  // quedarse con las partes que tocan cobre de masa
+  const lab=new Int32Array(NX*NY).fill(-1),keep=[],regions=[];let L=0;
+  for(let c0=0;c0<NX*NY;c0++){if(!fin[c0]||lab[c0]>=0)continue;const st=[c0];lab[c0]=L;let touch=false;const cells=[];
+    while(st.length){const c=st.pop();cells.push(c);if(own[c])touch=true;const i=c%NX,j=(c-i)/NX;
+      for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]){const ii=i+a,jj=j+b;if(ii<0||jj<0||ii>=NX||jj>=NY)continue;const c2=jj*NX+ii;if(fin[c2]&&lab[c2]<0){lab[c2]=L;st.push(c2)}}}
+    if(touch){keep[L]=1;const keys=new Set();cells.forEach(c=>{if(!own[c])return;const x=cx(c%NX),y=cy(Math.floor(c/NX));items.forEach(it=>{if(sameNet(it,me)&&shapePtDist(it,x,y)<=0)keys.add(it.k)})});regions.push([...keys])}
+    L++}
+  const path=new Path2D();
+  for(let j=0;j<NY;j++){let i=0;while(i<NX){const c=j*NX+i;if(fin[c]&&keep[lab[c]]){let k=i;while(k<NX&&fin[j*NX+k]&&keep[lab[j*NX+k]])k++;path.rect(X0+i*s,Y0+j*s,(k-i)*s,s);i=k}else i++}}
+  planeCache.geo={path,regions};return planeCache.geo;
+}
+function planeToggle(){
+  if(doc.plane){pushUndo();doc.plane=null;toast('Plano de masa quitado');changed();return}
+  if(!doc.outline){toast('Primero dibujá el contorno de la placa');return}
+  const k=gndKey();if(!k){toast('No encontré la masa (GND) en las conexiones');return}
+  pushUndo();doc.plane={key:k};toast('Plano de masa agregado');changed();
+}
+function tearsToggle(){pushUndo();doc.tears=!doc.tears;toast(doc.tears?'Lágrimas en los pads: sí':'Lágrimas en los pads: no');changed()}
+function drawCopperExtra(){ // plano, lágrimas y pads de puentes (lado cobre)
+  const pr=view==='plancha',cu=pr?C.toner:C['ws-copper'],moving=drag&&drag.type==='move';
+  worldT();ctx.fillStyle=cu;
+  if(!moving){const P=planeGeo();if(P){ctx.globalAlpha=pr?1:.55;ctx.fill(P.path);ctx.globalAlpha=1}
+    tearShapes().forEach(T=>{ctx.beginPath();T.pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fill()})}
+  jumperPads().forEach(q=>{ctx.fillStyle=cu;ctx.beginPath();ctx.arc(q.x,q.y,JR,0,Math.PI*2);ctx.fill();ctx.fillStyle=pr?C.paper:C['ws-bg'];ctx.beginPath();ctx.arc(q.x,q.y,JDRILL/2,0,Math.PI*2);ctx.fill()});
+}
+function drawJumperWires(){ // el alambre va del lado de los componentes
+  if(view==='plancha'||!(doc.jumpers||[]).length)return;worldT();
+  ctx.strokeStyle=C['ws-silk'];ctx.lineWidth=0.6;ctx.lineCap='round';if(view==='abajo'){ctx.globalAlpha=.35;ctx.setLineDash([.6,.5])}
+  doc.jumpers.forEach(j=>{ctx.beginPath();ctx.moveTo(j.a[0],j.a[1]);ctx.lineTo(j.b[0],j.b[1]);ctx.stroke()});ctx.setLineDash([]);ctx.globalAlpha=1;
 }
 
 /* ================= menús ================= */
@@ -1009,7 +1129,7 @@ const MENUS=[
  ['Herramientas',[
    ...TOOLS.map(t=>t.soon?{t:t.name+' (próximamente)',f:soon(t.name),soon:1}:{t:t.name,k:t.key,c:()=>tool===t.id,f:()=>setTool(t.id)}),'-',
    {t:'Enganche a la grilla',c:()=>prefs.snap,f:()=>toggle('snap','Enganche')},'-',
-   {t:'Autorruteador…',k:'A',f:routeDlg},{t:'Revisar reglas de diseño',k:'D',f:drcDlg},{t:'Asistente con IA',soon:1,f:soon('Asistente con IA')}]],
+   {t:'Autorruteador…',k:'A',f:routeDlg},{t:'Lágrimas en los pads',c:()=>!!doc.tears,f:tearsToggle},{t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},{t:'Revisar reglas de diseño',k:'D',f:drcDlg},{t:'Asistente con IA',soon:1,f:soon('Asistente con IA')}]],
  ['Preferencias',[{t:'Preferencias…',f:prefsDlg},'-',{t:'Grilla fina 2,54 mm',c:()=>prefs.grid===2.54,f:()=>{prefs.grid=2.54;LS.set('pcb.prefs',prefs);draw();refreshUI()}},{t:'Grilla fina 1,27 mm',c:()=>prefs.grid===1.27,f:()=>{prefs.grid=1.27;LS.set('pcb.prefs',prefs);draw();refreshUI()}}]],
  ['Ayuda',[{t:'Atajos de teclado',f:keysDlg},{t:'Acerca de Mesa PCB',f:aboutDlg}]]
 ];
@@ -1105,9 +1225,10 @@ function buildProps(){
     R.innerHTML=`<div class="pb-id"><span class="pname">Pista</span><small></small></div><span class="pb-sep"></span>
      <div class="field w-m"><label for="tW">Ancho</label><select id="tW">${[0.5,0.8,1,1.5,2,2.5].map(v=>`<option value="${v}">${f2(v)} mm</option>`).join('')}</select></div>
      <span class="pb-info">${f2(trackLen(T))} mm${sharp?` · <b style="color:#b4361a">${sharp} esquina(s) fuera de regla</b>`:''}</span>
-     <div class="pbtns"><button class="danger" id="pDel" title="Borrar (Supr)" aria-label="Borrar">${ico('trash')}</button>${close}</div>`;
+     <div class="pbtns"><button id="pLock" title="${!!T.lock?'Quitar candado':'Fijar con candado'}" aria-label="Candado" aria-pressed="${!!T.lock}">${ico(!!T.lock?'lock':'unlock')}</button><button class="danger" id="pDel" title="Borrar (Supr)" aria-label="Borrar">${ico('trash')}</button>${close}</div>`;
     R.querySelector('.pb-id small').textContent=name;const sw=document.getElementById('tW');sw.value=String(T.w);
     sw.onchange=()=>{pushUndo();T.w=+sw.value;changed()};
+    document.getElementById('pLock').onclick=()=>{pushUndo();T.lock=!T.lock;toast(T.lock?'Pista fija':'Candado quitado');changed()};
     document.getElementById('pDel').onclick=deleteSel;document.getElementById('pClose').onclick=()=>{trackSel=null;refreshUI();draw()};return}
   if(outlineSel&&doc.outline){const o=doc.outline;
     R.innerHTML=`<div class="pb-id"><span class="pname">Contorno de placa</span><small>mm</small></div><span class="pb-sep"></span>
@@ -1127,19 +1248,22 @@ function buildProps(){
      <div class="field w-s"><label for="pY">Y</label><input id="pY" type="number" step="0.01"></div>
      <div class="field w-s"><label for="pRot">Rot</label><select id="pRot"><option value="0">0°</option><option value="1">90°</option><option value="2">180°</option><option value="3">270°</option></select></div>
      <span class="pb-info" id="pLinks"></span>
-     <div class="pbtns"><button id="pR" title="Rotar 90° (R)" aria-label="Rotar">${ico('rotate')}</button><button id="pUn" title="Quitar las conexiones de este componente" aria-label="Quitar conexiones">${ico('link')}</button><button class="danger" id="pDel" title="Borrar (Supr)" aria-label="Borrar">${ico('trash')}</button>${close}</div>`;
+     <div class="pbtns"><button id="pLock" title="${!!c.lock?'Quitar candado':'Fijar con candado'}" aria-label="Candado" aria-pressed="${!!c.lock}">${ico(!!c.lock?'lock':'unlock')}</button><button id="pR" title="Rotar 90° (R)" aria-label="Rotar">${ico('rotate')}</button><button id="pUn" title="Quitar las conexiones de este componente" aria-label="Quitar conexiones">${ico('link')}</button><button class="danger" id="pDel" title="Borrar (Supr)" aria-label="Borrar">${ico('trash')}</button>${close}</div>`;
     {const nl=doc.links.filter(l=>l.a.startsWith(c.id+':')||l.b.startsWith(c.id+':')).length;document.getElementById('pLinks').textContent=nl?`${nl} conex.`:'';const u=document.getElementById('pUn');u.disabled=!nl;u.onclick=()=>clearLinksOf(c.id)}
     const nm=R.querySelector('.pname');nm.textContent=c.name;if(comp)nm.title=comp.desc;R.querySelector('.pb-id small').textContent=fp?fp.pkg:c.enc;
     document.getElementById('pRef').value=c.ref;document.getElementById('pVal').value=c.val;document.getElementById('pX').value=c.x.toFixed(2);document.getElementById('pY').value=c.y.toFixed(2);document.getElementById('pRot').value=c.rot;
     const set=(id,fn)=>document.getElementById(id).onchange=e=>{pushUndo();fn(e.target.value);changed()};
     set('pRef',v=>c.ref=v.trim()||c.ref);set('pVal',v=>c.val=v);set('pX',v=>{c.x=+v||c.x});set('pY',v=>{c.y=+v||c.y});set('pRot',v=>{c.rot=+v;snapComp(c)});
     document.getElementById('pR').onclick=rotateSel;
+    document.getElementById('pLock').onclick=()=>{pushUndo();c.lock=!c.lock;toast(c.lock?`${c.ref} fijo`:'Candado quitado');changed()};
+    ['pX','pY','pRot'].forEach(id=>document.getElementById(id).disabled=!!c.lock);
   }
   else{
     R.innerHTML=`<div class="pb-id"><span class="pname">${s.length} componentes</span><small></small></div><span class="pb-sep"></span>
-     <div class="pbtns"><button id="pR" title="Rotar juntos" aria-label="Rotar juntos">${ico('rotate')}</button><button id="pDup" title="Duplicar (Ctrl+D)">Duplicar</button><button class="danger" id="pDel" title="Borrar (Supr)" aria-label="Borrar">${ico('trash')}</button>${close}</div>`;
+     <div class="pbtns"><button id="pLock" title="${s.every(c=>c.lock)?'Quitar candado':'Fijar con candado'}" aria-label="Candado" aria-pressed="${s.every(c=>c.lock)}">${ico(s.every(c=>c.lock)?'lock':'unlock')}</button><button id="pR" title="Rotar juntos" aria-label="Rotar juntos">${ico('rotate')}</button><button id="pDup" title="Duplicar (Ctrl+D)">Duplicar</button><button class="danger" id="pDel" title="Borrar (Supr)" aria-label="Borrar">${ico('trash')}</button>${close}</div>`;
     R.querySelector('.pb-id small').textContent=s.map(c=>c.ref).join(', ');
     document.getElementById('pR').onclick=rotateSel;document.getElementById('pDup').onclick=duplicateSel;
+    document.getElementById('pLock').onclick=()=>{const v=!s.every(c=>c.lock);pushUndo();s.forEach(c=>c.lock=v);toast(v?'Fijados':'Candados quitados');changed()};
   }
   document.getElementById('pDel').onclick=deleteSel;
   document.getElementById('pClose').onclick=()=>{sel.clear();outlineSel=false;refreshUI();draw()};
@@ -1169,7 +1293,7 @@ document.addEventListener('keydown',e=>{
   else if(k==='v')setTool('select');else if(k==='h')setTool('hand');else if(k==='b')setTool('outline');else if(k==='m')setTool('measure');else if(k==='c')setTool('link');else if(k==='t')setTool('track');else if(k==='d')drcDlg();else if(k==='a')routeDlg();
   else if(k==='f')fit();else if(k==='+'||k==='=')(zoomAt(W/2,H/2,1.25),draw());else if(k==='-')(zoomAt(W/2,H/2,.8),draw());
   else if(k===' '&&!spaceDown){spaceDown=true;cv.style.cursor='grab';e.preventDefault()}
-  else if(e.key.startsWith('Arrow')&&sel.size){e.preventDefault();pushUndo();const g=prefs.snap?prefs.grid:0.1;const d={arrowleft:[-g,0],arrowright:[g,0],arrowup:[0,-g],arrowdown:[0,g]}[k];selComps().forEach(c=>{c.x+=d[0];c.y+=d[1]});changed()}
+  else if(e.key.startsWith('Arrow')&&sel.size){e.preventDefault();if(selComps().some(c=>c.lock)){toast('Tiene candado: no se mueve');return}pushUndo();const g=prefs.snap?prefs.grid:0.1;const d={arrowleft:[-g,0],arrowright:[g,0],arrowup:[0,-g],arrowdown:[0,g]}[k];selComps().forEach(c=>{c.x+=d[0];c.y+=d[1]});changed()}
 });
 document.addEventListener('keyup',e=>{if(e.key===' '){spaceDown=false;cv.style.cursor=tool==='hand'?'grab':tool==='select'?'default':'crosshair'}});
 
@@ -1180,7 +1304,7 @@ function example(){
   doc={name:null,example:true,comps:[],outline:null};
   items.forEach(([a,x,y,r])=>{const comp=pick(a);if(comp)doc.comps.push(makeComp(comp,x,y,r))});
   const e=doc.comps.find(c=>c.name.startsWith('Electrolítico'));if(e)e.val='10 µF';
-  doc.tracks=[];doc.links=[];const R={};doc.comps.forEach(c=>R[c.ref]=c.id);const K=s=>{const [r,n]=s.split('.');return pkey(R[r],n)};
+  doc.tracks=[];doc.links=[];doc.jumpers=[];doc.tears=false;doc.plane=null;const R={};doc.comps.forEach(c=>R[c.ref]=c.id);const K=s=>{const [r,n]=s.split('.');return pkey(R[r],n)};
   [['U1.8','U1.4'],['U1.8','R1.1'],['R1.2','U1.7'],['U1.7','R2.1'],['R2.2','U1.6'],['U1.6','U1.2'],['U1.2','C1.1'],['C1.2','U1.1'],['U1.3','R3.1'],['R3.2','LED1.2'],['LED1.1','U1.1'],['J1.1','U1.8'],['J1.2','U1.1']]
     .forEach(([a,b])=>{if(R[a.split('.')[0]]&&R[b.split('.')[0]])doc.links.push({a:K(a),b:K(b)})});
 }
@@ -1208,7 +1332,7 @@ buildMenus();buildToolbar();readColors();applyTheme();
   LIB=j;DB=j.componentes;document.getElementById('libn').textContent=`· ${DB.length}`;buildLib();
   const last=LS.get('pcb.actual',null);
   if(last&&Array.isArray(last.comps)&&(last.comps.length||last.outline))doc=last;else example();
-  doc.tracks=doc.tracks||[];doc.links=doc.links||[];ensureLinkIds();
+  doc.tracks=doc.tracks||[];doc.links=doc.links||[];doc.jumpers=doc.jumpers||[];ensureLinkIds();
   const first=DB.find(c=>c.alias.includes('ne555'))||DB[0];openCat=first.cat;buildLib();setPreview(first);
   refreshUI();requestAnimationFrame(()=>{resize();fit()});
 }).catch(()=>{document.getElementById('libs').innerHTML='<p class="muted">No se pudo cargar la biblioteca. Recargá la página.</p>'});

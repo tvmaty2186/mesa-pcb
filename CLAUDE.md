@@ -58,17 +58,27 @@ Hecho:
 - Conexiones editables y pista manual con quiebres de 45° automáticos y selector de ancho.
 - Revisión de reglas (DRC): Herramientas → Revisar reglas, tecla D o botón Reglas. Marca en rojo separación < 0,6 mm entre redes distintas, pista < 0,5 mm, cobre a menos de 2 mm del borde, esquinas y uniones de pistas fuera de la regla de 45°, y conexiones sin rutear. La lista lleva a cada problema. Código en `runDrc` (`index.html`); las marcas se apagan en Ver.
 
-- Autorruteador v1 (parte 1): Herramientas → Autorruteador, tecla A o botón de la barra. Grilla de 0,635 mm, A* con costos (largo, quiebres, cercanía), solo giros de 45°, separación y borde según las reglas. Opciones: ancho de señal, ancho de alimentación y masa (detecta GND/VCC/VDD/VSS/V+/V− por nombre de pata y la entrada/salida de reguladores), rutear primero alimentación y masa, conservar o borrar las pistas ya dibujadas. Hasta 12 pasadas de arrancar y rerutear (las que fallan van primero, después cambia el orden con azar repetible). Las pistas siempre salen y llegan a un pad (sin uniones en T). Código en `autoroute` (`index.html`).
+- Autorruteador v1: Herramientas → Autorruteador, tecla A o botón de la barra. Grilla de 0,635 mm, A* con costos (largo, quiebres, cercanía), solo giros de 45°, separación y borde según las reglas. Las pistas siempre salen y llegan a un pad (sin uniones en T). Código en `autoroute` (`index.html`). Opciones (se recuerdan en `prefs.route`):
+  - Ancho de señal y de alimentación/masa (detecta GND/VCC/VDD/VSS/V+/V− por nombre de pata y la entrada/salida de reguladores). Rutear primero alimentación y masa.
+  - Separación cómoda: prefiere 0,8 mm y baja a 0,6 solo donde no entra.
+  - Pistas dibujadas: conservarlas todas o solo las fijas (candado).
+  - Puentes de alambre (opcional): máximo 1/2/3/5, largo 7,62, 10,16 o los dos. Recto, del lado de componentes, nunca debajo de un componente. Solo se usan si la conexión no entra sin puente. Se guardan en `doc.jumpers` (`{id,a:[x,y],b:[x,y]}`), pad de 2 mm.
+  - Lágrimas en los pads (`doc.tears`), plano de masa al terminar (`doc.plane={key}`), esfuerzo Rápido/Normal/A fondo (4/12/30 pasadas de arrancar y rerutear).
+- Candado: botón en la barra de propiedades para componentes (uno o varios) y pistas. Lo fijo no se mueve, no se rota ni se borra.
+- Lágrimas: se calculan al vuelo (`tearShapes`), solo si respetan 0,6 mm. También en Herramientas → Lágrimas en los pads.
+- Plano de masa: cobre en lo que sobra, a 0,8 mm de todo, unido a GND, sin islas ni tiras finas (grilla de 0,25 mm). Une las patas de masa que toca. Necesita contorno. También en Herramientas → Plano de masa. Sin alivios térmicos todavía.
 
 Próximos pasos, en este orden:
-1. **Autorruteador v1, parte 2**: puentes (sí/no, máximo, largos 7,62 / 10,16 mm), plano de masa al final y candado para fijar componentes y pistas.
-2. Imprimir / exportar PDF a escala 1:1 para planchar.
-3. Asistente con IA.
+1. **Autorruteador v2**: reacomodar componentes y optimizar tamaño.
+2. Ancho por corriente, pads más grandes donde sobre lugar, agujeros de fijación (**opcionales, se tienen que poder desactivar**: pedido de Matías), zonas prohibidas, varias alternativas para elegir.
+3. Imprimir / exportar PDF a escala 1:1 para planchar.
+4. Asistente con IA.
 
 ### Opciones del autorruteador
 - **v1:** incluir puentes (sí/no, máximo, largos 7,62 / 10,16 mm); optimizar recorrido; fijar componentes y pistas con candado; anchos de señal y potencia (o por corriente); rutear primero alimentación y masa; plano de masa al final (sí/no). Algoritmo: grilla de 0,635 mm, A* con costos (largo, quiebres, cercanía), solo direcciones a 45°, varias pasadas de arrancar y rerutear.
 - **v2:** reacomodar componentes (respetando los fijados, desacople junto al integrado, reguladores al borde, entrada de audio lejos de la salida); optimizar tamaño a una placa estándar elegida.
 - **Descartado por ahora:** informe final.
+- Pedidos de Matías (10/10/2026): opciones editables para puentes, optimizar tamaño, optimizar recorrido y reacomodar componentes. Sumadas: candado, ancho por corriente, separación cómoda, lágrimas, pads grandes, plano de masa, agujeros de fijación opcionales, zonas prohibidas, varias alternativas.
 
 ## Archivos
 
