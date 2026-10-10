@@ -244,7 +244,6 @@ const I={
  vtop:'<rect x="3" y="13" width="18" height="5" rx="1"/><rect x="7" y="6" width="10" height="7" rx="1"/><path d="M9 6V4M12 6V4M15 6V4"/>',
  vbot:'<rect x="3" y="6" width="18" height="5" rx="1"/><path d="M6 15h5l3 3h4"/><circle cx="6" cy="15" r="1.4"/><circle cx="18" cy="18" r="1.4"/>',
  viron:'<path d="M3 18h14a4 4 0 0 0 4-4v-4H10a7 7 0 0 0-7 7z"/><path d="M10 10V6h7"/><path d="M7 21h10"/>',
- real:'<rect x="2" y="14" width="20" height="7" rx="1"/><path d="M6 14v3M10 14v3M14 14v3M18 14v3"/><path d="M5 5l2-1.5V11M11 6.5v.01M11 9.5v.01M15 5l2-1.5V11"/>',
  lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
  unlock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/>',
  route:'<circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M7 19h3l7-7V7"/>',
@@ -782,10 +781,6 @@ function fit(){
   if(view==='abajo')ox=RW+(W-RW)/2-(2*mirC-cx)*scale;
   draw();
 }
-// 1 mm en pantalla: el navegador supone 96 puntos por pulgada; cada pantalla es distinta, por eso se calibra en Preferencias
-const realScale=()=>96/25.4*(prefs.calib||1);
-function isRealSize(){return Math.abs(scale-realScale())<0.005}
-function realSize(){zoomAt(W/2,H/2,realScale()/scale);refreshUI();draw();toast(prefs.calib?'Tamaño real (1:1)':'Tamaño real (1:1) · si no coincide con una regla, calibralo en Preferencias')}
 function setView(v){
   const [cwx,cwy]=toW(W/2,H/2);
   if(v==='abajo'){const boxes=doc.comps.map(compBox);if(doc.outline){const o=doc.outline;boxes.push([o.x,o.y,o.x+o.w,o.y+o.h])}
@@ -833,16 +828,10 @@ function prefsDlg(){
   const ov=dialog('Preferencias',`
    <div class="field"><label>Paso de la grilla fina (donde se enganchan los componentes)</label><div class="radio" id="pg"><button data-v="2.54">2,54 mm (estándar)</button><button data-v="1.27">1,27 mm (fino)</button></div></div>
    <div class="field"><label>Tema</label><div class="radio" id="pt"><button data-v="system">Como el sistema</button><button data-v="light">Claro</button><button data-v="dark">Oscuro</button></div></div>
-   <div class="field"><label>Tamaño real: medí esta barra con una regla (tiene que medir 5 cm)</label><div id="calbar" style="height:10px;background:var(--accent);border-radius:2px"></div>
-     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span>Mide</span><input id="calv" inputmode="decimal" style="width:70px" value="5"><span>cm</span><button id="calok">Calibrar</button><button id="calrst">Borrar calibración</button></div></div>
    <p class="muted">Las líneas de 1 cm, la grilla fina, las reglas y el enganche se prenden y apagan desde la barra de herramientas o el menú Ver.</p>`,[{t:'Listo',pri:1}]);
   const mark=()=>{ov.querySelectorAll('#pg button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.v===prefs.grid)));ov.querySelectorAll('#pt button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===prefs.theme)))};
   ov.querySelectorAll('#pg button').forEach(b=>b.onclick=()=>{prefs.grid=+b.dataset.v;LS.set('pcb.prefs',prefs);mark();refreshUI();draw()});
   ov.querySelectorAll('#pt button').forEach(b=>b.onclick=()=>{prefs.theme=b.dataset.v;LS.set('pcb.prefs',prefs);mark();applyTheme()});mark();
-  const bar=ov.querySelector('#calbar'),paint=()=>{bar.style.width=50*realScale()+'px'};paint();
-  ov.querySelector('#calok').onclick=()=>{const v=parseFloat(ov.querySelector('#calv').value.replace(',','.'));if(!(v>1&&v<20)){toast('Escribí cuántos cm mide la barra');return}
-    prefs.calib=(prefs.calib||1)*5/v;LS.set('pcb.prefs',prefs);ov.querySelector('#calv').value='5';paint();toast('Calibrado: ahora la barra mide 5 cm')};
-  ov.querySelector('#calrst').onclick=()=>{delete prefs.calib;LS.set('pcb.prefs',prefs);paint();toast('Calibración borrada')};
 }
 function keysDlg(){dialog('Atajos de teclado',`<table>${[['V','Seleccionar'],['H  /  Espacio','Mover la vista'],['B','Contorno de placa'],['M','Medir'],['C','Conectar pad con pad'],['T','Pista'],['Retroceso','Pista: borrar el último tramo'],['A','Autorruteador'],['D','Revisar reglas de diseño'],['Enter / doble clic','Pista: terminar'],['R','Rotar 90°'],['Supr','Borrar lo seleccionado'],['Ctrl + Z','Deshacer'],['Ctrl + Y','Rehacer'],['Ctrl + D','Duplicar'],['Ctrl + A','Seleccionar todo'],['Ctrl + S','Guardar'],['F','Ajustar a la pantalla'],['Rueda','Zoom'],['Shift + clic','Sumar a la selección'],['Shift al colocar','Colocar varios iguales'],['Esc','Cancelar']].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>`,[{t:'Cerrar',pri:1}])}
 function aboutDlg(){dialog('Mesa PCB',`<p class="muted">Primera versión de la mesa de trabajo. Diseño de plaquetas de una cara para hacer en casa con planchado y percloruro.</p><p class="muted">Biblioteca: ${DB.length} componentes de agujero pasante. Próximos pasos: impresión 1:1 y asistente con IA.</p>`,[{t:'Cerrar',pri:1}])}
@@ -1478,7 +1467,7 @@ const TB=[
  {k:'zout',l:'',f:()=>{zoomAt(W/2,H/2,.8);draw()},tip:'Alejar'},{zoom:1},{k:'zin',l:'',f:()=>{zoomAt(W/2,H/2,1.25);draw()},tip:'Acercar'},{k:'fit',l:'Ajustar',f:fit,tip:'Ajustar a la pantalla (F)'},'|',
  {k:'props',l:'Propiedades',f:()=>toggle('props'),p:()=>prefs.props,tip:'Barra de propiedades al seleccionar'},{spacer:1},
  {k:'vtop',l:'Componentes',f:()=>setView('arriba'),p:()=>view==='arriba',tip:'Vista lado componentes'},{k:'vbot',l:'Cobre',f:()=>setView('abajo'),p:()=>view==='abajo',tip:'Vista lado cobre (espejada)'},
- {k:'viron',l:'Planchado',f:()=>setView('plancha'),p:()=>view==='plancha',tip:'Hoja para planchar'},'|',{k:'real',l:'Tamaño real',f:realSize,p:isRealSize,tip:'Ajustar a tamaño real (1:1)'}
+ {k:'viron',l:'Planchado',f:()=>setView('plancha'),p:()=>view==='plancha',tip:'Hoja para planchar'}
 ];
 function buildToolbar(){
   const tb=document.getElementById('toolbar');tb.innerHTML='';
@@ -1579,7 +1568,6 @@ function buildProps(){
   document.getElementById('pClose').onclick=()=>{sel.clear();outlineSel=false;refreshUI();draw()};
 }
 function updateStatus(){
-  const rb=[...document.querySelectorAll('.tb')].find(b=>b._t&&b._t.k==='real');if(rb)rb.setAttribute('aria-pressed',String(isRealSize())); // la rueda cambia el zoom sin pasar por refreshUI
   const z=document.getElementById('zoomv');if(z)z.textContent=Math.round(scale/6*100)+'%';
   const st=document.getElementById('status');if(!st)return;
   st.innerHTML=`<span>X <b>${f2(mouse.wx).padStart(6)}</b> mm</span><span>Y <b>${f2(mouse.wy).padStart(6)}</b> mm</span><span>Grilla <b>${f2(prefs.grid)} mm</b></span><span>Enganche <b>${prefs.snap?'sí':'no'}</b></span><span>Componentes <b>${doc.comps.length}</b></span><span>Vista <b>${{arriba:'componentes',abajo:'cobre',plancha:'planchado'}[view]}</b></span><span class="msg">${doc.example?'Diseño de ejemplo · Archivo → Nuevo para empezar de cero':''}</span>`;

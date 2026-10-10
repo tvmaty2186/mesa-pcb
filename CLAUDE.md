@@ -39,7 +39,7 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 - Tablero casi a pantalla completa. Líneas de 1 cm, grilla fina, reglas y enganche: **cada una se prende y apaga**.
 - Menús clásicos arriba (Archivo, Editar, Ver, Herramientas, Preferencias, Ayuda) y barra de herramientas con deshacer/rehacer.
 - **Barra de herramientas solo con íconos**: el nombre aparece al pasar el mouse (atributo `title`), nunca como texto visible.
-- **A la derecha de la barra**: un ícono por vista (lado componentes, lado cobre, hoja para planchar) y **tamaño real 1:1** (`realSize`). El navegador supone 96 puntos por pulgada; como cada pantalla es distinta, en Preferencias se calibra midiendo una barra de 5 cm con una regla (`prefs.calib`).
+- **A la derecha de la barra**: un ícono por vista (lado componentes, lado cobre, hoja para planchar). La función "tamaño real 1:1" en pantalla se probó y **se sacó a pedido de Matías** (complicada, no suma): no volver a agregarla. La escala real va en la impresión.
 - **Panel izquierdo solo con la biblioteca** (por categorías, tipo acordeón) y una vista previa abajo. Ancho ajustable arrastrando el borde. Sin sección de herramientas en el panel.
 - Se arrastra al tablero **desde la lista o desde la vista previa**, con fantasma enganchado a la grilla.
 - **Barra de propiedades fina (32 px) arriba, dentro de la mesa**, al seleccionar algo. Nunca un panel lateral. Botones con ícono. El dibujo no se mueve cuando aparece.
