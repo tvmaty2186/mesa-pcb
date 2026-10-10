@@ -406,9 +406,22 @@ function hitTrack(wx,wy){for(let i=doc.tracks.length-1;i>=0;i--){const t=doc.tra
 function trackPoint(wx,wy){const q=hitPad(wx,wy);if(q)return {p:[q.x,q.y],pad:q};return {p:prefs.snap?[snapV(wx,prefs.grid/2),snapV(wy,prefs.grid/2)]:[wx,wy],pad:null}}
 function previewPts(){if(!trackDraw)return null;const last=trackDraw.pts[trackDraw.pts.length-1];const prev=trackDraw.pts.length>1?dirOf(trackDraw.pts[trackDraw.pts.length-2],last):null;
   const tp=trackPoint(mouse.wx,mouse.wy);return chamfer([...trackDraw.pts,...path45(last,tp.p,prev)])}
+// una pista dibujada entre pads vale como "Conectar": se agregan las conexiones que falten, así el autorruteador
+// puede rehacerla y, si se borra la pista, queda la línea punteada. Si une dos conexiones distintas no se mezclan (sería un corto).
+function linksFromTracks(dry){
+  const ph=physical(true),grp=new Map();padsAll().forEach(q=>{const r=ph.f(q.k);if(!grp.has(r))grp.set(r,[]);grp.get(r).push(q.k)});
+  const netIdx=new Map();nets().forEach((g,i)=>g.forEach(k=>netIdx.set(k,i)));
+  const uf=UF();doc.links.forEach(l=>uf.u(l.a,l.b));let added=0,shorts=0;const add=[];
+  grp.forEach(keys=>{if(keys.length<2)return;const base=keys.find(k=>netIdx.has(k))||keys[0];
+    keys.forEach(k=>{if(k===base||uf.f(k)===uf.f(base))return;
+      if(netIdx.has(k)&&netIdx.has(base)&&netIdx.get(k)!==netIdx.get(base)){shorts++;return}
+      add.push({id:uid(),a:base,b:k});uf.u(base,k);added++})});
+  if(!dry)doc.links.push(...add);return {added,shorts};
+}
 function finishTrack(){
   if(!trackDraw)return;const pts=chamfer(trackDraw.pts);trackDraw=null;
-  if(pts.length>=2&&trackLen({pts})>0.2){pushUndo();const t={id:uid(),pts,w:prefs.trackW};doc.tracks.push(t);toast(`Pista de ${f2(trackLen(t))} mm`);changed()}else draw();
+  if(pts.length>=2&&trackLen({pts})>0.2){pushUndo();const t={id:uid(),pts,w:prefs.trackW};doc.tracks.push(t);const r=linksFromTracks();
+    toast(r.shorts?'Ojo: esa pista une dos conexiones distintas (corto)':`Pista de ${f2(trackLen(t))} mm${r.added?' · conectada':''}`);changed()}else draw();
   hint(HINTS.track);
 }
 
@@ -896,9 +909,14 @@ function runDrc(){
       const atA=Math.hypot(a[0]-E[0],a[1]-E[1])<.01,atB=Math.hypot(b[0]-E[0],b[1]-E[1])<.01;
       if(atA)ok=ok||turnOk(u,dirOf(a,b));else if(atB)ok=ok||turnOk(u,dirOf(b,a));else{const v=dirOf(a,b);ok=ok||Math.abs(u[0]*v[0]+u[1]*v[1])>=0.69}}});
     const key=E.map(v=>v.toFixed(2)).join(',');if(touch&&!ok&&!joints.has(key)){joints.add(key);add('Esquina','Unión de pistas fuera de regla',E[0],E[1],[{tid:t.id,lock:!!t.lock}])}})});
+  // 4b. cortos: una pista (o puente) une patas de dos conexiones distintas
+  {const netIdx=new Map();nets().forEach((g,i)=>g.forEach(k=>netIdx.set(k,i)));const grp=new Map();
+    padsAll().forEach(q=>{if(!netIdx.has(q.k))return;const r=ph.f(q.k);if(!grp.has(r))grp.set(r,[]);grp.get(r).push(q)});
+    grp.forEach((qs,r)=>{const ns=new Set(qs.map(q=>netIdx.get(q.k)));if(ns.size<2)return;const q2=qs.find(q=>netIdx.get(q.k)!==netIdx.get(qs[0].k));
+      const tr=doc.tracks.filter(t=>ph.f('t:'+t.id)===r);add('Corto',`${padName(qs[0].k)} queda unido con ${padName(q2.k)}`,q2.x,q2.y,tr.map(t=>({tid:t.id,lock:!!t.lock})))})}
   // 5. conexiones sin rutear
   ratsnest().forEach(([a,b])=>add('Sin rutear',`${padName(a.k)} con ${padName(b.k)}`,(a.x+b.x)/2,(a.y+b.y)/2));
-  const order=['Separación','Ancho','Borde','Agujero','Esquina','Sin rutear'];out.sort((a,b)=>order.indexOf(a.t)-order.indexOf(b.t));
+  const order=['Corto','Separación','Ancho','Borde','Agujero','Esquina','Sin rutear'];out.sort((a,b)=>order.indexOf(a.t)-order.indexOf(b.t));
   drcList=out;drcDirty=false;if(drcFocus>=out.length)drcFocus=-1;return out;
 }
 function drawDrc(){
@@ -1020,7 +1038,7 @@ function autoroute(opt){
   return {tracks:base.concat(best.newT),jumpers:baseJ.concat(best.newJ),done:best.total-best.fail.length,total:best.total,nj:best.newJ.length};
 }
 function routeDlg(){
-  if(!doc.links.length){toast('Primero uní los pads con Conectar (C)');return}
+  if(!doc.links.length&&!linksFromTracks(true).added){toast('Primero uní los pads con Conectar (C) o con una pista');return}
   const o=Object.assign({sigW:0.8,powW:1.5,powerFirst:true,keep:'all',comfort:true,effort:'normal',jumps:false,maxJ:2,jLen:'both',tears:!!doc.tears,plane:!!doc.plane,place:false,size:'none',std:'5x7',holes:hasHoles()},prefs.route||{});
   if(typeof o.keep!=='string')o.keep=o.keep?'all':'locked';o.tears=!!doc.tears;o.plane=!!doc.plane;o.holes=hasHoles();
   const widths=[0.5,0.8,1,1.5,2,2.5].map(v=>`<button data-v="${v}">${f2(v)} mm</button>`).join('');
@@ -1049,7 +1067,7 @@ function routeDlg(){
   bind('rm','maxJ','n');bind('rl','jLen','s');bind('rt','tears','b');bind('rg','plane','b');bind('ra','place','b');bind('rh','holes','b');bind('rz','size','s');bind('rb','std','s');bind('re','effort','s');
 }
 function runRoute(o){
-  pushUndo();trackSel=null;let extra='',pl=null;doc.holes=o.holes?(hasHoles()?doc.holes:cornerHoles()):[];
+  pushUndo();linksFromTracks();trackSel=null;let extra='',pl=null;doc.holes=o.holes?(hasHoles()?doc.holes:cornerHoles()):[];
   if(o.place){pl=placeComps(o);if(!pl.ok)extra+=' · Algunos componentes no entran bien: revisá la placa'}
   else if(o.size==='std')doc.outline=stdRegion(o.std);
   const r=autoroute(o);doc.tracks=r.tracks;doc.jumpers=r.jumpers;doc.tears=o.tears;
@@ -1335,13 +1353,14 @@ const DRC_WHY={
   'Borde':'Hay cobre a menos de 2 mm del borde. Al cortar o limar la placa se puede dañar.',
   'Agujero':'Hay cobre en la zona del tornillo. El tornillo o la arandela pueden hacer contacto.',
   'Esquina':'La pista dobla más de 45° de golpe. En una esquina cerrada el percloruro come de más y la pista se corta.',
-  'Sin rutear':'Esta conexión todavía no tiene pista.'};
+  'Sin rutear':'Esta conexión todavía no tiene pista.',
+  'Corto':'Una pista une patas de dos conexiones que no van juntas: es un cortocircuito.'};
 const ROUTE_DEF={sigW:0.8,powW:1.5,powerFirst:true,comfort:true,effort:'normal',jumps:false,maxJ:2,jLen:'both'};
 function drcAt(sx,sy){if(!prefs.drc||view==='plancha')return null;if(drcDirty)runDrc();let best=null,bd=14;
   drcList.forEach(e=>{const [x,y]=toS(e.x,e.y),d=Math.hypot(x-sx,y-sy);if(d<bd){bd=d;best=e}});return best}
 function rerouteFix(tids,msg,jids=[]){ // saca esas pistas (si no tienen candado) y rutea lo que falte respetando todo lo demás
   const o={...ROUTE_DEF,...(prefs.route||{}),keep:'all',place:false,size:'none'};
-  pushUndo();doc.tracks=doc.tracks.filter(t=>t.lock||!tids.includes(t.id));doc.jumpers=(doc.jumpers||[]).filter(j=>!jids.includes(j.id));
+  pushUndo();linksFromTracks();doc.tracks=doc.tracks.filter(t=>t.lock||!tids.includes(t.id));doc.jumpers=(doc.jumpers||[]).filter(j=>!jids.includes(j.id));
   const r=autoroute(o);doc.tracks=r.tracks;doc.jumpers=r.jumpers;trackSel=null;changed();r.done=Math.max(0,r.total-ratsnest().length);
   const left=runDrc().length;toast(r.done===r.total?`${msg} · ${left?left+' errores quedan':'todo en regla'}`:`No se pudo rutear todo: faltan ${r.total-r.done}`);
 }
@@ -1371,6 +1390,7 @@ function drcFixes(e){
       doc.outline={x:Math.floor(x0*10)/10,y:Math.floor(y0*10)/10,w:Math.ceil((x1-Math.floor(x0*10)/10)*10)/10,h:Math.ceil((y1-Math.floor(y0*10)/10)*10)/10};changed();toast(`Placa de ${cm(doc.outline.w)} × ${cm(doc.outline.h)} cm`)}})}
   if(e.t==='Agujero'){comps.forEach(cid=>{const c=doc.comps.find(x=>x.id===cid);F.push({t:`Alejar ${c.ref} del agujero`,f:()=>moveCompFix(cid)})});
     F.push({t:'Quitar los agujeros de fijación',f:holesToggle})}
+  if(e.t==='Corto'&&tids.length)F.push({t:'Sacar esas pistas y rutear bien',f:()=>rerouteFix(tids,'Corto arreglado')});
   if(e.t==='Sin rutear')F.push({t:'Rutear lo que falta',f:()=>rerouteFix([],'Ruteado')});
   if(who.some(w=>w.lock))F.push({t:'(Hay partes con candado: no se tocan)',d:()=>true,f:()=>{}});
   return F;
