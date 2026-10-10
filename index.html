@@ -76,7 +76,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 
 /* cuerpo */
 .body{display:grid;grid-template-columns:auto auto 1fr;min-height:0;position:relative}
-.work{display:flex;flex-direction:column;min-width:0;min-height:0}
+.work{display:flex;flex-direction:column;min-width:0;min-height:0;grid-column:3} /* columna fija: si el panel se oculta no cae en la columna de ancho 0 */
 .handle{width:6px;cursor:col-resize;background:transparent;border-right:1px solid var(--line);touch-action:none;position:relative;z-index:5}
 .handle:hover,.handle.on{background:var(--accent-soft);border-right-color:var(--accent)}
 .handle[hidden]{display:none!important}
@@ -413,11 +413,13 @@ function finishTrack(){
 }
 
 /* ================= dibujo del tablero ================= */
-let stageTop=null;
+let stageTop=null,stageLeft=null;
 function resize(){
   const r=stage.getBoundingClientRect(),d=window.devicePixelRatio||1;
   if(stageTop!==null&&r.top!==stageTop)oy-=r.top-stageTop; // el dibujo no se mueve cuando aparece o se va la barra de arriba
   stageTop=r.top;
+  if(stageLeft!==null&&r.left!==stageLeft)ox-=r.left-stageLeft; // tampoco cuando se abre o se cierra el panel izquierdo
+  stageLeft=r.left;
   const cw=Math.round(r.width*d),ch=Math.round(r.height*d);
   if(cw===cv.width&&ch===cv.height&&d===dpr&&W){draw();return}
   dpr=d;W=r.width;H=r.height;cv.width=cw;cv.height=ch;draw();
