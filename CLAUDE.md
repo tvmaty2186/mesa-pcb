@@ -19,7 +19,7 @@ Este archivo es para que cualquier sesión de Claude retome el proyecto sin empe
    - Comprar: la función crea una preferencia de Checkout Pro de Mercado Pago → el usuario paga → el webhook de Mercado Pago avisa a otra función, que suma los créditos.
    - Usar: la página manda el pedido y el diseño a una función, que descuenta 1 crédito, llama a la API de Claude y devuelve los cambios a aplicar en el diseño.
    - Matías tiene que preparar: plan Blaze en Firebase, cuenta de vendedor de Mercado Pago (credenciales de producción) y una clave de la API de Anthropic (console.anthropic.com).
-3. Conectar los avisos reales: banner (AdSense) y pantalla completa (Ad Manager, anuncios con recompensa).
+3. **Publicidad (en curso, 10/10/2026):** conectar los avisos reales: banner (AdSense) y pantalla completa (Ad Manager, anuncios con recompensa). Requisitos de Google: dominio propio (AdSense no aprueba `github.io`; Matías ya tiene uno, falta que pase el nombre), política de privacidad y términos (hechos: `privacidad.html`, `terminos.html`), contenido con texto (`guia.html`), y AdSense aprobado antes de Ad Manager. Al conectar el dominio: CNAME en GitHub Pages, agregar el dominio en Firebase → Authentication → Dominios autorizados, y `ads.txt` en la raíz. El correo público de contacto es tvmaty2186@gmail.com (lo eligió Matías).
 
 Pendiente chico: "entrada de audio lejos de la salida" al reacomodar (falta marcar en la biblioteca qué pata es entrada/salida de audio).
 
@@ -139,6 +139,7 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 | `firestore.rules` | Reglas de seguridad de Firestore (ya publicadas en Firebase). |
 | `docs/configurar_firebase.md` | Cómo se configuró Firebase, paso a paso. |
 | `docs/investigacion_ruteo.md` | Investigación de reglas y algoritmos de ruteo, con fuentes. |
+| `guia.html`, `privacidad.html`, `terminos.html` | Guía para hacer la plaqueta, política de privacidad y términos de uso (los pide Google para la publicidad). Enlazadas desde el menú Ayuda. |
 | `README.md` | Presentación corta para quien entra al repositorio. |
 | `PASOS.md` | Cómo seguir trabajando con Claude en la nube. |
 

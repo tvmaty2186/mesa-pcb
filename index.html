@@ -1812,7 +1812,7 @@ const MENUS=[
    {t:'Enganche a la grilla',c:()=>prefs.snap,f:()=>toggle('snap','Enganche')},'-',
    {t:'Autorruteador…',k:'A',f:routeDlg},{t:'Lágrimas en los pads',c:()=>!!doc.tears,f:tearsToggle},{t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},{t:'Alivio térmico en el plano',c:()=>!!doc.plane&&doc.plane.thermal!==false,d:()=>!doc.plane,f:thermalToggle},{t:'Rellenar espacios vacíos',c:()=>!!doc.plane&&doc.plane.fill!==false,d:()=>!doc.plane,f:fillToggle},{t:'Agujeros de fijación',c:hasHoles,f:holesToggle},{t:'Revisar reglas de diseño',k:'D',f:drcDlg},{t:'Asistente con IA',soon:1,f:soon('Asistente con IA')}]],
  ['Preferencias',[{t:'Preferencias…',f:prefsDlg},'-',{t:'Grilla fina 2,54 mm',c:()=>prefs.grid===2.54,f:()=>{prefs.grid=2.54;LS.set('pcb.prefs',prefs);draw();refreshUI()}},{t:'Grilla fina 1,27 mm',c:()=>prefs.grid===1.27,f:()=>{prefs.grid=1.27;LS.set('pcb.prefs',prefs);draw();refreshUI()}}]],
- ['Ayuda',[{t:'Atajos de teclado',f:keysDlg},{t:'Acerca de Mesa PCB',f:aboutDlg}]]
+ ['Ayuda',[{t:'Guía para hacer tu plaqueta',f:()=>window.open('guia.html','_blank')},{t:'Atajos de teclado',f:keysDlg},'-',{t:'Política de privacidad',f:()=>window.open('privacidad.html','_blank')},{t:'Términos de uso',f:()=>window.open('terminos.html','_blank')},'-',{t:'Acerca de Mesa PCB',f:aboutDlg}]]
 ];
 let openMenu=null;
 function buildMenus(){

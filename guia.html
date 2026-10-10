@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guía para hacer tu plaqueta · Mesa PCB</title><meta name="description" content="Cómo diseñar una plaqueta de una cara con Mesa PCB y hacerla en casa con planchado y percloruro.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Chakra+Petch:wght@700&display=swap">
+<style>
+:root{--bg:#f7f9f6;--ink:#152019;--muted:#5a6a60;--line:#d2dbd4;--accent:#a95b17}
+@media (prefers-color-scheme:dark){:root{--bg:#101814;--ink:#e3ebe5;--muted:#93a59a;--line:#28362e;--accent:#e09a52}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "Atkinson Hyperlegible",Verdana,system-ui,sans-serif}
+header,main,footer{max-width:760px;margin:0 auto;padding:0 16px}
+header{display:flex;align-items:center;justify-content:space-between;padding-top:18px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+header a.logo{font-family:"Chakra Petch","Segoe UI",sans-serif;font-weight:700;font-size:1.15rem;color:var(--ink);text-decoration:none}header a.logo b{color:var(--accent)}
+header a.app{background:var(--accent);color:#fff;border-radius:8px;padding:7px 14px;text-decoration:none;font-weight:700;font-size:.9rem}
+h1{font-family:"Chakra Petch","Segoe UI",sans-serif;font-size:1.8rem;line-height:1.2;margin:28px 0 6px}h2{font-size:1.15rem;margin:28px 0 6px}
+p,li{color:var(--ink)}.muted{color:var(--muted);font-size:.9rem}a{color:var(--accent)}
+footer{border-top:1px solid var(--line);margin-top:40px;padding-top:14px;padding-bottom:30px;font-size:.88rem;color:var(--muted)}footer a{margin-right:14px}
+</style></head><body>
+<header><a class="logo" href="index.html">Mesa <b>PCB</b></a><a class="app" href="index.html">Abrir la mesa de trabajo</a></header>
+<main>
+
+<h1>Cómo hacer tu plaqueta con Mesa PCB</h1>
+<p>Mesa PCB es un programa web gratuito para diseñar plaquetas de <b>una sola cara</b> con componentes de <b>agujero pasante</b>, pensado para hacerlas en casa con el método de <b>planchado y percloruro</b>. No hace falta instalar nada ni descargar librerías: los componentes ya vienen incluidos.</p>
+<h2>1. Colocá los componentes</h2>
+<p>A la izquierda está la biblioteca, ordenada por categorías: resistencias, capacitores, diodos, transistores, integrados, reguladores, conectores y más. Buscá el componente por su nombre (por ejemplo "555" o "TIP31") y arrastralo al tablero. Se engancha solo a la grilla de 2,54 mm, la misma separación que tienen las patas de los integrados.</p>
+<h2>2. Uní las patas</h2>
+<p>Con la herramienta <b>Conectar</b> tocá una pata y después la pata con la que va unida: aparece una línea punteada. Así armás la lista de conexiones del circuito. También podés dibujar las pistas a mano con la herramienta <b>Pista</b>: las esquinas se hacen solas a 45°, porque en las esquinas de 90° el percloruro come de más.</p>
+<h2>3. Dibujá el contorno y ruteá</h2>
+<p>Marcá el borde de la placa con la herramienta <b>Contorno</b>. Después abrí el <b>autorruteador</b>: dibuja las pistas solo, respetando la separación mínima de 0,6 mm, y si una conexión no entra puede usar un puente de alambre. Puede también reacomodar los componentes y ajustar la placa a una medida estándar.</p>
+<h2>4. Revisá las reglas</h2>
+<p>La <b>revisión de reglas</b> marca en rojo lo que puede fallar al fabricar: pistas muy finas o muy juntas, cobre pegado al borde, esquinas cerradas o conexiones que faltan. Con clic derecho sobre cada marca te explica el problema y te ofrece arreglarlo.</p>
+<h2>5. Plano de masa: menos percloruro</h2>
+<p>El <b>plano de masa</b> deja cobre en todo lo que sobra, unido a la masa del circuito. Así el percloruro tiene que disolver mucho menos cobre: se gasta menos y la placa sale más rápido. Las patas de masa quedan con <b>alivio térmico</b> para que se suelden fácil.</p>
+<h2>6. Imprimí y planchá</h2>
+<ol>
+<li>Imprimí la <b>hoja para planchar</b> con impresora láser, en papel ilustración o papel de transferencia, <b>al 100 %</b> (sin "ajustar a la página"). Medí la barra de 5 cm que sale abajo para confirmar la escala. Si la placa es chica, imprimí varias por hoja.</li>
+<li>Limpiá bien la placa virgen con lana de acero fina o una esponja y alcohol, hasta que el cobre brille.</li>
+<li>Apoyá la hoja con el dibujo contra el cobre y planchá con la plancha bien caliente, sin vapor, haciendo presión pareja unos minutos.</li>
+<li>Dejá enfriar, mojá el papel con agua tibia y sacalo frotando suave. Retocá con marcador indeleble si quedó alguna pista cortada.</li>
+</ol>
+<h2>7. Atacá con percloruro</h2>
+<p>Sumergí la placa en percloruro férrico tibio y movela de vez en cuando hasta que desaparezca el cobre que no está tapado. Usá guantes, anteojos y un recipiente de plástico, y trabajá en un lugar ventilado. El percloruro mancha y es corrosivo: no lo tires por la pileta.</p>
+<h2>8. Agujereá y soldá</h2>
+<p>Sacá el tóner con alcohol o acetona, agujereá con mecha de 0,8 mm (1 mm para patas gruesas; 3 mm para los agujeros de fijación) y soldá los componentes. Listo.</p>
+<p class="muted">Mesa PCB también exporta en <b>PDF</b> a escala real y en formato <b>Gerber</b>, por si querés mandar a fabricar la placa o hacerla con una fresadora CNC.</p>
+
+</main>
+<footer><a href="guia.html">Guía</a><a href="privacidad.html">Privacidad</a><a href="terminos.html">Términos de uso</a><span>Contacto: <a href="mailto:tvmaty2186@gmail.com">tvmaty2186@gmail.com</a></span></footer>
+</body></html>
