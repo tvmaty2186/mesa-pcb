@@ -1171,33 +1171,70 @@ function planeGeo(){
   planeCache={ver:geoVer,geo:null};
   const gk=doc.plane.key,ph=physical(true);if(!padPos(gk))return null;
   const items=copperItems(ph,{tears:true}),me={g:ph.f(gk),n:null};const NETS=nets();me.n=NETS.findIndex(g=>g.includes(gk));if(me.n<0)me.n=null;
-  const o=doc.outline,s=0.25,e=DRC.edge,X0=o.x+e,Y0=o.y+e,NX=Math.floor((o.w-2*e)/s),NY=Math.floor((o.h-2*e)/s);if(NX<2||NY<2)return null;
-  const free=new Uint8Array(NX*NY).fill(1),own=new Uint8Array(NX*NY),cx=i=>X0+(i+.5)*s,cy=j=>Y0+(j+.5)*s;
+  // la grilla solo sirve para saber qué partes tocan masa y sacar islas y tiras finas; el dibujo es liso (drawPlane)
+  const o=doc.outline,e=DRC.edge,X0=o.x+e,Y0=o.y+e,W0=o.w-2*e,H0=o.h-2*e;if(W0<1||H0<1)return null;
+  const s=Math.min(0.25,Math.max(0.08,Math.sqrt(W0*H0/160000))),NX=Math.ceil(W0/s),NY=Math.ceil(H0/s),N=NX*NY;
+  const free=new Uint8Array(N).fill(1),own=new Uint8Array(N),cx=i=>X0+(i+.5)*s,cy=j=>Y0+(j+.5)*s;
   // alivio térmico: las patas de masa quedan rodeadas de 0,6 mm libres y unidas al plano por 4 rayos de 0,8 mm,
   // así no disipan tanto calor y se sueldan fácil
-  const TH=doc.plane.thermal!==false,TGAP=0.6,SW=0.8,spoke=new Uint8Array(NX*NY),relief=new Uint8Array(NX*NY);
+  const TH=doc.plane.thermal!==false,TGAP=0.6,SW=0.8,spoke=new Uint8Array(N),relief=new Uint8Array(N);
+  const foreign=[],thermal=[];
   items.forEach(it=>{const mine=sameNet(it,me),th=mine&&TH&&!!it.cid,R=mine?(th?TGAP+s*0.75:0):PLANE_CLR+s*0.75;
-    const pc=th?[(it.b[0]+it.b[2])/2,(it.b[1]+it.b[3])/2]:null,SL=th?Math.max(it.b[2]-it.b[0],it.b[3]-it.b[1])/2+TGAP+0.6:0;
+    if(!mine)foreign.push(it);
+    const pc=th?[(it.b[0]+it.b[2])/2,(it.b[1]+it.b[3])/2]:null,hx=(it.b[2]-it.b[0])/2,hy=(it.b[3]-it.b[1])/2,SX=th?hx+TGAP+0.6:0,SY=th?hy+TGAP+0.6:0,SL=Math.max(SX,SY);
+    if(th)thermal.push({it,pc,hx,hy,dirs:[]});
     for(let j=Math.max(0,Math.floor((it.b[1]-R-SL-Y0)/s));j<=Math.min(NY-1,Math.floor((it.b[3]+R+SL-Y0)/s));j++)
       for(let i=Math.max(0,Math.floor((it.b[0]-R-SL-X0)/s));i<=Math.min(NX-1,Math.floor((it.b[2]+R+SL-X0)/s));i++){const x=cx(i),y=cy(j),d=shapePtDist(it,x,y),c=j*NX+i;
-        if(th){const dx=Math.abs(x-pc[0]),dy=Math.abs(y-pc[1]),sp=(dy<=SW/2&&dx<=SL)||(dx<=SW/2&&dy<=SL);if(sp)spoke[c]=1;if(d<R)relief[c]=1;if(d<=0&&sp)own[c]=1}
+        if(th){const dx=Math.abs(x-pc[0]),dy=Math.abs(y-pc[1]),sp=(dy<=SW/2&&dx<=SX)||(dx<=SW/2&&dy<=SY);if(sp)spoke[c]=1;if(d<R)relief[c]=1;if(d<=0&&sp)own[c]=1}
         else if(mine){if(d<=0)own[c]=1}else if(d<R)free[c]=0}});
-  holeList().forEach(h=>{for(let j=0;j<NY;j++)for(let i=0;i<NX;i++)if(Math.hypot(cx(i)-h.x,cy(j)-h.y)<h.keep+s*0.75)free[j*NX+i]=0});
-  for(let c=0;c<NX*NY;c++)if(relief[c]&&!spoke[c])free[c]=0;
-  // abrir (erosión + dilatación) para sacar tiras finas que no se pueden planchar
-  const er=new Uint8Array(NX*NY),fin=new Uint8Array(NX*NY);
-  for(let j=1;j<NY-1;j++)for(let i=1;i<NX-1;i++){let ok=1;for(let b=-1;b<=1&&ok;b++)for(let a=-1;a<=1;a++)if(!free[(j+b)*NX+i+a]){ok=0;break}er[j*NX+i]=ok}
-  for(let j=0;j<NY;j++)for(let i=0;i<NX;i++){const c=j*NX+i;if(!free[c])continue;let k=0;for(let b=-1;b<=1&&!k;b++)for(let a=-1;a<=1;a++){const ii=i+a,jj=j+b;if(ii>=0&&jj>=0&&ii<NX&&jj<NY&&er[jj*NX+ii]){k=1;break}}fin[c]=k}
+  const holes=holeList();
+  holes.forEach(h=>{const R=h.keep+s*0.75;for(let j=Math.max(0,Math.floor((h.y-R-Y0)/s));j<=Math.min(NY-1,Math.floor((h.y+R-Y0)/s));j++)for(let i=Math.max(0,Math.floor((h.x-R-X0)/s));i<=Math.min(NX-1,Math.floor((h.x+R-X0)/s));i++)if(Math.hypot(cx(i)-h.x,cy(j)-h.y)<R)free[j*NX+i]=0});
+  for(let c=0;c<N;c++)if(relief[c]&&!spoke[c])free[c]=0;
+  // abrir (erosión + dilatación de ~0,3 mm de radio) para sacar tiras de menos de 0,6 mm que no se pueden planchar
+  const k=Math.max(1,Math.round(0.3/s)),tmp=new Uint8Array(N),er=new Uint8Array(N),fin=new Uint8Array(N);
+  const pass=(src,dst,horiz,isMin)=>{for(let j=0;j<NY;j++)for(let i=0;i<NX;i++){let v=isMin?1:0;
+    for(let t=-k;t<=k;t++){const ii=horiz?i+t:i,jj=horiz?j:j+t;const q=(ii<0||jj<0||ii>=NX||jj>=NY)?0:src[jj*NX+ii];if(isMin&&!q){v=0;break}if(!isMin&&q){v=1;break}}dst[j*NX+i]=v}};
+  pass(free,tmp,true,true);pass(tmp,er,false,true);pass(er,tmp,true,false);pass(tmp,fin,false,false);for(let c=0;c<N;c++)fin[c]&=free[c];
   // quedarse con las partes que tocan cobre de masa
-  const lab=new Int32Array(NX*NY).fill(-1),keep=[],regions=[];let L=0;
-  for(let c0=0;c0<NX*NY;c0++){if(!fin[c0]||lab[c0]>=0)continue;const st=[c0];lab[c0]=L;let touch=false;const cells=[];
+  const lab=new Int32Array(N).fill(-1),keep=[],regions=[];let L=0;
+  for(let c0=0;c0<N;c0++){if(!fin[c0]||lab[c0]>=0)continue;const st=[c0];lab[c0]=L;let touch=false;const cells=[];
     while(st.length){const c=st.pop();cells.push(c);if(own[c])touch=true;const i=c%NX,j=(c-i)/NX;
       for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]){const ii=i+a,jj=j+b;if(ii<0||jj<0||ii>=NX||jj>=NY)continue;const c2=jj*NX+ii;if(fin[c2]&&lab[c2]<0){lab[c2]=L;st.push(c2)}}}
     if(touch){keep[L]=1;const keys=new Set();cells.forEach(c=>{if(!own[c])return;const x=cx(c%NX),y=cy(Math.floor(c/NX));items.forEach(it=>{if(sameNet(it,me)&&shapePtDist(it,x,y)<=0)keys.add(it.k)})});regions.push([...keys])}
     L++}
-  const path=new Path2D();
-  for(let j=0;j<NY;j++){let i=0;while(i<NX){const c=j*NX+i;if(fin[c]&&keep[lab[c]]){let k=i;while(k<NX&&fin[j*NX+k]&&keep[lab[j*NX+k]])k++;path.rect(X0+i*s,Y0+j*s,(k-i)*s,s);i=k}else i++}}
-  planeCache.geo={path,regions};return planeCache.geo;
+  // rayos térmicos: solo los que llegan a una parte del plano que queda (nada de rayos colgando)
+  thermal.forEach(t=>[[1,0],[-1,0],[0,1],[0,-1]].forEach(([ux,uy])=>{const L=(ux?t.hx:t.hy)+TGAP+0.35,x=t.pc[0]+ux*L,y=t.pc[1]+uy*L,i=Math.floor((x-X0)/s),j=Math.floor((y-Y0)/s);
+    if(i<0||j<0||i>=NX||j>=NY)return;const c=j*NX+i;if(fin[c]&&keep[lab[c]])t.dirs.push([ux,uy])}));
+  // lo que hay que borrar del dibujo liso: islas sin masa y tiras finas
+  const erase=new Path2D();let any=false;
+  for(let j=0;j<NY;j++){let i=0;while(i<NX){const c=j*NX+i,del=free[c]&&!(fin[c]&&keep[lab[c]]);if(del){let q=i;while(q<NX){const c2=j*NX+q;if(!(free[c2]&&!(fin[c2]&&keep[lab[c2]])))break;q++}
+    erase.rect(X0+i*s-s*0.5,Y0+j*s-s*0.5,(q-i+1)*s,2*s);any=true;i=q}else i++}}
+  planeCache.geo={regions,rect:[X0,Y0,W0,H0],foreign,thermal,holes,erase:any?erase:null,s,empty:!regions.length};return planeCache.geo;
+}
+// dibujo liso del plano: rectángulo de la placa menos el cobre ajeno con su separación, anillos térmicos con rayos
+let planeCv=null;
+function drawPlane(P,color,alpha){
+  const d=dpr,w=cv.width,h=cv.height;if(!planeCv)planeCv=document.createElement('canvas');if(planeCv.width!==w||planeCv.height!==h){planeCv.width=w;planeCv.height=h}
+  const g=planeCv.getContext('2d');g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,w,h);
+  g.setTransform(d*scale*(view==='abajo'?-1:1),0,0,d*scale,d*(ox+(view==='abajo'?2*mirC*scale:0)),d*oy);
+  g.fillStyle=color;g.strokeStyle=color;g.lineCap='round';g.lineJoin='round';
+  const [X0,Y0,W0,H0]=P.rect;g.fillRect(X0,Y0,W0,H0);
+  const grow=(S,E)=>{const p=S.pts;g.beginPath();
+    if(p.length===1){g.arc(p[0][0],p[0][1],S.r+E,0,Math.PI*2);g.fill()}
+    else if(p.length===2){g.lineWidth=2*(S.r+E);g.moveTo(p[0][0],p[0][1]);g.lineTo(p[1][0],p[1][1]);g.stroke()}
+    else{p.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.closePath();g.fill();if(S.r+E>0){g.lineWidth=2*(S.r+E);g.stroke()}}};
+  g.globalCompositeOperation='destination-out';
+  const m=P.s*0.75; // el mismo margen que usa la grilla, así no quedan hilitos de cobre
+  P.thermal.forEach(t=>grow(t.it,0.6+m));
+  g.globalCompositeOperation='source-over';
+  P.thermal.forEach(t=>t.dirs.forEach(([ux,uy])=>{const L=(ux?t.hx:t.hy)+0.6+0.6,[x,y]=t.pc;if(ux)g.fillRect(ux>0?x:x-L,y-0.4,L,0.8);else g.fillRect(x-0.4,uy>0?y:y-L,0.8,L)}));
+  g.globalCompositeOperation='destination-out';
+  P.foreign.forEach(S=>grow(S,PLANE_CLR+m));
+  P.holes.forEach(hh=>{g.beginPath();g.arc(hh.x,hh.y,hh.keep+m,0,Math.PI*2);g.fill()});
+  g.beginPath();g.rect(-1e5,-1e5,2e5,1e5+Y0);g.rect(-1e5,Y0+H0,2e5,1e5);g.rect(-1e5,Y0,1e5+X0,H0);g.rect(X0+W0,Y0,1e5,H0);g.fill(); // los rayos no pasan el margen de borde
+  if(P.erase)g.fill(P.erase);
+  g.globalCompositeOperation='source-over';
+  ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=alpha;ctx.drawImage(planeCv,0,0);ctx.restore();
 }
 function planeToggle(){
   if(doc.plane){pushUndo();doc.plane=null;toast('Plano de masa quitado');changed();return}
@@ -1209,7 +1246,7 @@ function tearsToggle(){pushUndo();doc.tears=!doc.tears;toast(doc.tears?'Lágrima
 function drawCopperExtra(){ // plano, lágrimas y pads de puentes (lado cobre)
   const pr=view==='plancha',cu=pr?C.toner:C['ws-copper'],moving=drag&&drag.type==='move';
   worldT();ctx.fillStyle=cu;
-  if(!moving){const P=planeGeo();if(P){ctx.globalAlpha=pr?1:.55;ctx.fill(P.path);ctx.globalAlpha=1}
+  if(!moving){const P=planeGeo();if(P&&!P.empty)drawPlane(P,cu,pr?1:.55);worldT();ctx.fillStyle=cu;
     tearShapes().forEach(T=>{ctx.beginPath();T.pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fill()})}
   jumperPads().forEach(q=>{ctx.fillStyle=cu;ctx.beginPath();ctx.arc(q.x,q.y,JR,0,Math.PI*2);ctx.fill();ctx.fillStyle=pr?C.paper:C['ws-bg'];ctx.beginPath();ctx.arc(q.x,q.y,JDRILL/2,0,Math.PI*2);ctx.fill()});
 }
