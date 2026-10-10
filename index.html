@@ -38,7 +38,7 @@ html,body{height:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;margin:0;overflow:hidden}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.app{height:100%;display:grid;grid-template-rows:auto auto 1fr auto}
+.app{height:100%;display:grid;grid-template-rows:auto auto 1fr auto;grid-template-columns:minmax(0,1fr)} /* la columna no crece con la barra de herramientas: en celular la barra se desliza */
 
 /* menús */
 .menubar{display:flex;align-items:center;gap:2px;padding-inline:10px;background:var(--panel);border-bottom:1px solid var(--line);min-height:36px;position:relative;z-index:30}
@@ -256,6 +256,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
   .pbtns{margin-left:0}
   .tb .lbl{display:none}
   .docname{display:none}
+  .logo{display:none}
+  .menubar{overflow-x:auto;scrollbar-width:none}
+  .menu > button{padding:6px 7px}
+  .menubar{padding-right:4px}
+  .userbtn{position:sticky;right:0;box-shadow:-12px 0 8px var(--panel),0 0 0 4px var(--panel)} /* la cuenta siempre a la vista */
+  .userbtn span:last-child:not(.ava){display:none}
 }
 @media (prefers-reduced-motion:reduce){.libs summary::before{transition:none}}
 </style>
@@ -2128,7 +2134,7 @@ const MENUS=[
  ['Herramientas',[
    ...TOOLS.map(t=>t.soon?{t:t.name+' (próximamente)',f:soon(t.name),soon:1}:{t:t.name,k:t.key,c:()=>tool===t.id,f:()=>setTool(t.id)}),'-',
    {t:'Enganche a la grilla',c:()=>prefs.snap,f:()=>toggle('snap','Enganche')},'-',
-   {t:'Autorruteador…',k:'A',f:routeDlg},{t:'Lágrimas en los pads',c:()=>!!doc.tears,f:tearsToggle},{t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},{t:'Alivio térmico en el plano',c:()=>!!doc.plane&&doc.plane.thermal!==false,d:()=>!doc.plane,f:thermalToggle},{t:'Rellenar espacios vacíos',c:()=>!!doc.plane&&doc.plane.fill!==false,d:()=>!doc.plane,f:fillToggle},{t:'Agujeros de fijación',c:hasHoles,f:holesToggle},{t:'Revisar reglas de diseño',k:'D',f:drcDlg},{t:'Asistente con IA',soon:1,f:soon('Asistente con IA')}]],
+   {t:'Autorruteador…',k:'A',f:routeDlg},{t:'Lágrimas en los pads',c:()=>!!doc.tears,f:tearsToggle},{t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},{t:'Alivio térmico en el plano',c:()=>!!doc.plane&&doc.plane.thermal!==false,d:()=>!doc.plane,f:thermalToggle},{t:'Rellenar espacios vacíos',c:()=>!!doc.plane&&doc.plane.fill!==false,d:()=>!doc.plane,f:fillToggle},{t:'Agujeros de fijación',c:hasHoles,f:holesToggle},{t:'Revisar reglas de diseño',k:'D',f:drcDlg},{t:'Asistente con IA',f:aiDlg}]],
  ['Preferencias',[{t:'Preferencias…',f:prefsDlg},'-',{t:'Grilla fina 2,54 mm',c:()=>prefs.grid===2.54,f:()=>{prefs.grid=2.54;LS.set('pcb.prefs',prefs);draw();refreshUI()}},{t:'Grilla fina 1,27 mm',c:()=>prefs.grid===1.27,f:()=>{prefs.grid=1.27;LS.set('pcb.prefs',prefs);draw();refreshUI()}}]],
  ['Ayuda',[{t:'Guía para hacer tu plaqueta',f:()=>window.open('guia.html','_blank')},{t:'Atajos de teclado',f:keysDlg},'-',{t:'Política de privacidad',f:()=>window.open('privacidad.html','_blank')},{t:'Términos de uso',f:()=>window.open('terminos.html','_blank')},'-',{t:'Acerca de Mesa PCB',f:aboutDlg}]]
 ];
@@ -2151,7 +2157,8 @@ function showMenu(m,items){
     b.children[1].textContent=it.t;if(it.d&&it.d())b.disabled=true;
     b.onclick=e=>{e.stopPropagation();closeMenu();it.f()};d.appendChild(b)});
   m.appendChild(d);const first=d.querySelector('button:not(:disabled)');first&&first.focus({preventScroll:true});
-  const r=d.getBoundingClientRect();if(r.right>innerWidth-8)d.style.left=(innerWidth-8-r.right)+'px';
+  const br=m.getBoundingClientRect(); // fijo en pantalla: así no lo recorta la barra cuando se desliza (celular)
+  d.style.position='fixed';d.style.top=br.bottom+'px';d.style.left=Math.max(8,Math.min(br.left,innerWidth-8-d.offsetWidth))+'px';
 }
 function closeMenu(){if(!openMenu)return;openMenu.classList.remove('open');openMenu.firstChild.setAttribute('aria-expanded','false');const d=openMenu.querySelector('.drop');d&&d.remove();openMenu=null}
 document.addEventListener('pointerdown',e=>{if(openMenu&&!openMenu.contains(e.target))closeMenu()});

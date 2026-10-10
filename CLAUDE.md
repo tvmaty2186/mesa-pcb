@@ -20,7 +20,6 @@ Este archivo es para que cualquier sesión de Claude retome el proyecto sin empe
 
 Pendientes chicos:
 - "Entrada de audio lejos de la salida" al reacomodar: falta marcar en la biblioteca qué pata es entrada o salida de audio. Hoy lo puede indicar el asistente con `separados`.
-- En celular la página queda más ancha que la pantalla (la barra de herramientas no entra y el navegador achica todo).
 
 ## Quién y qué
 
@@ -76,6 +75,7 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
   - tablero vacío: autorruteador, reglas, plano, alivio térmico, rellenar, lágrimas, agujeros, agregar agujero.
 - **Sin textos de ayuda automáticos** (nada de carteles que expliquen cómo usar una herramienta). Solo avisos cortos de confirmación.
 - **Sin barra de estado** abajo.
+- **Celular** (≤ 820 px): la página entra justa en la pantalla (`.app` con `grid-template-columns:minmax(0,1fr)`); menús y barra de herramientas se deslizan de costado, sin logo; el botón de la cuenta queda fijo a la derecha; los menús se abren con `position:fixed`.
 - **Franja publicitaria reservada abajo de todo**: 468 × 60 en computadora, 320 × 50 en celular (comentario en `index.html` donde va el código del aviso).
 - **Publicidad de pantalla completa antes de guardar, imprimir (una o varias), exportar (PDF, Gerber, diseño), importar y autorrutear** (también el rerruteo de la revisión de reglas), pedido de Matías (`withAd`, `AD_SECONDS`=5). Va después del pedido de cuenta: primero "Entrá con Google", después el aviso, después la acción. Cuenta regresiva "Podés seguir en N" → "Continuar"; la ✕ cancela la acción. Con `ADS_CONFIG.rewardedUnit` pide un **anuncio con recompensa de Ad Manager** ("Ver aviso y seguir"; si lo cierra antes, se cancela); sin dato o sin aviso, queda el espacio reservado con la cuenta regresiva (AdSense no permite obligar a ver un aviso para seguir).
 - **Botón "Asistente con IA"** abajo del panel izquierdo, en lugar de "Colocar en el tablero" (para colocar: arrastrar, o doble clic en la lista). Abre la ventana del asistente (`aiDlg`): flotante abajo a la derecha de la mesa (en celular, abajo de todo), no mueve el dibujo. Sin publicidad (es pago).
