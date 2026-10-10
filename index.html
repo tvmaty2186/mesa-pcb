@@ -1064,7 +1064,7 @@ function runRoute(o){
   const r=autoroute(o);doc.tracks=r.tracks;doc.jumpers=r.jumpers;doc.tears=o.tears;
   if(o.size==='min')shrinkOutline();
   if(o.size!=='none'&&doc.outline)extra=` · Placa de ${cm(doc.outline.w)} × ${cm(doc.outline.h)} cm`+extra;
-  if(o.plane){const k=gndKey();if(doc.outline&&k)doc.plane={key:k,thermal:doc.plane?doc.plane.thermal!==false:true};else{doc.plane=null;extra=doc.outline?' · No encontré la masa (GND)':' · Plano de masa: falta el contorno'}}else doc.plane=null;
+  if(o.plane){const k=gndKey();if(doc.outline){doc.plane={key:k,thermal:doc.plane?doc.plane.thermal!==false:true,fill:doc.plane?doc.plane.fill!==false:true};if(!k)extra=' · No encontré la masa (GND): el relleno queda sin conectar'}else{doc.plane=null;extra=' · Plano de masa: falta el contorno'}}else doc.plane=null;
   changed();r.done=Math.max(0,r.total-ratsnest().length); // lo que de verdad quedó sin unir
   if(!r.total){toast('No había conexiones para rutear'+extra);return}
   if(pl&&pl.moved)extra=` · ${pl.moved} componentes reacomodados`+extra;
@@ -1184,8 +1184,8 @@ function gndKey(){for(const g of nets())for(const k of g)if(/^(GND|VSS|0V)$/.tes
 function planeGeo(){
   if(!doc.plane||!doc.outline)return null;if(planeCache.ver===geoVer)return planeCache.geo;
   planeCache={ver:geoVer,geo:null};
-  const gk=doc.plane.key,ph=physical(true);if(!padPos(gk))return null;
-  const items=copperItems(ph,{tears:true}),me={g:ph.f(gk),n:null};const NETS=nets();me.n=NETS.findIndex(g=>g.includes(gk));if(me.n<0)me.n=null;
+  const gk=doc.plane.key,ph=physical(true);if(gk&&!padPos(gk))return null; // sin masa (key null) igual rellena, todo suelto
+  const items=copperItems(ph,{tears:true}),me={g:gk?ph.f(gk):'sin-masa',n:null};const NETS=nets();me.n=gk?NETS.findIndex(g=>g.includes(gk)):-1;if(me.n<0)me.n=null;
   // la grilla solo sirve para saber qué partes tocan masa y sacar islas y tiras finas; el dibujo es liso (drawPlane)
   const o=doc.outline,e=DRC.edge,X0=o.x+e,Y0=o.y+e,W0=o.w-2*e,H0=o.h-2*e;if(W0<1||H0<1)return null;
   const s=Math.min(0.25,Math.max(0.08,Math.sqrt(W0*H0/160000))),NX=Math.ceil(W0/s),NY=Math.ceil(H0/s),N=NX*NY;
@@ -1211,20 +1211,23 @@ function planeGeo(){
     for(let t=-k;t<=k;t++){const ii=horiz?i+t:i,jj=horiz?j:j+t;const q=(ii<0||jj<0||ii>=NX||jj>=NY)?0:src[jj*NX+ii];if(isMin&&!q){v=0;break}if(!isMin&&q){v=1;break}}dst[j*NX+i]=v}};
   pass(free,tmp,true,true);pass(tmp,er,false,true);pass(er,tmp,true,false);pass(tmp,fin,false,false);for(let c=0;c<N;c++)fin[c]&=free[c];
   // quedarse con las partes que tocan cobre de masa
-  const lab=new Int32Array(N).fill(-1),keep=[],regions=[];let L=0;
+  // relleno: las partes que no tocan masa también quedan (cobre suelto, a 0,8 mm de todo: no hay corto) para gastar menos percloruro;
+  // se borran los pedacitos de menos de 2 mm² para que quede prolijo
+  const FILL=doc.plane.fill!==false,lab=new Int32Array(N).fill(-1),keep=[],keepG=[],regions=[];let L=0,kept=0;
   for(let c0=0;c0<N;c0++){if(!fin[c0]||lab[c0]>=0)continue;const st=[c0];lab[c0]=L;let touch=false;const cells=[];
     while(st.length){const c=st.pop();cells.push(c);if(own[c])touch=true;const i=c%NX,j=(c-i)/NX;
       for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]){const ii=i+a,jj=j+b;if(ii<0||jj<0||ii>=NX||jj>=NY)continue;const c2=jj*NX+ii;if(fin[c2]&&lab[c2]<0){lab[c2]=L;st.push(c2)}}}
-    if(touch){keep[L]=1;const keys=new Set();cells.forEach(c=>{if(!own[c])return;const x=cx(c%NX),y=cy(Math.floor(c/NX));items.forEach(it=>{if(sameNet(it,me)&&shapePtDist(it,x,y)<=0)keys.add(it.k)})});regions.push([...keys])}
+    if(!touch&&FILL&&cells.length*s*s>=2){keep[L]=1;kept++}
+    if(touch){keep[L]=1;keepG[L]=1;kept++;const keys=new Set();cells.forEach(c=>{if(!own[c])return;const x=cx(c%NX),y=cy(Math.floor(c/NX));items.forEach(it=>{if(sameNet(it,me)&&shapePtDist(it,x,y)<=0)keys.add(it.k)})});regions.push([...keys])}
     L++}
   // rayos térmicos: solo los que llegan a una parte del plano que queda (nada de rayos colgando)
   thermal.forEach(t=>[[1,0],[-1,0],[0,1],[0,-1]].forEach(([ux,uy])=>{const L=(ux?t.hx:t.hy)+TGAP+0.35,x=t.pc[0]+ux*L,y=t.pc[1]+uy*L,i=Math.floor((x-X0)/s),j=Math.floor((y-Y0)/s);
-    if(i<0||j<0||i>=NX||j>=NY)return;const c=j*NX+i;if(fin[c]&&keep[lab[c]])t.dirs.push([ux,uy])}));
+    if(i<0||j<0||i>=NX||j>=NY)return;const c=j*NX+i;if(fin[c]&&keepG[lab[c]])t.dirs.push([ux,uy])}));
   // lo que hay que borrar del dibujo liso: islas sin masa y tiras finas
   const erase=new Path2D();let any=false;
   for(let j=0;j<NY;j++){let i=0;while(i<NX){const c=j*NX+i,del=free[c]&&!(fin[c]&&keep[lab[c]]);if(del){let q=i;while(q<NX){const c2=j*NX+q;if(!(free[c2]&&!(fin[c2]&&keep[lab[c2]])))break;q++}
     erase.rect(X0+i*s-s*0.5,Y0+j*s-s*0.5,(q-i+1)*s,2*s);any=true;i=q}else i++}}
-  planeCache.geo={regions,rect:[X0,Y0,W0,H0],foreign,thermal,holes,erase:any?erase:null,s,empty:!regions.length};return planeCache.geo;
+  planeCache.geo={regions,rect:[X0,Y0,W0,H0],foreign,thermal,holes,erase:any?erase:null,s,empty:!kept};return planeCache.geo;
 }
 // dibujo liso del plano: rectángulo de la placa menos el cobre ajeno con su separación, anillos térmicos con rayos
 let planeCv=null;
@@ -1254,9 +1257,9 @@ function drawPlane(P,color,alpha){
 function planeToggle(){
   if(doc.plane){pushUndo();doc.plane=null;toast('Plano de masa quitado');changed();return}
   if(!doc.outline){toast('Primero dibujá el contorno de la placa');return}
-  const k=gndKey();if(!k){toast('No encontré la masa (GND) en las conexiones');return}
-  pushUndo();doc.plane={key:k,thermal:true};toast('Plano de masa agregado');changed();
+  const k=gndKey();pushUndo();doc.plane={key:k,thermal:true,fill:true};toast(k?'Plano de masa agregado':'Relleno de cobre agregado · no encontré la masa (GND): queda sin conectar');changed();
 }
+function fillToggle(){if(!doc.plane)return;pushUndo();doc.plane={...doc.plane,fill:doc.plane.fill===false};toast(doc.plane.fill?'Rellenar espacios vacíos: sí':'Rellenar espacios vacíos: no');changed()}
 function tearsToggle(){pushUndo();doc.tears=!doc.tears;toast(doc.tears?'Lágrimas en los pads: sí':'Lágrimas en los pads: no');changed()}
 function drawCopperExtra(){ // plano, lágrimas y pads de puentes (lado cobre)
   const pr=view==='plancha',cu=pr?C.toner:C['ws-copper'],moving=drag&&drag.type==='move';
@@ -1330,7 +1333,7 @@ cv.addEventListener('contextmenu',e=>{
       {t:'Agujeros de fijación',c:hasHoles,f:holesToggle},{t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},'-',
       {t:'Borrar contorno',k:'Supr',i:'trash',danger:1,f:deleteSel}]);return}
   showCtx(X,Y,null,[{t:'Autorruteador…',k:'A',i:'route',f:routeDlg},{t:'Revisar reglas de diseño',k:'D',i:'drc',f:drcDlg},'-',
-    {t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},{t:'Alivio térmico en el plano',c:()=>!!doc.plane&&doc.plane.thermal!==false,d:()=>!doc.plane,f:thermalToggle},
+    {t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},{t:'Alivio térmico en el plano',c:()=>!!doc.plane&&doc.plane.thermal!==false,d:()=>!doc.plane,f:thermalToggle},{t:'Rellenar espacios vacíos',c:()=>!!doc.plane&&doc.plane.fill!==false,d:()=>!doc.plane,f:fillToggle},
     {t:'Lágrimas en los pads',c:()=>!!doc.tears,f:tearsToggle},{t:'Agujeros de fijación',c:hasHoles,f:holesToggle},{t:'Agregar un agujero acá',f:()=>addHoleAt(snapV(wx,0.5),snapV(wy,0.5))},'-',
     {t:'Ajustar a la pantalla',k:'F',i:'fit',f:fit}]);
 });
@@ -1433,7 +1436,7 @@ const MENUS=[
  ['Herramientas',[
    ...TOOLS.map(t=>t.soon?{t:t.name+' (próximamente)',f:soon(t.name),soon:1}:{t:t.name,k:t.key,c:()=>tool===t.id,f:()=>setTool(t.id)}),'-',
    {t:'Enganche a la grilla',c:()=>prefs.snap,f:()=>toggle('snap','Enganche')},'-',
-   {t:'Autorruteador…',k:'A',f:routeDlg},{t:'Lágrimas en los pads',c:()=>!!doc.tears,f:tearsToggle},{t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},{t:'Alivio térmico en el plano',c:()=>!!doc.plane&&doc.plane.thermal!==false,d:()=>!doc.plane,f:thermalToggle},{t:'Agujeros de fijación',c:hasHoles,f:holesToggle},{t:'Revisar reglas de diseño',k:'D',f:drcDlg},{t:'Asistente con IA',soon:1,f:soon('Asistente con IA')}]],
+   {t:'Autorruteador…',k:'A',f:routeDlg},{t:'Lágrimas en los pads',c:()=>!!doc.tears,f:tearsToggle},{t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},{t:'Alivio térmico en el plano',c:()=>!!doc.plane&&doc.plane.thermal!==false,d:()=>!doc.plane,f:thermalToggle},{t:'Rellenar espacios vacíos',c:()=>!!doc.plane&&doc.plane.fill!==false,d:()=>!doc.plane,f:fillToggle},{t:'Agujeros de fijación',c:hasHoles,f:holesToggle},{t:'Revisar reglas de diseño',k:'D',f:drcDlg},{t:'Asistente con IA',soon:1,f:soon('Asistente con IA')}]],
  ['Preferencias',[{t:'Preferencias…',f:prefsDlg},'-',{t:'Grilla fina 2,54 mm',c:()=>prefs.grid===2.54,f:()=>{prefs.grid=2.54;LS.set('pcb.prefs',prefs);draw();refreshUI()}},{t:'Grilla fina 1,27 mm',c:()=>prefs.grid===1.27,f:()=>{prefs.grid=1.27;LS.set('pcb.prefs',prefs);draw();refreshUI()}}]],
  ['Ayuda',[{t:'Atajos de teclado',f:keysDlg},{t:'Acerca de Mesa PCB',f:aboutDlg}]]
 ];
