@@ -15,7 +15,7 @@
   --accent:#a95b17; --accent-soft:#f3e4d4; --accent-ink:#ffffff; --sel:#0b7a75;
   --ws-bg:#fbfcfa; --ws-fine:rgba(25,60,40,.11); --ws-major:rgba(25,60,40,.30); --ws-silk:#24332a; --ws-copper:#c27a2f;
   --ws-edge:#b07d00; --ws-board:rgba(46,110,70,.07); --ws-ref:#4b5d52; --ruler:#eef2ee; --ruler-ink:#5a6a60;
-  --paper:#ffffff; --toner:#111111;
+  --paper:#ffffff; --toner:#111111; --err:#c62a1c;
   --f-display:"Chakra Petch","Segoe UI",system-ui,sans-serif;
   --f-body:"Atkinson Hyperlegible","Verdana",system-ui,sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,"Consolas",monospace;
@@ -24,12 +24,12 @@
   --bg:#0c120f; --panel:#141d18; --panel2:#19241e; --ink:#e3ebe5; --muted:#93a59a; --line:#28362e;
   --accent:#e09a52; --accent-soft:#3a2a1a; --accent-ink:#1a1006; --sel:#4fd1c5;
   --ws-bg:#101814; --ws-fine:rgba(200,230,210,.07); --ws-major:rgba(200,230,210,.20); --ws-silk:#dde8e0; --ws-copper:#d99a52;
-  --ws-edge:#e6c34a; --ws-board:rgba(80,160,110,.10); --ws-ref:#a3b5aa; --ruler:#141d18; --ruler-ink:#93a59a; color-scheme:dark}}
+  --ws-edge:#e6c34a; --ws-board:rgba(80,160,110,.10); --ws-ref:#a3b5aa; --ruler:#141d18; --ruler-ink:#93a59a; --err:#ff6b5b; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0c120f; --panel:#141d18; --panel2:#19241e; --ink:#e3ebe5; --muted:#93a59a; --line:#28362e;
   --accent:#e09a52; --accent-soft:#3a2a1a; --accent-ink:#1a1006; --sel:#4fd1c5;
   --ws-bg:#101814; --ws-fine:rgba(200,230,210,.07); --ws-major:rgba(200,230,210,.20); --ws-silk:#dde8e0; --ws-copper:#d99a52;
-  --ws-edge:#e6c34a; --ws-board:rgba(80,160,110,.10); --ws-ref:#a3b5aa; --ruler:#141d18; --ruler-ink:#93a59a; color-scheme:dark}
+  --ws-edge:#e6c34a; --ws-board:rgba(80,160,110,.10); --ws-ref:#a3b5aa; --ruler:#141d18; --ruler-ink:#93a59a; --err:#ff6b5b; color-scheme:dark}
 
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -159,6 +159,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .saved div{display:flex;gap:6px}
 .saved button{flex:1;text-align:left;border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:8px 10px}
 .saved .x{flex:none;color:#b4361a}
+.saved .err{color:var(--err)}
 .radio{display:flex;gap:6px;flex-wrap:wrap}
 .radio button{border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:6px 12px}
 .radio button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
@@ -230,7 +231,8 @@ const I={
  zin:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M8 11h6M11 8v6"/>',
  zout:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M8 11h6"/>',
  fit:'<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',
- check:'<path d="m5 12 5 5 9-10"/>'
+ check:'<path d="m5 12 5 5 9-10"/>',
+ drc:'<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/>'
 };
 const ico=(k)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[k]}</svg>`;
 
@@ -282,7 +284,7 @@ function snapComp(c){ // engancha el pin 1 a la grilla fina
 /* ================= tokens de color ================= */
 function readColors(){
   const cs=getComputedStyle(document.documentElement);
-  ['ws-bg','ws-fine','ws-major','ws-silk','ws-copper','ws-edge','ws-board','ws-ref','ruler','ruler-ink','sel','accent','paper','toner','muted','panel','ink'].forEach(k=>C[k]=cs.getPropertyValue('--'+k).trim());
+  ['ws-bg','ws-fine','ws-major','ws-silk','ws-copper','ws-edge','ws-board','ws-ref','ruler','ruler-ink','sel','accent','paper','toner','muted','panel','ink','err'].forEach(k=>C[k]=cs.getPropertyValue('--'+k).trim());
 }
 function applyTheme(){
   if(prefs.theme==='system')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',prefs.theme);
@@ -297,7 +299,7 @@ function restore(s){const o=JSON.parse(s);doc.comps=o.comps;doc.outline=o.outlin
 function doUndo(){if(!undo.length)return;redo.push(snapshot());restore(undo.pop());toast('Deshecho')}
 function doRedo(){if(!redo.length)return;undo.push(snapshot());restore(redo.pop());toast('Rehecho')}
 function ensureLinkIds(){(doc.links||[]).forEach(l=>{if(!l.id)l.id=uid()})}
-function changed(){ensureLinkIds();if(linkSel&&!doc.links.some(l=>l.id===linkSel))linkSel=null;LS.set('pcb.actual',doc);refreshUI();draw()}
+function changed(){drcDirty=true;drcFocus=-1;ensureLinkIds();if(linkSel&&!doc.links.some(l=>l.id===linkSel))linkSel=null;LS.set('pcb.actual',doc);refreshUI();draw()}
 
 /* ================= referencias (R1, C1, U1…) ================= */
 function prefixOf(comp){
@@ -512,6 +514,7 @@ function draw(){
   worldT();
   doc.comps.forEach(c=>{const fp=fpOf(c);if(fp)drawFootprint(fp,c)});
   drawAir();
+  drawDrc();
   // selección y referencias
   if(view!=='plancha'){
     doc.comps.forEach(c=>{
@@ -794,8 +797,90 @@ function prefsDlg(){
   ov.querySelectorAll('#pg button').forEach(b=>b.onclick=()=>{prefs.grid=+b.dataset.v;LS.set('pcb.prefs',prefs);mark();refreshUI();draw()});
   ov.querySelectorAll('#pt button').forEach(b=>b.onclick=()=>{prefs.theme=b.dataset.v;LS.set('pcb.prefs',prefs);mark();applyTheme()});mark();
 }
-function keysDlg(){dialog('Atajos de teclado',`<table>${[['V','Seleccionar'],['H  /  Espacio','Mover la vista'],['B','Contorno de placa'],['M','Medir'],['C','Conectar pad con pad'],['T','Pista'],['Retroceso','Pista: borrar el último tramo'],['Enter / doble clic','Pista: terminar'],['R','Rotar 90°'],['Supr','Borrar lo seleccionado'],['Ctrl + Z','Deshacer'],['Ctrl + Y','Rehacer'],['Ctrl + D','Duplicar'],['Ctrl + A','Seleccionar todo'],['Ctrl + S','Guardar'],['F','Ajustar a la pantalla'],['Rueda','Zoom'],['Shift + clic','Sumar a la selección'],['Shift al colocar','Colocar varios iguales'],['Esc','Cancelar']].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>`,[{t:'Cerrar',pri:1}])}
-function aboutDlg(){dialog('Mesa PCB',`<p class="muted">Primera versión de la mesa de trabajo. Diseño de plaquetas de una cara para hacer en casa con planchado y percloruro.</p><p class="muted">Biblioteca: ${DB.length} componentes de agujero pasante. Próximos pasos: pistas, revisión de reglas de diseño, impresión 1:1 y asistente con IA.</p>`,[{t:'Cerrar',pri:1}])}
+function keysDlg(){dialog('Atajos de teclado',`<table>${[['V','Seleccionar'],['H  /  Espacio','Mover la vista'],['B','Contorno de placa'],['M','Medir'],['C','Conectar pad con pad'],['T','Pista'],['Retroceso','Pista: borrar el último tramo'],['D','Revisar reglas de diseño'],['Enter / doble clic','Pista: terminar'],['R','Rotar 90°'],['Supr','Borrar lo seleccionado'],['Ctrl + Z','Deshacer'],['Ctrl + Y','Rehacer'],['Ctrl + D','Duplicar'],['Ctrl + A','Seleccionar todo'],['Ctrl + S','Guardar'],['F','Ajustar a la pantalla'],['Rueda','Zoom'],['Shift + clic','Sumar a la selección'],['Shift al colocar','Colocar varios iguales'],['Esc','Cancelar']].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>`,[{t:'Cerrar',pri:1}])}
+function aboutDlg(){dialog('Mesa PCB',`<p class="muted">Primera versión de la mesa de trabajo. Diseño de plaquetas de una cara para hacer en casa con planchado y percloruro.</p><p class="muted">Biblioteca: ${DB.length} componentes de agujero pasante. Próximos pasos: autorruteador, impresión 1:1 y asistente con IA.</p>`,[{t:'Cerrar',pri:1}])}
+
+/* ================= revisión de reglas (DRC) ================= */
+const DRC={gap:0.6,minW:0.5,edge:2};
+let drcList=[],drcDirty=true,drcFocus=-1;
+const esc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[ch]);
+// cada cobre es un polígono convexo (1, 2 o 4 puntos) engordado r: pad redondo, óvalo, cuadrado o tramo de pista
+function padShape(c,p){
+  const [cx,cy]=padWorld(c,p);let w=p.w||p.d,h=p.h||p.d;if(c.rot%2)[w,h]=[h,w];
+  if(p.sq){const a=w/2,b=h/2;return {pts:[[cx-a,cy-b],[cx+a,cy-b],[cx+a,cy+b],[cx-a,cy+b]],r:0}}
+  const r=Math.min(w,h)/2,a=w/2-r,b=h/2-r;return {pts:a>1e-6||b>1e-6?[[cx-a,cy-b],[cx+a,cy+b]]:[[cx,cy]],r};
+}
+function cpSeg(p,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],L=dx*dx+dy*dy;let t=L?((p[0]-a[0])*dx+(p[1]-a[1])*dy)/L:0;t=Math.max(0,Math.min(1,t));return [a[0]+t*dx,a[1]+t*dy]}
+function segCross(a,b,c,d){const o=(p,q,r)=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]);return o(c,d,a)*o(c,d,b)<0&&o(a,b,c)*o(a,b,d)<0}
+function inPoly(p,P){if(P.length<3)return false;let s=0;for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length],v=Math.sign((b[0]-a[0])*(p[1]-a[1])-(b[1]-a[1])*(p[0]-a[0]));if(v){if(s&&v!==s)return false;s=v}}return true}
+function shapeDist(A,B){ // separación entre bordes de cobre y punto medio de la zona más angosta
+  const edges=P=>P.length>1?P.map((p,i)=>[p,P[(i+1)%P.length]]):[[P[0],P[0]]];
+  let best={d:1e9,x:0,y:0};const mid=(p,q)=>[(p[0]+q[0])/2,(p[1]+q[1])/2];
+  for(const [a,b] of edges(A.pts))for(const [c,d] of edges(B.pts)){
+    if(segCross(a,b,c,d)){const m=mid(a,b);best={d:0,x:m[0],y:m[1]};break}
+    for(const [p,s,t] of [[a,c,d],[b,c,d],[c,a,b],[d,a,b]]){const q=cpSeg(p,s,t),e=Math.hypot(p[0]-q[0],p[1]-q[1]);if(e<best.d){const m=mid(p,q);best={d:e,x:m[0],y:m[1]}}}
+  }
+  if(inPoly(B.pts[0],A.pts))best={d:0,x:B.pts[0][0],y:B.pts[0][1]};else if(inPoly(A.pts[0],B.pts))best={d:0,x:A.pts[0][0],y:A.pts[0][1]};
+  return {d:best.d-A.r-B.r,x:best.x,y:best.y};
+}
+function padName(k){const [cid,n]=k.split(':');const c=doc.comps.find(x=>x.id===cid);return c?`${c.ref}.${n}`:'?'}
+function runDrc(){
+  const out=[],add=(t,m,x,y)=>out.push({t,m,x,y});
+  const ph=physical(),netOf=new Map();nets().forEach((g,i)=>g.forEach(k=>netOf.set(k,i)));
+  const grpNet=new Map();netOf.forEach((i,k)=>{const r=ph.f(k);if(!grpNet.has(r))grpNet.set(r,i)});
+  const items=[];
+  doc.comps.forEach(c=>{const fp=fpOf(c);if(!fp)return;fp.pads.forEach(p=>{const k=pkey(c.id,p.n);items.push({k,cid:c.id,name:`${c.ref}.${p.n}`,...padShape(c,p)})})});
+  doc.tracks.forEach(t=>{for(let j=1;j<t.pts.length;j++)items.push({k:'t:'+t.id,tid:t.id,name:'pista',pts:[t.pts[j-1],t.pts[j]],r:t.w/2})});
+  items.forEach(o=>{const xs=o.pts.map(p=>p[0]),ys=o.pts.map(p=>p[1]);o.b=[Math.min(...xs)-o.r,Math.min(...ys)-o.r,Math.max(...xs)+o.r,Math.max(...ys)+o.r];
+    o.g=ph.f(o.k);o.n=netOf.has(o.k)?netOf.get(o.k):grpNet.has(o.g)?grpNet.get(o.g):null});
+  // 1. separación entre cobres de distinta red
+  const seen=new Set();
+  for(let i=0;i<items.length;i++)for(let j=i+1;j<items.length;j++){const A=items[i],B=items[j];
+    if(A.b[0]>B.b[2]+DRC.gap||B.b[0]>A.b[2]+DRC.gap||A.b[1]>B.b[3]+DRC.gap||B.b[1]>A.b[3]+DRC.gap)continue;
+    if(A.cid&&A.cid===B.cid)continue; // dentro de una huella ya lo verifica la biblioteca
+    if(A.g===B.g||(A.n!==null&&A.n===B.n))continue;
+    const r=shapeDist(A,B);if(r.d>=DRC.gap-1e-6)continue;
+    const key=[A.tid||A.k,B.tid||B.k].sort().join('|');if(seen.has(key))continue;seen.add(key);
+    add('Separación',`${A.name} y ${B.name}: ${r.d<=0?'se tocan':f2(r.d)+' mm'}`,r.x,r.y)}
+  // 2. ancho de pista
+  doc.tracks.forEach(t=>{if(t.w<DRC.minW-1e-6){const p=t.pts[Math.floor(t.pts.length/2)];add('Ancho',`Pista de ${f2(t.w)} mm`,p[0],p[1])}});
+  // 3. borde de placa
+  if(doc.outline){const o=doc.outline,worst=new Map();
+    items.forEach(it=>{const m=Math.min(it.b[0]-o.x,it.b[1]-o.y,o.x+o.w-it.b[2],o.y+o.h-it.b[3]);if(m>=DRC.edge-1e-6)return;
+      const id=it.cid||it.tid;if(!worst.has(id)||m<worst.get(id).m)worst.set(id,{m,it})});
+    worst.forEach(({m,it})=>{const c=it.cid&&doc.comps.find(x=>x.id===it.cid);const x=(it.b[0]+it.b[2])/2,y=(it.b[1]+it.b[3])/2;
+      add('Borde',`${c?c.ref:'Pista'}: ${m<0?'fuera de la placa':f2(m)+' mm del borde'}`,x,y)})}
+  // 4. esquinas: quiebres de 45° como máximo, también en uniones entre pistas
+  const turnOk=(u,v)=>u[0]*v[0]+u[1]*v[1]>=0.69;
+  doc.tracks.forEach(t=>{for(let i=1;i<t.pts.length-1;i++)if(!turnOk(dirOf(t.pts[i-1],t.pts[i]),dirOf(t.pts[i],t.pts[i+1]))){add('Esquina','Pista con esquina fuera de regla',t.pts[i][0],t.pts[i][1]);break}});
+  const pads=padsAll(),joints=new Set();
+  doc.tracks.forEach(t=>{[[0,1],[t.pts.length-1,t.pts.length-2]].forEach(([e,nb])=>{const E=t.pts[e];if(t.pts.length<2||pads.some(q=>Math.hypot(q.x-E[0],q.y-E[1])<=q.r+.01))return;
+    const u=dirOf(t.pts[nb],E);let touch=false,ok=false;
+    doc.tracks.forEach(T=>{if(T===t)return;for(let j=1;j<T.pts.length;j++){const a=T.pts[j-1],b=T.pts[j];if(segDist(E[0],E[1],a,b)>.01)continue;touch=true;
+      const atA=Math.hypot(a[0]-E[0],a[1]-E[1])<.01,atB=Math.hypot(b[0]-E[0],b[1]-E[1])<.01;
+      if(atA)ok=ok||turnOk(u,dirOf(a,b));else if(atB)ok=ok||turnOk(u,dirOf(b,a));else{const v=dirOf(a,b);ok=ok||Math.abs(u[0]*v[0]+u[1]*v[1])>=0.69}}});
+    const key=E.map(v=>v.toFixed(2)).join(',');if(touch&&!ok&&!joints.has(key)){joints.add(key);add('Esquina','Unión de pistas fuera de regla',E[0],E[1])}})});
+  // 5. conexiones sin rutear
+  ratsnest().forEach(([a,b])=>add('Sin rutear',`${padName(a.k)} con ${padName(b.k)}`,(a.x+b.x)/2,(a.y+b.y)/2));
+  const order=['Separación','Ancho','Borde','Esquina','Sin rutear'];out.sort((a,b)=>order.indexOf(a.t)-order.indexOf(b.t));
+  drcList=out;drcDirty=false;if(drcFocus>=out.length)drcFocus=-1;return out;
+}
+function drawDrc(){
+  if(!prefs.drc||view==='plancha')return;
+  if(drcDirty||drag)runDrc();
+  screenT();ctx.lineWidth=2;
+  drcList.forEach((e,i)=>{const [x,y]=toS(e.x,e.y),R=i===drcFocus?14:9;
+    ctx.strokeStyle=C.err;ctx.fillStyle=C.err;ctx.globalAlpha=.18;ctx.beginPath();ctx.arc(x,y,R,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;ctx.stroke();
+    if(i===drcFocus){ctx.beginPath();ctx.arc(x,y,R+5,0,Math.PI*2);ctx.stroke()}});
+}
+function goTo(x,y){scale=Math.min(40,Math.max(scale,14));const [sx,sy]=toS(x,y);ox+=RW+(W-RW)/2-sx;oy+=RW+(H-RW)/2-sy;draw()}
+function drcDlg(){
+  prefs.drc=true;LS.set('pcb.prefs',prefs);drcFocus=-1;runDrc();refreshUI();draw();
+  if(!drcList.length){dialog('Revisión de reglas','<p class="muted">Todo en regla.</p>',[{t:'Cerrar',pri:1}]);return}
+  const body=`<div class="saved">${drcList.map((e,i)=>`<div><button data-i="${i}"><b class="err">${e.t}</b> · ${esc(e.m)}</button></div>`).join('')}</div>`;
+  const ov=dialog(`Revisión de reglas · ${drcList.length}`,body,[{t:'Cerrar',pri:1}]);
+  ov.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{const e=drcList[+b.dataset.i];drcFocus=+b.dataset.i;ov.remove();goTo(e.x,e.y)});
+}
 
 /* ================= menús ================= */
 const MENUS=[
@@ -812,11 +897,12 @@ const MENUS=[
    {t:'Líneas de 1 cm',c:()=>prefs.major,f:()=>toggle('major','Líneas de 1 cm')},{t:'Grilla fina',c:()=>prefs.fine,f:()=>toggle('fine','Grilla fina')},{t:'Reglas',c:()=>prefs.rulers,f:()=>toggle('rulers','Reglas')},{t:'Referencias (R1, U1…)',c:()=>prefs.refs,f:()=>toggle('refs')},'-',
    {t:'Vista de componentes',c:()=>view==='arriba',f:()=>setView('arriba')},{t:'Vista del cobre (de abajo)',c:()=>view==='abajo',f:()=>setView('abajo')},{t:'Hoja para planchar',c:()=>view==='plancha',f:()=>setView('plancha')},'-',
    {t:'Acercar',k:'+',f:()=>{zoomAt(W/2,H/2,1.25);draw()}},{t:'Alejar',k:'−',f:()=>{zoomAt(W/2,H/2,.8);draw()}},{t:'Ajustar a la pantalla',k:'F',f:fit},'-',
+   {t:'Marcas de la revisión de reglas',c:()=>prefs.drc,f:()=>toggle('drc','Marcas de la revisión')},'-',
    {t:'Panel izquierdo',c:()=>prefs.left,f:()=>toggle('left')},{t:'Barra de propiedades',c:()=>prefs.props,f:()=>toggle('props')}]],
  ['Herramientas',[
    ...TOOLS.map(t=>t.soon?{t:t.name+' (próximamente)',f:soon(t.name),soon:1}:{t:t.name,k:t.key,c:()=>tool===t.id,f:()=>setTool(t.id)}),'-',
    {t:'Enganche a la grilla',c:()=>prefs.snap,f:()=>toggle('snap','Enganche')},'-',
-   {t:'Revisar reglas de diseño',soon:1,f:soon('Revisión de reglas')},{t:'Asistente con IA',soon:1,f:soon('Asistente con IA')}]],
+   {t:'Revisar reglas de diseño',k:'D',f:drcDlg},{t:'Asistente con IA',soon:1,f:soon('Asistente con IA')}]],
  ['Preferencias',[{t:'Preferencias…',f:prefsDlg},'-',{t:'Grilla fina 2,54 mm',c:()=>prefs.grid===2.54,f:()=>{prefs.grid=2.54;LS.set('pcb.prefs',prefs);draw();refreshUI()}},{t:'Grilla fina 1,27 mm',c:()=>prefs.grid===1.27,f:()=>{prefs.grid=1.27;LS.set('pcb.prefs',prefs);draw();refreshUI()}}]],
  ['Ayuda',[{t:'Atajos de teclado',f:keysDlg},{t:'Acerca de Mesa PCB',f:aboutDlg}]]
 ];
@@ -854,6 +940,7 @@ const TB=[
  {k:'major',l:'1 cm',f:()=>toggle('major','Líneas de 1 cm'),p:()=>prefs.major,tip:'Líneas guía de 1 cm'},{k:'fine',l:'Grilla',f:()=>toggle('fine','Grilla fina'),p:()=>prefs.fine,tip:'Grilla fina de 2,54 mm'},
  {k:'ruler',l:'Reglas',f:()=>toggle('rulers','Reglas'),p:()=>prefs.rulers,tip:'Reglas en los bordes'},{k:'snap',l:'Enganche',f:()=>toggle('snap','Enganche'),p:()=>prefs.snap,tip:'Enganchar a la grilla'},'|',
  {k:'rotate',l:'Rotar',f:rotateSel,d:()=>!sel.size&&!placing,tip:'Rotar 90° (R)'},{k:'trash',l:'Borrar',f:deleteSel,d:()=>!sel.size&&!outlineSel&&!trackSel&&!linkSel,tip:'Borrar (Supr)'},'|',
+ {k:'drc',l:'Reglas',f:drcDlg,tip:'Revisar reglas de diseño (D)'},'|',
  {k:'zout',l:'',f:()=>{zoomAt(W/2,H/2,.8);draw()},tip:'Alejar'},{zoom:1},{k:'zin',l:'',f:()=>{zoomAt(W/2,H/2,1.25);draw()},tip:'Acercar'},{k:'fit',l:'Ajustar',f:fit,tip:'Ajustar a la pantalla (F)'},'|',
  {k:'props',l:'Propiedades',f:()=>toggle('props'),p:()=>prefs.props,tip:'Barra de propiedades al seleccionar'}
 ];
@@ -972,7 +1059,7 @@ document.addEventListener('keydown',e=>{
   else if(k==='backspace'&&trackDraw){e.preventDefault();if(trackDraw.pts.length>1)trackDraw.pts.pop();else trackDraw=null;draw()}
   else if(k==='enter'&&trackDraw){finishTrack()}
   else if(k==='delete'||k==='backspace'){e.preventDefault();deleteSel()}
-  else if(k==='v')setTool('select');else if(k==='h')setTool('hand');else if(k==='b')setTool('outline');else if(k==='m')setTool('measure');else if(k==='c')setTool('link');else if(k==='t')setTool('track');
+  else if(k==='v')setTool('select');else if(k==='h')setTool('hand');else if(k==='b')setTool('outline');else if(k==='m')setTool('measure');else if(k==='c')setTool('link');else if(k==='t')setTool('track');else if(k==='d')drcDlg();
   else if(k==='f')fit();else if(k==='+'||k==='=')(zoomAt(W/2,H/2,1.25),draw());else if(k==='-')(zoomAt(W/2,H/2,.8),draw());
   else if(k===' '&&!spaceDown){spaceDown=true;cv.style.cursor='grab';e.preventDefault()}
   else if(e.key.startsWith('Arrow')&&sel.size){e.preventDefault();pushUndo();const g=prefs.snap?prefs.grid:0.1;const d={arrowleft:[-g,0],arrowright:[g,0],arrowup:[0,-g],arrowdown:[0,g]}[k];selComps().forEach(c=>{c.x+=d[0];c.y+=d[1]});changed()}

@@ -55,12 +55,12 @@ Hecho:
 - Biblioteca de 161 componentes y 97 encapsulados (resistencias, capacitores, diodos, LEDs, transistores TO-92/TO-126/TO-220, reguladores, integrados DIP, microcontroladores, amplificadores de audio Pentawatt/Multiwatt, relé, jack, borneras…).
 - Mesa de trabajo: colocar, mover, rotar (R), duplicar, borrar, selección múltiple, deshacer/rehacer, contorno, medir, guardar/abrir en el navegador, exportar/importar JSON, tema claro/oscuro.
 - Conexiones editables y pista manual con quiebres de 45° automáticos y selector de ancho.
+- Revisión de reglas (DRC): Herramientas → Revisar reglas, tecla D o botón Reglas. Marca en rojo separación < 0,6 mm entre redes distintas, pista < 0,5 mm, cobre a menos de 2 mm del borde, esquinas y uniones de pistas fuera de la regla de 45°, y conexiones sin rutear. La lista lleva a cada problema. Código en `runDrc` (`index.html`); las marcas se apagan en Ver.
 
 Próximos pasos, en este orden:
-1. **Revisión de reglas (DRC)**: marcar en rojo separación < 0,6 mm, pista < 0,5 mm, borde < 2 mm, esquinas fuera de regla, conexiones sin rutear.
-2. **Autorruteador v1** (ver opciones abajo).
-3. Imprimir / exportar PDF a escala 1:1 para planchar.
-4. Asistente con IA.
+1. **Autorruteador v1** (ver opciones abajo).
+2. Imprimir / exportar PDF a escala 1:1 para planchar.
+3. Asistente con IA.
 
 ### Opciones del autorruteador
 - **v1:** incluir puentes (sí/no, máximo, largos 7,62 / 10,16 mm); optimizar recorrido; fijar componentes y pistas con candado; anchos de señal y potencia (o por corriente); rutear primero alimentación y masa; plano de masa al final (sí/no). Algoritmo: grilla de 0,635 mm, A* con costos (largo, quiebres, cercanía), solo direcciones a 45°, varias pasadas de arrancar y rerutear.
