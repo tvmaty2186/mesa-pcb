@@ -77,6 +77,7 @@ Hecho:
 - **Ancho por corriente**: clic derecho en una conexión → Corriente 1/2/3 A (`link.amps`). El autorruteador usa 1 / 1,5 / 2 mm para esa red y nunca baja de ese ancho.
 - **Imprimir y exportar** (menú Archivo):
   - **Imprimir hoja para planchar** (Ctrl+P, `printSheet`): dibuja la vista "plancha" en un lienzo aparte a ~600 ppp (`renderSheet`) y la imprime a tamaño real en A4 (apaisada si la placa es ancha), con título y una **barra de 5 cm** para comprobar que la impresora no cambió la escala (hay que imprimir al 100 %).
+  - **Imprimir varias por hoja…** (`multiDlg`, pedido de Matías): copias 2/4/6/8 o todas las que entren, separación 2/5/10 mm. `sheetLayout` prueba A4 parada y acostada, con la placa derecha o girada, y elige lo que más entra; avisa cuántas entran. Imprime o exporta PDF (`buildPdf` repite la misma imagen en cada lugar). Cada copia lleva su contorno como guía de corte y la hoja la barra de 5 cm.
   - **Exportar PDF a escala 1:1** (`exportPdf`): PDF armado a mano (sin librerías): A4 o más grande si la placa no entra, la hoja como JPEG a escala exacta, título y barra de 5 cm.
   - **Exportar Gerber** (`exportGerber`): ZIP (`zipStore`, sin compresión) con cobre `.gbl` (RS-274X, mm; el plano se arma con polaridad oscura/clara igual que en pantalla, con alivios térmicos), contorno `.gko` y agujeros `.drl` (Excellon). Probado con un lector de Gerber aparte.
   - **Exportar diseño**: botón para descargar el `.json` además de copiar el texto.

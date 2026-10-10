@@ -1533,6 +1533,7 @@ function renderSheet(type,q){
     ({view,scale,ox,oy,W,H,dpr,measure,drag}=keep);prefs.rulers=keep.rulers;mouse.in=keep.mouseIn;cv.width=keep.cw;cv.height=keep.ch;draw()}
   return {url,wmm,hmm,px:[Math.ceil(wmm*ppm),Math.ceil(hmm*ppm)]};
 }
+const boardSize=(w,h)=>doc.outline?`${cm(doc.outline.w)} × ${cm(doc.outline.h)} cm`:`${cm(w)} × ${cm(h)} cm`; // medida de la placa, sin el margen de la hoja
 const sheetTitle=()=>`Mesa PCB${doc.name?' · '+doc.name:''}`;
 function printSheet(){
   const s=renderSheet('image/png');if(!s){toast('No hay nada para imprimir');return}
@@ -1540,34 +1541,77 @@ function printSheet(){
   const d=fr.contentDocument;d.open();d.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(sheetTitle())}</title><style>
     @page{size:A4 ${land?'landscape':'portrait'};margin:12mm}body{margin:0;font:10pt Arial,sans-serif;color:#000}
     img{display:block;width:${s.wmm}mm;height:${s.hmm}mm}.bar{width:50mm;height:3mm;background:#000;margin-top:6mm}p{margin:1.5mm 0}</style></head><body>
-    <p><b>${esc(sheetTitle())}</b> · ${cm(s.wmm)} × ${cm(s.hmm)} cm · Imprimí al 100 % (tamaño real, sin “ajustar a la página”).</p>
+    <p><b>${esc(sheetTitle())}</b> · ${boardSize(s.wmm,s.hmm)} · Imprimí al 100 % (tamaño real, sin “ajustar a la página”).</p>
     <img src="${s.url}" alt="Hoja para planchar"><div class="bar"></div><p>Esta barra tiene que medir 5 cm. Si mide otra cosa, la impresora cambió la escala.</p></body></html>`);d.close();
   const go=()=>{fr.contentWindow.focus();fr.contentWindow.print();setTimeout(()=>fr.remove(),60000)};
   const img=d.querySelector('img');if(img.complete)setTimeout(go,50);else img.onload=()=>setTimeout(go,50);
 }
 function download(name,data,mime){const a=document.createElement('a');a.href=URL.createObjectURL(data instanceof Blob?data:new Blob([data],{type:mime}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000)}
 const fileBase=()=>(doc.name||'mesa-pcb').replace(/[^\wáéíóúñÁÉÍÓÚÑ-]+/g,'_');
-// PDF hecho a mano: una página A4 (o más grande si la placa no entra) con la hoja como imagen JPEG a escala exacta
-function exportPdf(){
-  const s=renderSheet('image/jpeg',0.95);if(!s){toast('No hay nada para exportar');return}
-  const pt=mm=>mm*72/25.4,M=15;let pw=210,ph=297;if(s.wmm>s.hmm&&s.wmm>pw-2*M)[pw,ph]=[ph,pw];pw=Math.max(pw,s.wmm+2*M);ph=Math.max(ph,s.hmm+2*M+20);
-  const jpg=Uint8Array.from(atob(s.url.split(',')[1]),c=>c.charCodeAt(0));
+// PDF hecho a mano: una página con la hoja (una o varias copias) como imagen JPEG a escala exacta,
+// título arriba y barra de 5 cm abajo. Medidas en mm desde arriba a la izquierda.
+function buildPdf({url,px,pw,ph,places,barY,title}){
+  const pt=mm=>mm*72/25.4,n=v=>(+v.toFixed(3)).toString(),Y=mm=>n(pt(ph-mm));
+  const jpg=Uint8Array.from(atob(url.split(',')[1]),c=>c.charCodeAt(0));
   const enc=t=>Uint8Array.from(t,ch=>{const c=ch.charCodeAt(0);return c<256?c:63}); // WinAnsi alcanza para castellano
-  const pdfStr=t=>t.replace(/[\\()]/g,m=>'\\'+m);
-  const n=v=>(+v.toFixed(3)).toString();
-  const iy=ph-M-s.hmm,by=iy-8;
-  const content=[`q ${n(pt(s.wmm))} 0 0 ${n(pt(s.hmm))} ${n(pt(M))} ${n(pt(iy))} cm /Im0 Do Q`,
-    `0 g ${n(pt(M))} ${n(pt(by))} ${n(pt(50))} ${n(pt(3))} re f`,
-    `BT /F1 9 Tf ${n(pt(M))} ${n(pt(by-5))} Td (${pdfStr('Esta barra tiene que medir 5 cm. Si mide otra cosa, la impresora cambió la escala.')}) Tj ET`,
-    `BT /F1 10 Tf ${n(pt(M))} ${n(pt(ph-M+4))} Td (${pdfStr(`${sheetTitle()} · ${cm(s.wmm)} × ${cm(s.hmm)} cm · Imprimí al 100 % (tamaño real)`)}) Tj ET`].join('\n');
+  const pdfStr=t=>t.replace(/[\\()]/g,m=>'\\'+m),x0=places[0].x;
+  const content=[...places.map(p=>`q ${n(pt(p.w))} 0 0 ${n(pt(p.h))} ${n(pt(p.x))} ${Y(p.y+p.h)} cm /Im0 Do Q`),
+    `0 g ${n(pt(x0))} ${Y(barY+3)} ${n(pt(50))} ${n(pt(3))} re f`,
+    `BT /F1 9 Tf ${n(pt(x0))} ${Y(barY+8)} Td (${pdfStr('Esta barra tiene que medir 5 cm. Si mide otra cosa, la impresora cambió la escala.')}) Tj ET`,
+    `BT /F1 10 Tf ${n(pt(x0))} ${Y(places[0].y-4)} Td (${pdfStr(title)}) Tj ET`].join('\n');
   const objs=[`<</Type/Catalog/Pages 2 0 R>>`,`<</Type/Pages/Kids[3 0 R]/Count 1>>`,
     `<</Type/Page/Parent 2 0 R/MediaBox[0 0 ${n(pt(pw))} ${n(pt(ph))}]/Resources<</XObject<</Im0 4 0 R>>/Font<</F1 6 0 R>>>>/Contents 5 0 R>>`,
-    {head:`<</Type/XObject/Subtype/Image/Width ${s.px[0]}/Height ${s.px[1]}/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length ${jpg.length}>>`,data:jpg},
+    {head:`<</Type/XObject/Subtype/Image/Width ${px[0]}/Height ${px[1]}/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length ${jpg.length}>>`,data:jpg},
     {head:`<</Length ${enc(content).length}>>`,data:enc(content)},`<</Type/Font/Subtype/Type1/BaseFont/Helvetica/Encoding/WinAnsiEncoding>>`];
   const parts=[enc('%PDF-1.4\n%\xe2\xe3\xcf\xd3\n')],offs=[];let len=parts[0].length;const push=u=>{parts.push(u);len+=u.length};
   objs.forEach((o,i)=>{offs.push(len);if(typeof o==='string')push(enc(`${i+1} 0 obj\n${o}\nendobj\n`));else{push(enc(`${i+1} 0 obj\n${o.head}\nstream\n`));push(o.data);push(enc('\nendstream\nendobj\n'))}});
   const xref=len;push(enc(`xref\n0 ${objs.length+1}\n0000000000 65535 f \n${offs.map(o=>String(o).padStart(10,'0')+' 00000 n \n').join('')}trailer\n<</Size ${objs.length+1}/Root 1 0 R>>\nstartxref\n${xref}\n%%EOF\n`));
-  download(fileBase()+'-planchado.pdf',new Blob(parts,{type:'application/pdf'}));toast('PDF descargado · imprimilo al 100 %');
+  return new Blob(parts,{type:'application/pdf'});
+}
+function exportPdf(){
+  const s=renderSheet('image/jpeg',0.95);if(!s){toast('No hay nada para exportar');return}
+  const M=15;let pw=210,ph=297;if(s.wmm>s.hmm&&s.wmm>pw-2*M)[pw,ph]=[ph,pw];pw=Math.max(pw,s.wmm+2*M);ph=Math.max(ph,s.hmm+2*M+20);
+  download(fileBase()+'-planchado.pdf',buildPdf({url:s.url,px:s.px,pw,ph,places:[{x:M,y:M,w:s.wmm,h:s.hmm}],barY:M+s.hmm+5,
+    title:`${sheetTitle()} · ${boardSize(s.wmm,s.hmm)} · Imprimí al 100 % (tamaño real)`}));toast('PDF descargado · imprimilo al 100 %');
+}
+/* ---------- varias placas por hoja ---------- */
+// Prueba A4 parada y acostada, con la placa derecha o girada, y se queda con lo que más copias entra.
+const PAGE_M=12,HEAD=8,FOOT=16;
+function sheetLayout(w,h,gap,want){let best=null;
+  for(const land of [false,true])for(const r of [false,true]){const pw=land?297:210,ph=land?210:297,bw=r?h:w,bh=r?w:h;
+    const cols=Math.max(0,Math.floor((pw-2*PAGE_M+gap)/(bw+gap))),rows=Math.max(0,Math.floor((ph-2*PAGE_M-HEAD-FOOT+gap)/(bh+gap))),cap=cols*rows;
+    if(!best||cap>best.cap)best={land,r,pw,ph,bw,bh,cols,rows,cap}}
+  const n=Math.min(want,best.cap);best.n=n;best.places=[...Array(n)].map((_,i)=>({x:PAGE_M+(i%best.cols)*(best.bw+gap),y:PAGE_M+HEAD+Math.floor(i/best.cols)*(best.bh+gap),w:best.bw,h:best.bh}));
+  best.barY=n?Math.max(...best.places.map(p=>p.y+p.h))+5:0;return best}
+function rotUrl(url,type,q){return new Promise(res=>{const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=im.height;c.height=im.width;
+  const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.translate(c.width,0);g.rotate(Math.PI/2);g.drawImage(im,0,0);res(c.toDataURL(type,q))};im.src=url})}
+async function multiOut(o,kind){
+  const type=kind==='pdf'?'image/jpeg':'image/png',s=renderSheet(type,0.95);if(!s){toast('No hay nada para imprimir');return}
+  const L=sheetLayout(s.wmm,s.hmm,o.gap,o.n||Infinity);if(!L.cap){toast('La placa no entra en una hoja A4');return}
+  const url=L.r?await rotUrl(s.url,type,0.95):s.url,px=L.r?[s.px[1],s.px[0]]:s.px;
+  const title=`${sheetTitle()} · ${L.n} placas de ${boardSize(s.wmm,s.hmm)} · Imprimí al 100 % (tamaño real)`;
+  if(kind==='pdf'){download(fileBase()+`-planchado-x${L.n}.pdf`,buildPdf({url,px,pw:L.pw,ph:L.ph,places:L.places,barY:L.barY,title}));toast(`PDF con ${L.n} copias descargado`);return}
+  const fr=document.createElement('iframe');fr.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0';document.body.appendChild(fr);
+  const d=fr.contentDocument;d.open();d.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(sheetTitle())}</title><style>
+    @page{size:A4 ${L.land?'landscape':'portrait'};margin:0}body{margin:0;font:10pt Arial,sans-serif;color:#000;position:relative;width:${L.pw}mm;height:${L.ph-1}mm}
+    img,.bar,p{position:absolute}p{margin:0}.bar{width:50mm;height:3mm;background:#000}</style></head><body>
+    <p style="left:${PAGE_M}mm;top:${PAGE_M}mm"><b>${esc(sheetTitle())}</b> · ${L.n} placas de ${boardSize(s.wmm,s.hmm)} · Imprimí al 100 % (tamaño real, sin “ajustar a la página”).</p>
+    ${L.places.map(p=>`<img src="${url}" alt="" style="left:${p.x}mm;top:${p.y}mm;width:${p.w}mm;height:${p.h}mm">`).join('')}
+    <div class="bar" style="left:${PAGE_M}mm;top:${L.barY}mm"></div><p style="left:${PAGE_M}mm;top:${L.barY+5}mm">Esta barra tiene que medir 5 cm. Si mide otra cosa, la impresora cambió la escala.</p></body></html>`);d.close();
+  const imgs=[...d.querySelectorAll('img')],go=()=>{fr.contentWindow.focus();fr.contentWindow.print();setTimeout(()=>fr.remove(),60000)};
+  Promise.all(imgs.map(i=>i.complete?0:new Promise(r=>i.onload=r))).then(()=>setTimeout(go,50));
+}
+function multiDlg(){
+  const B=sheetBox();if(!B){toast('No hay nada para imprimir');return}const w=B[2]-B[0],h=B[3]-B[1];
+  const o=Object.assign({n:0,gap:5},prefs.multi||{});
+  const seg=(k,label,opts)=>`<div class="rrow"><span>${label}</span><div class="seg" data-k="${k}">${opts.map(([v,t])=>`<button data-v="${v}">${t}</button>`).join('')}</div></div>`;
+  const ov=dialog('Varias placas por hoja',`<section class="rsec">${seg('n','Copias',[[2,'2'],[4,'4'],[6,'6'],[8,'8'],[0,'Todas las que entren']])}${seg('gap','Separación',[[2,'2 mm'],[5,'5 mm'],[10,'10 mm']])}</section><p class="muted" id="mcap"></p>`,
+    [{t:'Cancelar'},{t:'Exportar PDF',f:()=>{prefs.multi=o;LS.set('pcb.prefs',prefs);multiOut(o,'pdf')}},{t:'Imprimir',pri:1,f:()=>{prefs.multi=o;LS.set('pcb.prefs',prefs);multiOut(o,'print')}}]);
+  const paint=()=>{ov.querySelectorAll('.seg').forEach(g=>g.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.v===o[g.dataset.k]))));
+    const L=sheetLayout(w,h,o.gap,o.n||Infinity),cap=ov.querySelector('#mcap');
+    cap.textContent=!L.cap?'La placa no entra en una hoja A4.':`En una A4 ${L.land?'acostada':'parada'} entran hasta ${L.cap} placas de ${boardSize(w,h)}${L.r?' (giradas)':''}. Se van a imprimir ${L.n}.`;
+    ov.querySelectorAll('.acts button').forEach((b,i)=>{if(i)b.disabled=!L.cap})};
+  ov.querySelectorAll('.seg').forEach(g=>g.querySelectorAll('button').forEach(b=>b.onclick=()=>{o[g.dataset.k]=+b.dataset.v;paint()}));paint();
 }
 // Gerber RS-274X (cobre de abajo, contorno) y taladrado Excellon, en un ZIP. El plano se arma igual que en pantalla:
 // zona oscura, se limpia lo ajeno con su separación (polaridad clara) y se vuelve a dibujar el cobre.
@@ -1631,7 +1675,7 @@ const MENUS=[
    {t:'Nuevo diseño',f:newDoc},{t:'Abrir…',f:openDlg},{t:'Guardar',k:'Ctrl+S',f:()=>save(false)},{t:'Guardar como…',f:()=>save(true)},'-',
    {t:'Abrir ejemplo (555 con conexiones)',f:()=>{pushUndo();example();sel.clear();trackSel=null;outlineSel=false;changed();fit()}},
    {t:'Importar archivo…',f:()=>document.getElementById('fileIn').click()},{t:'Exportar diseño…',f:exportDlg},'-',
-   {t:'Imprimir hoja para planchar',k:'Ctrl+P',f:printSheet},{t:'Exportar PDF a escala 1:1',f:exportPdf},{t:'Exportar Gerber (para fabricar)',f:exportGerber}]],
+   {t:'Imprimir hoja para planchar',k:'Ctrl+P',f:printSheet},{t:'Imprimir varias por hoja…',f:multiDlg},{t:'Exportar PDF a escala 1:1',f:exportPdf},{t:'Exportar Gerber (para fabricar)',f:exportGerber}]],
  ['Editar',[
    {t:'Deshacer',k:'Ctrl+Z',f:doUndo,d:()=>!undo.length},{t:'Rehacer',k:'Ctrl+Y',f:doRedo,d:()=>!redo.length},'-',
    {t:'Rotar 90°',k:'R',f:rotateSel,d:()=>!sel.size},{t:'Duplicar',k:'Ctrl+D',f:duplicateSel,d:()=>!sel.size},{t:'Borrar',k:'Supr',f:deleteSel,d:()=>!sel.size&&!outlineSel},'-',
