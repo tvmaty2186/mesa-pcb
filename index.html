@@ -2084,7 +2084,7 @@ function aiPanel(){
 }
 function aiPaint(){
   const p=aiPanel();p.hidden=!AI.open;if(!AI.open)return;
-  const s=AI.saldo;p.querySelector('#aiSal').textContent=s?`${s.gratis} gratis este mes${s.creditos?` · ${s.creditos} créditos`:''}`:'';
+  const s=AI.saldo;p.querySelector('#aiSal').textContent=!s?'':s.ilimitado?'Consultas ilimitadas':`${s.gratis} gratis este mes${s.creditos?` · ${s.creditos} créditos`:''}`;
   const M=p.querySelector('#aiM'),last=AI.msgs.length-1;M.innerHTML='';
   AI.msgs.forEach((m,i)=>{const d=document.createElement('div');d.className='msg '+({user:'u',assistant:'a',error:'e'}[m.rol]);d.textContent=m.texto;
     if(m.adj&&m.adj.length){const a=document.createElement('div');a.className='mfile';a.textContent='📎 '+m.adj.join(', ');d.appendChild(a)}

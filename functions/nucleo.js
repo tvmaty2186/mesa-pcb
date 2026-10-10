@@ -9,6 +9,8 @@ const net = require('net');
 // ---------- ajustes (Matías puede cambiarlos acá) ----------
 const MODELO = 'claude-opus-5-5';
 const GRATIS_POR_MES = 5;          // consultas gratis por mes para cada usuario mientras no se cobra
+// cuentas sin límite de consultas (para pruebas): correo de Google verificado
+const ILIMITADOS = ['tvmaty2186@gmail.com'];
 const MAX_TOKENS = 16000;
 const LIM = {
   texto: 4000,                     // caracteres del pedido
@@ -230,6 +232,7 @@ function leerRespuesta(msg) {
 }
 
 // ---------- créditos ----------
+const ilimitado = tok => !!(tok && tok.email_verified && ILIMITADOS.includes(String(tok.email).toLowerCase()));
 const mesActual = () => new Date().toISOString().slice(0, 7);
 // a partir del documento del usuario: cuántas gratis le quedan este mes y cuántos créditos pagos tiene
 function saldo(d, mes = mesActual()) {
@@ -244,4 +247,4 @@ function descontar(d, c, mes = mesActual()) {
   return { cambios: { gratisMes: mes, gratisUsadas: s.usadas + deGratis, creditos: s.creditos - dePago }, deGratis, dePago };
 }
 
-module.exports = { MODELO, GRATIS_POR_MES, SISTEMA, ESQUEMA, ErrorPedido, validar, costo, contarPaginas, ipPrivada, hostSeguro, linkDirecto, htmlATexto, traerLink, armarPedido, leerRespuesta, saldo, descontar, mesActual };
+module.exports = { MODELO, GRATIS_POR_MES, ilimitado, SISTEMA, ESQUEMA, ErrorPedido, validar, costo, contarPaginas, ipPrivada, hostSeguro, linkDirecto, htmlATexto, traerLink, armarPedido, leerRespuesta, saldo, descontar, mesActual };

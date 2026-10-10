@@ -25,7 +25,8 @@ exports.asistente = onCall({ secrets: [CLAVE], timeoutSeconds: 300, memory: '512
   const c = N.costo(p);
 
   // reservar los créditos antes de llamar a la IA
-  const reserva = await db.runTransaction(async (t) => {
+  const libre = N.ilimitado(req.auth.token); // cuentas de prueba: no descuentan nada
+  const reserva = libre ? { deGratis: 0, dePago: 0 } : await db.runTransaction(async (t) => {
     const s = await t.get(ref), d = s.exists ? s.data() : {};
     const r = N.descontar(d, c);
     if (r) t.set(ref, r.cambios, { merge: true });
@@ -57,12 +58,13 @@ exports.asistente = onCall({ secrets: [CLAVE], timeoutSeconds: 300, memory: '512
     cacheLeida: u.cache_read_input_tokens || 0, cacheEscrita: u.cache_creation_input_tokens || 0,
   });
   if (!r.ok) throw new HttpsError('failed-precondition', r.motivo);
-  return { r: r.r, costo: c, saldo: N.saldo((await ref.get()).data()) };
+  return { r: r.r, costo: libre ? 0 : c, saldo: libre ? { ilimitado: true } : N.saldo((await ref.get()).data()) };
 });
 
 // saldo actual (para mostrarlo al abrir el asistente)
 exports.saldo = onCall(async (req) => {
   if (!req.auth) throw new HttpsError('unauthenticated', 'Entrá con tu cuenta de Google.');
+  if (N.ilimitado(req.auth.token)) return { saldo: { ilimitado: true }, gratisPorMes: N.GRATIS_POR_MES };
   return { saldo: N.saldo((await db.doc(`users/${req.auth.uid}`).get()).data()), gratisPorMes: N.GRATIS_POR_MES };
 });
 
