@@ -304,11 +304,11 @@ function applyTheme(){
 try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{readColors();draw();drawPreview()})}catch(e){}
 
 /* ================= deshacer / rehacer ================= */
-const docData=()=>({comps:doc.comps,outline:doc.outline,tracks:doc.tracks,links:doc.links,jumpers:doc.jumpers||[],tears:!!doc.tears,plane:doc.plane||null,holes:!!doc.holes});
-const docFrom=(o,name)=>({name,comps:o.comps,outline:o.outline||null,tracks:o.tracks||[],links:o.links||[],jumpers:o.jumpers||[],tears:!!o.tears,plane:o.plane||null,holes:!!o.holes});
+const docData=()=>({comps:doc.comps,outline:doc.outline,tracks:doc.tracks,links:doc.links,jumpers:doc.jumpers||[],tears:!!doc.tears,plane:doc.plane||null,holes:doc.holes||[]});
+const docFrom=(o,name)=>({name,comps:o.comps,outline:o.outline||null,tracks:o.tracks||[],links:o.links||[],jumpers:o.jumpers||[],tears:!!o.tears,plane:o.plane||null,holes:normHoles(o.holes)});
 const snapshot=()=>JSON.stringify(docData());
 function pushUndo(){doc.example=false;undo.push(snapshot());if(undo.length>200)undo.shift();redo=[];refreshUI()}
-function restore(s){const o=JSON.parse(s);doc.comps=o.comps;doc.outline=o.outline;doc.tracks=o.tracks||[];doc.links=o.links||[];doc.jumpers=o.jumpers||[];doc.tears=!!o.tears;doc.plane=o.plane||null;doc.holes=!!o.holes;if(trackSel&&!doc.tracks.some(t=>t.id===trackSel))trackSel=null;sel=new Set([...sel].filter(id=>doc.comps.some(c=>c.id===id)));if(!doc.outline)outlineSel=false;changed()}
+function restore(s){const o=JSON.parse(s);doc.comps=o.comps;doc.outline=o.outline;doc.tracks=o.tracks||[];doc.links=o.links||[];doc.jumpers=o.jumpers||[];doc.tears=!!o.tears;doc.plane=o.plane||null;doc.holes=normHoles(o.holes);if(holeSel&&!doc.holes.some(h=>h.id===holeSel))holeSel=null;if(trackSel&&!doc.tracks.some(t=>t.id===trackSel))trackSel=null;sel=new Set([...sel].filter(id=>doc.comps.some(c=>c.id===id)));if(!doc.outline)outlineSel=false;changed()}
 function doUndo(){if(!undo.length)return;redo.push(snapshot());restore(undo.pop());toast('Deshecho')}
 function doRedo(){if(!redo.length)return;undo.push(snapshot());restore(redo.pop());toast('Rehecho')}
 function ensureLinkIds(){(doc.links||[]).forEach(l=>{if(!l.id)l.id=uid()})}
@@ -428,7 +428,7 @@ function drawFootprint(fp,c,opt={}){
   ctx.save();ctx.translate(c.x,c.y);ctx.rotate(c.rot*Math.PI/2);
   const px=1/scale;
   if(!pr){
-    ctx.strokeStyle=opt.ghost?C.sel:C['ws-silk'];ctx.lineWidth=Math.max(0.2,px);ctx.lineCap='round';
+    ctx.strokeStyle=opt.bad?C.err:opt.ghost?C.sel:C['ws-silk'];ctx.lineWidth=Math.max(0.2,px);ctx.lineCap='round';
     if(bot){ctx.globalAlpha=.35;ctx.setLineDash([.6,.5])}
     fp.silk.forEach(s=>{ctx.beginPath();
       if(s.t==='rect'){if(s.rx&&ctx.roundRect)ctx.roundRect(s.x,s.y,s.w,s.h,s.rx);else ctx.rect(s.x,s.y,s.w,s.h);if(s.fill){ctx.fillStyle=ctx.strokeStyle;ctx.fill()}ctx.stroke()}
@@ -538,13 +538,13 @@ function draw(){
     doc.comps.forEach(c=>{
       const b=compBox(c);let [sx0,sy0]=toS(b[0],b[1]),[sx1,sy1]=toS(b[2],b[3]);if(sx0>sx1)[sx0,sx1]=[sx1,sx0];
       screenT();
-      if(sel.has(c.id)){ctx.strokeStyle=C.sel;ctx.lineWidth=1.5;ctx.setLineDash([5,3]);ctx.strokeRect(sx0-4,sy0-4,sx1-sx0+8,sy1-sy0+8);ctx.setLineDash([])}
+      if(sel.has(c.id)){ctx.strokeStyle=drag&&drag.type==='move'&&drag.moved&&compBlocked(c,sel)?C.err:C.sel;ctx.lineWidth=1.5;ctx.setLineDash([5,3]);ctx.strokeRect(sx0-4,sy0-4,sx1-sx0+8,sy1-sy0+8);ctx.setLineDash([])}
       if(prefs.refs&&scale>=2.5){ctx.font=`700 ${Math.max(10,Math.min(14,scale*1.6))}px JetBrains Mono, monospace`;ctx.fillStyle=sel.has(c.id)?C.sel:C['ws-ref'];ctx.textAlign='left';ctx.textBaseline='bottom';ctx.fillText(c.ref+(c.lock?' 🔒':''),sx0,sy0-6)}
     });
   }
   // fantasma al colocar
-  if(placing&&mouse.in){const fp=fpOf(placing.c);if(fp){worldT();drawFootprint(fp,placing.c,{ghost:true})}}
-  if(dragGhost){const fp=fpOf(dragGhost);if(fp){worldT();drawFootprint(fp,dragGhost,{ghost:true})}}
+  if(placing&&mouse.in){const fp=fpOf(placing.c);if(fp){worldT();drawFootprint(fp,placing.c,{ghost:true,bad:compBlocked(placing.c)})}}
+  if(dragGhost){const fp=fpOf(dragGhost);if(fp){worldT();drawFootprint(fp,dragGhost,{ghost:true,bad:compBlocked(dragGhost)})}}
   // rectángulo de selección
   if(drag&&drag.type==='marquee'){screenT();const r=drag.sr;ctx.fillStyle='rgba(79,209,197,.10)';ctx.strokeStyle=C.sel;ctx.lineWidth=1;ctx.fillRect(r[0],r[1],r[2]-r[0],r[3]-r[1]);ctx.strokeRect(r[0]+.5,r[1]+.5,r[2]-r[0],r[3]-r[1])}
   // medición
@@ -649,7 +649,7 @@ cv.addEventListener('pointerdown',e=>{
   const [wx,wy]=toW(sx,sy);
   if(e.button===1||tool==='hand'||spaceDown){drag={type:'pan',sx,sy,ox,oy};cv.style.cursor='grabbing';return}
   if(e.button!==0)return;
-  if(placing){pushUndo();const c={...placing.c,id:uid(),ref:nextRef(prefixOf(placing.comp))};snapComp(c);doc.comps.push(c);sel=new Set([c.id]);outlineSel=false;
+  if(placing){const c={...placing.c,id:uid(),ref:nextRef(prefixOf(placing.comp))};snapComp(c);if(compBlocked(c)){toast(NO_DROP);return}pushUndo();doc.comps.push(c);sel=new Set([c.id]);outlineSel=false;
     toast(`${c.ref} colocado`);if(!e.shiftKey){placing=null;hint(null)}else placing.c=makeComp(placing.comp,wx,wy,placing.c.rot);changed();return}
   if(tool==='outline'){const p=snapPt(wx,wy);drag={type:'outline',a:p,rect:null};return}
   if(tool==='measure'){const p=snapPt(wx,wy);measure={a:p,b:p};drag={type:'measure'};draw();return}
@@ -665,6 +665,8 @@ cv.addEventListener('pointerdown',e=>{
     trackDraw.pts.push(...path45(last,tp.p,prev));
     if(tp.pad&&tp.pad.k!==trackDraw.from)finishTrack();else draw();return}
   // seleccionar
+  {const hh=hitHole(wx,wy);if(hh){sel.clear();outlineSel=false;trackSel=null;linkSel=null;holeSel=hh.id;drag={type:'hole',h:hh.src,w0:[wx,wy],p0:[hh.x,hh.y],moved:false};refreshUI();draw();return}}
+  holeSel=null;
   {const he=hitLinkEnd(sx,sy);if(he){drag={type:'linkEnd',l:he.l,end:he.end};return}}
   if(!hitPad(wx,wy)){const L=hitLink(sx,sy);if(L){sel.clear();outlineSel=false;trackSel=null;linkSel=L.id;refreshUI();draw();return}}
   linkSel=null;
@@ -695,6 +697,8 @@ cv.addEventListener('pointermove',e=>{
       const [px0,py0]=drag.start.get(drag.prim.id);const p=drag.prim;p.x=px0+dx;p.y=py0+dy;const bx=p.x,by=p.y;snapComp(p);const ax=p.x-bx,ay=p.y-by;
       doc.comps.forEach(k=>{if(sel.has(k.id)&&k!==p){const s=drag.start.get(k.id);k.x=s[0]+dx+ax;k.y=s[1]+dy+ay}});
     }
+    else if(drag.type==='hole'){const dx=wx-drag.w0[0],dy=wy-drag.w0[1];if(!drag.moved&&Math.hypot(dx,dy)*scale<3)return;
+      if(!drag.moved){pushUndo();drag.moved=true}const p=prefs.snap?[snapV(drag.p0[0]+dx,0.5),snapV(drag.p0[1]+dy,0.5)]:[drag.p0[0]+dx,drag.p0[1]+dy];drag.h.corner=null;drag.h.x=p[0];drag.h.y=p[1];geoVer++;drcDirty=true}
     else if(drag.type==='moveOutline'){const dx=wx-drag.w0[0],dy=wy-drag.w0[1];if(!drag.moved&&Math.hypot(dx,dy)*scale<3)return;
       if(!drag.moved){pushUndo();drag.moved=true}const p=snapPt(drag.o0.x+dx,drag.o0.y+dy);doc.outline.x=p[0];doc.outline.y=p[1]}
     else if(drag.type==='outline'){const b=snapPt(wx,wy),a=drag.a;drag.rect={x:Math.min(a[0],b[0]),y:Math.min(a[1],b[1]),w:Math.abs(b[0]-a[0]),h:Math.abs(b[1]-a[1])}}
@@ -714,6 +718,8 @@ function endPointer(e){
     else draw();return}
   if(drag.type==='marquee'){const r=drag.sr;if(r[2]-r[0]>4||r[3]-r[1]>4){const [ax,ay]=toW(r[0],r[1]),[bx,by]=toW(r[2],r[3]);const x0=Math.min(ax,bx),x1=Math.max(ax,bx);
     doc.comps.forEach(c=>{const b=compBox(c);if(b[0]>=x0&&b[2]<=x1&&b[1]>=ay&&b[3]<=by)sel.add(c.id)})}}
+  if((drag.type==='move'||drag.type==='hole')&&drag.moved){const bad=drag.type==='move'?anyBlocked():(()=>{const H=holeList().find(h=>h.src===drag.h);return H&&holeBlocked(H.x,H.y,H.keep,H.id)})();
+    if(bad){drag=null;restore(undo.pop());toast(NO_DROP);return}}
   const was=drag;drag=null;
   if(was.type==='pan')cv.style.cursor=tool==='hand'?'grab':'default';
   if(was.moved)changed();else{refreshUI();draw()}
@@ -731,7 +737,7 @@ cv.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect=
   draw()});
 cv.addEventListener('dragleave',()=>{dragGhost=null;mouse.in=false;draw()});
 cv.addEventListener('drop',e=>{e.preventDefault();const t=e.dataTransfer.getData('text/plain');const comp=dragComp||(t!==''?DB[+t]:null);dragGhost=null;dragComp=null;hint(null);if(!comp)return;
-  const [sx,sy]=evPt(e),[wx,wy]=toW(sx,sy);pushUndo();const c=makeComp(comp,wx,wy);doc.comps.push(c);sel=new Set([c.id]);outlineSel=false;toast(`${c.ref} colocado`);changed()});
+  const [sx,sy]=evPt(e),[wx,wy]=toW(sx,sy);const c=makeComp(comp,wx,wy);if(compBlocked(c)){toast(NO_DROP);draw();return}pushUndo();doc.comps.push(c);sel=new Set([c.id]);outlineSel=false;toast(`${c.ref} colocado`);changed()});
 cv.addEventListener('dblclick',e=>{if(tool==='track'){finishTrack();return}const [sx,sy]=evPt(e),[wx,wy]=toW(sx,sy);const c=hitComp(wx,wy);if(c){sel=new Set([c.id]);prefs.props=true;refreshUI();const f=document.getElementById('pRef');if(f)f.focus()}});
 
 /* ================= acciones ================= */
@@ -742,10 +748,12 @@ function rotateSel(){
   if(s.length===1){s[0].rot=(s[0].rot+1)%4;snapComp(s[0])}
   else{const b=s.map(compBox);const cx=(Math.min(...b.map(q=>q[0]))+Math.max(...b.map(q=>q[2])))/2,cy=(Math.min(...b.map(q=>q[1]))+Math.max(...b.map(q=>q[3])))/2;
     s.forEach(c=>{const [x,y]=rot(c.x-cx,c.y-cy,1);c.x=cx+x;c.y=cy+y;c.rot=(c.rot+1)%4;snapComp(c)})}
+  if(anyBlocked()){restore(undo.pop());toast('Así rotado queda encima de otro componente o de un agujero');return}
   changed();
 }
 function deleteSel(){
   if(linkSel){pushUndo();doc.links=doc.links.filter(l=>l.id!==linkSel);linkSel=null;toast('Conexión borrada');changed();return}
+  if(holeSel){pushUndo();doc.holes=doc.holes.filter(h=>h.id!==holeSel);holeSel=null;toast('Agujero borrado');changed();return}
   if(trackSel&&(doc.tracks.find(t=>t.id===trackSel)||{}).lock){toast('Pista con candado: no se borra');return}
   if(trackSel){pushUndo();doc.tracks=doc.tracks.filter(t=>t.id!==trackSel);trackSel=null;toast('Pista borrada');changed();return}
   if(outlineSel&&doc.outline){pushUndo();doc.outline=null;outlineSel=false;toast('Contorno borrado');changed();return}
@@ -753,8 +761,11 @@ function deleteSel(){
   const n=sel.size;if(!n)return;pushUndo();doc.comps=doc.comps.filter(c=>!sel.has(c.id));doc.links=doc.links.filter(l=>!sel.has(l.a.split(':')[0])&&!sel.has(l.b.split(':')[0]));sel.clear();toast(n===1?'Componente borrado':`${n} componentes borrados`);changed();
 }
 function clearLinksOf(cid){pushUndo();const n=doc.links.length;doc.links=doc.links.filter(l=>l.a.split(':')[0]!==cid&&l.b.split(':')[0]!==cid);toast(`${n-doc.links.length} conexiones quitadas`);changed()}
-function duplicateSel(){const s=selComps();if(!s.length)return;pushUndo();const nw=s.map(c=>{const comp=DB.find(d=>d.nombre===c.name);return {...c,id:uid(),ref:comp?nextRef(prefixOf(comp)):c.ref+'b',x:c.x+5.08,y:c.y+5.08}});
-  nw.forEach(c=>{doc.comps.push(c)});sel=new Set(nw.map(c=>c.id));changed()}
+function duplicateSel(){const s=selComps();if(!s.length)return;pushUndo();const nw=s.map(c=>{const comp=DB.find(d=>d.nombre===c.name);const n={...c,id:uid(),ref:comp?nextRef(prefixOf(comp)):c.ref+'b',lock:false};doc.comps.push(n);return n});
+  const base=nw.map(c=>[c.x,c.y]),ids=new Set(nw.map(c=>c.id));let ok=false;
+  for(let k=1;k<=20&&!ok;k++)for(const [dx,dy] of [[k,k],[k,0],[0,k],[-k,k],[k,-k]]){nw.forEach((c,i)=>{c.x=base[i][0]+dx*5.08;c.y=base[i][1]+dy*5.08});if(!nw.some(c=>compBlocked(c,ids))){ok=true;break}}
+  if(!ok){restore(undo.pop());toast('No encontré lugar libre para la copia');return}
+  sel=new Set(nw.map(c=>c.id));changed()}
 function selectAll(){sel=new Set(doc.comps.map(c=>c.id));refreshUI();draw()}
 function fit(){
   const boxes=doc.comps.map(compBox);if(doc.outline){const o=doc.outline;boxes.push([o.x,o.y,o.x+o.w,o.y+o.h])}
@@ -867,7 +878,7 @@ function runDrc(){
     worst.forEach(({m,it})=>{const c=it.cid&&doc.comps.find(x=>x.id===it.cid);const x=(it.b[0]+it.b[2])/2,y=(it.b[1]+it.b[3])/2;
       add('Borde',`${c?c.ref:it.jid?'Puente':'Pista'}: ${m<0?'fuera de la placa':f2(m)+' mm del borde'}`,x,y,[W(it)])})}
   // 3b. agujeros de fijación: nada de cobre alrededor
-  holeList().forEach(h=>{const near=new Set();items.forEach(it=>{const id=it.cid||it.tid||it.jid;if(near.has(id)||shapePtDist(it,h.x,h.y)>=HOLE_KEEP-1e-6)return;near.add(id);
+  holeList().forEach(h=>{const near=new Set();items.forEach(it=>{const id=it.cid||it.tid||it.jid;if(near.has(id)||shapePtDist(it,h.x,h.y)>=h.keep-1e-6)return;near.add(id);
     const c=it.cid&&doc.comps.find(x=>x.id===it.cid);add('Agujero',`${c?c.ref:it.jid?'Puente':'Pista'} muy cerca del agujero de fijación`,h.x,h.y,[W(it)])})});
   // 4. esquinas: quiebres de 45° como máximo, también en uniones entre pistas
   const turnOk=(u,v)=>u[0]*v[0]+u[1]*v[1]>=0.69;
@@ -932,7 +943,7 @@ function autoroute(opt){
   const netOfKey=k=>{const r=ph0.f(k);return grpNet.has(r)?grpNet.get(r):-1};
   const baseSegs=[...base.flatMap(t=>segsOf(t,netOfKey('t:'+t.id))),...baseJ.flatMap(j=>jpOf(j,netOfKey('j:'+j.id)))];
   const power=NETS.map(isPowerNet);
-  const holeObs=holeList().map(h=>box({pts:[[h.x,h.y]],r:HOLE_KEEP-DRC.gap,n:-2}));
+  const holeObs=holeList().map(h=>box({pts:[[h.x,h.y]],r:h.keep-DRC.gap,n:-2}));
   const ampW=NETS.map(()=>0);doc.links.forEach(l=>{const n=netOf.get(l.a);if(n!=null&&l.amps)ampW[n]=Math.max(ampW[n],AMP_W[l.amps]||0)});
   const ci=x=>Math.round((x-gx0)/g),cj=y=>Math.round((y-gy0)/g);
   function routeOne(src,dst,n,w,segs,jumps){
@@ -1004,8 +1015,8 @@ function autoroute(opt){
 }
 function routeDlg(){
   if(!doc.links.length){toast('Primero uní los pads con Conectar (C)');return}
-  const o=Object.assign({sigW:0.8,powW:1.5,powerFirst:true,keep:'all',comfort:true,effort:'normal',jumps:false,maxJ:2,jLen:'both',tears:!!doc.tears,plane:!!doc.plane,place:false,size:'none',std:'5x7',holes:!!doc.holes},prefs.route||{});
-  if(typeof o.keep!=='string')o.keep=o.keep?'all':'locked';o.tears=!!doc.tears;o.plane=!!doc.plane;o.holes=!!doc.holes;
+  const o=Object.assign({sigW:0.8,powW:1.5,powerFirst:true,keep:'all',comfort:true,effort:'normal',jumps:false,maxJ:2,jLen:'both',tears:!!doc.tears,plane:!!doc.plane,place:false,size:'none',std:'5x7',holes:hasHoles()},prefs.route||{});
+  if(typeof o.keep!=='string')o.keep=o.keep?'all':'locked';o.tears=!!doc.tears;o.plane=!!doc.plane;o.holes=hasHoles();
   const widths=[0.5,0.8,1,1.5,2,2.5].map(v=>`<button data-v="${v}">${f2(v)} mm</button>`).join('');
   const rad=(id,label,opts)=>`<div class="field"><label>${label}</label><div class="radio" id="${id}">${opts.map(([v,t])=>`<button data-v="${v}">${t}</button>`).join('')}</div></div>`;
   const yn=[['1','Sí'],['0','No']];
@@ -1019,7 +1030,7 @@ function routeDlg(){
    <div id="rjo">${rad('rm','Máximo de puentes',[['1','1'],['2','2'],['3','3'],['5','5']])}${rad('rl','Largo del puente',[['7.62','7,62 mm'],['10.16','10,16 mm'],['both','Los dos']])}</div>
    ${rad('rt','Lágrimas en los pads',yn)}
    ${rad('rg','Plano de masa al terminar (con alivio térmico)',yn)}
-   ${rad('rh','Agujeros de fijación M3 en las esquinas',yn)}
+   ${rad('rh','Agujeros de fijación',yn)}
    ${rad('ra','Reacomodar componentes antes de rutear',yn)}
    ${rad('rz','Tamaño de la placa',[['none','No tocar el contorno'],['min','Ajustar al mínimo'],['std','Placa estándar']])}
    <div id="rzo">${rad('rb','Placa estándar (cm)',Object.keys(STD_BOARDS).map(k=>[k,k.replace('.',',').replace('x',' × ')]))}</div>
@@ -1032,7 +1043,7 @@ function routeDlg(){
   bind('rm','maxJ','n');bind('rl','jLen','s');bind('rt','tears','b');bind('rg','plane','b');bind('ra','place','b');bind('rh','holes','b');bind('rz','size','s');bind('rb','std','s');bind('re','effort','s');
 }
 function runRoute(o){
-  pushUndo();trackSel=null;let extra='',pl=null;doc.holes=o.holes;
+  pushUndo();trackSel=null;let extra='',pl=null;doc.holes=o.holes?(hasHoles()?doc.holes:cornerHoles()):[];
   if(o.place){pl=placeComps(o);if(!pl.ok)extra+=' · Algunos componentes no entran bien: revisá la placa'}
   else if(o.size==='std')doc.outline=stdRegion(o.std);
   const r=autoroute(o);doc.tracks=r.tracks;doc.jumpers=r.jumpers;doc.tears=o.tears;
@@ -1086,7 +1097,7 @@ function placeComps(o){
     for(let i=0;i<bx.length;i++){const a=bx[i];
       B+=Math.max(0,ix0-a[0])+Math.max(0,iy0-a[1])+Math.max(0,a[2]-ix1)+Math.max(0,a[3]-iy1);
       for(let j=i+1;j<bx.length;j++){const b=bx[j],ox=Math.min(a[2],b[2])-Math.max(a[0],b[0])+GAP,oy=Math.min(a[3],b[3])-Math.max(a[1],b[1])+GAP;if(ox>0&&oy>0)O+=ox*oy+1}}
-    holeList().forEach(h=>bx.forEach(a=>{const ox=Math.min(a[2],h.x+HOLE_KEEP)-Math.max(a[0],h.x-HOLE_KEEP),oy=Math.min(a[3],h.y+HOLE_KEEP)-Math.max(a[1],h.y-HOLE_KEEP);if(ox>0&&oy>0)O+=ox*oy+1}));
+    holeList().forEach(h=>bx.forEach(a=>{const ox=Math.min(a[2],h.x+h.keep)-Math.max(a[0],h.x-h.keep),oy=Math.min(a[3],h.y+h.keep)-Math.max(a[1],h.y-h.keep);if(ox>0&&oy>0)O+=ox*oy+1}));
     decoup.forEach(({c,ic,p})=>{const q=padWorld(ic,p),b=compBox(c);Ru+=2*Math.hypot((b[0]+b[2])/2-q[0],(b[1]+b[3])/2-q[1])});
     edgeComps.forEach(c=>{const b=compBox(c);Ru+=1.2*Math.min(b[0]-ix0,b[1]-iy0,ix1-b[2],iy1-b[3])});
     let K=0;if(o.size==='min'){const u=[Math.min(...bx.map(b=>b[0])),Math.min(...bx.map(b=>b[1])),Math.max(...bx.map(b=>b[2])),Math.max(...bx.map(b=>b[3]))];K=0.03*(u[2]-u[0])*(u[3]-u[1])}
@@ -1111,8 +1122,8 @@ function placeComps(o){
   return {moved:mov.length,ok:best.O===0&&best.B<1e-6,X:best.X};
 }
 function shrinkOutline(){ // contorno mínimo: todo el cobre y los cuerpos, más 2 mm libres de borde
-  const ph=physical(true),bs=[...copperItems(ph,{tears:true}).map(i=>i.b),...doc.comps.map(compBox)];if(!bs.length)return;
-  const e=DRC.edge+(doc.holes?HOLE_IN+HOLE_KEEP-DRC.edge:0),r=v=>Math.round(v*10)/10,x0=Math.floor((Math.min(...bs.map(b=>b[0]))-e)*10)/10,y0=Math.floor((Math.min(...bs.map(b=>b[1]))-e)*10)/10;
+  const ph=physical(true),bs=[...copperItems(ph,{tears:true}).map(i=>i.b),...doc.comps.map(compBox),...holeList().filter(h=>h.corner==null).map(h=>[h.x-h.keep,h.y-h.keep,h.x+h.keep,h.y+h.keep])];if(!bs.length)return;
+  const ak=holeList().filter(h=>h.corner!=null),e=DRC.edge+(ak.length?HOLE_IN+Math.max(...ak.map(h=>h.keep))-DRC.edge:0),r=v=>Math.round(v*10)/10,x0=Math.floor((Math.min(...bs.map(b=>b[0]))-e)*10)/10,y0=Math.floor((Math.min(...bs.map(b=>b[1]))-e)*10)/10;
   doc.outline={x:x0,y:y0,w:r(Math.ceil((Math.max(...bs.map(b=>b[2]))+e-x0)*10)/10),h:r(Math.ceil((Math.max(...bs.map(b=>b[3]))+e-y0)*10)/10)};
 }
 const cm=v=>f2(v/10);
@@ -1171,7 +1182,7 @@ function planeGeo(){
       for(let i=Math.max(0,Math.floor((it.b[0]-R-SL-X0)/s));i<=Math.min(NX-1,Math.floor((it.b[2]+R+SL-X0)/s));i++){const x=cx(i),y=cy(j),d=shapePtDist(it,x,y),c=j*NX+i;
         if(th){const dx=Math.abs(x-pc[0]),dy=Math.abs(y-pc[1]),sp=(dy<=SW/2&&dx<=SL)||(dx<=SW/2&&dy<=SL);if(sp)spoke[c]=1;if(d<R)relief[c]=1;if(d<=0&&sp)own[c]=1}
         else if(mine){if(d<=0)own[c]=1}else if(d<R)free[c]=0}});
-  holeList().forEach(h=>{for(let j=0;j<NY;j++)for(let i=0;i<NX;i++)if(Math.hypot(cx(i)-h.x,cy(j)-h.y)<HOLE_KEEP+s*0.75)free[j*NX+i]=0});
+  holeList().forEach(h=>{for(let j=0;j<NY;j++)for(let i=0;i<NX;i++)if(Math.hypot(cx(i)-h.x,cy(j)-h.y)<h.keep+s*0.75)free[j*NX+i]=0});
   for(let c=0;c<NX*NY;c++)if(relief[c]&&!spoke[c])free[c]=0;
   // abrir (erosión + dilatación) para sacar tiras finas que no se pueden planchar
   const er=new Uint8Array(NX*NY),fin=new Uint8Array(NX*NY);
@@ -1232,6 +1243,11 @@ const AMP_W={1:1,2:1.5,3:2}; // IPC-2221 + margen casero (CLAUDE.md)
 cv.addEventListener('contextmenu',e=>{
   e.preventDefault();if(trackDraw||placing)return;
   const [sx,sy]=evPt(e),[wx,wy]=toW(sx,sy),X=e.clientX,Y=e.clientY,pad=hitPad(wx,wy);
+  const hh=hitHole(wx,wy);
+  if(hh){sel.clear();outlineSel=false;trackSel=null;linkSel=null;holeSel=hh.id;refreshUI();draw();const h=hh.src;
+    showCtx(X,Y,`Agujero de fijación · ⌀ ${f2(h.d)} mm`,[...[2.5,3,3.2,3.5,4,4.5].map(d=>({t:`Diámetro ${f2(d)} mm${d===3?' (por defecto)':d===3.2?' (M3 pasante)':''}`,c:()=>h.d===d,f:()=>setHoleD(h,d)})),
+      {t:'Otro diámetro…',f:()=>holeDDlg(h)},'-',{t:'Volver a la esquina más cercana',d:()=>h.corner!=null||!doc.outline,f:()=>{const o=doc.outline;pushUndo();h.corner=(hh.x>o.x+o.w/2?1:0)+(hh.y>o.y+o.h/2?2:0);changed()}},
+      {t:'Borrar este agujero',k:'Supr',i:'trash',danger:1,f:deleteSel}]);return}
   const er=drcAt(sx,sy);
   if(er){drcFocus=drcList.indexOf(er);draw();const F=drcFixes(er);
     showCtx(X,Y,`${er.t}: ${er.m}`,[{note:DRC_WHY[er.t]||''},...(F.length?['-',...F]:[{note:'Esto se corrige a mano.'}])]);ctxEl.querySelector('.ctxh').classList.add('err');return}
@@ -1259,11 +1275,11 @@ cv.addEventListener('contextmenu',e=>{
   if(hitOutline(wx,wy)){sel.clear();trackSel=null;linkSel=null;outlineSel=true;refreshUI();draw();
     showCtx(X,Y,`Contorno · ${cm(doc.outline.w)} × ${cm(doc.outline.h)} cm`,[
       {t:'Ajustar al mínimo',f:()=>{pushUndo();shrinkOutline();toast(`Placa de ${cm(doc.outline.w)} × ${cm(doc.outline.h)} cm`);changed()}},
-      {t:'Agujeros de fijación (M3)',c:()=>!!doc.holes,f:holesToggle},{t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},'-',
+      {t:'Agujeros de fijación',c:hasHoles,f:holesToggle},{t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},'-',
       {t:'Borrar contorno',k:'Supr',i:'trash',danger:1,f:deleteSel}]);return}
   showCtx(X,Y,null,[{t:'Autorruteador…',k:'A',i:'route',f:routeDlg},{t:'Revisar reglas de diseño',k:'D',i:'drc',f:drcDlg},'-',
     {t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},{t:'Alivio térmico en el plano',c:()=>!!doc.plane&&doc.plane.thermal!==false,d:()=>!doc.plane,f:thermalToggle},
-    {t:'Lágrimas en los pads',c:()=>!!doc.tears,f:tearsToggle},{t:'Agujeros de fijación (M3)',c:()=>!!doc.holes,f:holesToggle},'-',
+    {t:'Lágrimas en los pads',c:()=>!!doc.tears,f:tearsToggle},{t:'Agujeros de fijación',c:hasHoles,f:holesToggle},{t:'Agregar un agujero acá',f:()=>addHoleAt(snapV(wx,0.5),snapV(wy,0.5))},'-',
     {t:'Ajustar a la pantalla',k:'F',i:'fit',f:fit}]);
 });
 /* ================= errores: explicación y corrección con clic derecho ================= */
@@ -1316,14 +1332,34 @@ function drcFixes(e){
 
 /* ================= agujeros de fijación (opcionales) ================= */
 // M3 en las cuatro esquinas, a 4 mm de cada borde. Siguen al contorno y alrededor no va cobre.
-const HOLE_D=3.2,HOLE_KEEP=3.5,HOLE_IN=4;
-function holeList(){if(!doc.holes||!doc.outline)return [];const o=doc.outline;if(o.w<2*HOLE_IN+2*HOLE_KEEP||o.h<2*HOLE_IN+2*HOLE_KEEP)return [];
-  return [[o.x+HOLE_IN,o.y+HOLE_IN],[o.x+o.w-HOLE_IN,o.y+HOLE_IN],[o.x+HOLE_IN,o.y+o.h-HOLE_IN],[o.x+o.w-HOLE_IN,o.y+o.h-HOLE_IN]].map(([x,y])=>({x,y}))}
-function holesToggle(){if(!doc.holes&&!doc.outline){toast('Primero dibujá el contorno de la placa');return}pushUndo();doc.holes=!doc.holes;toast(doc.holes?'Agujeros de fijación: sí':'Agujeros de fijación: no');changed()}
+const HOLE_D=3,HOLE_IN=4,HOLE_RING=2; // diámetro por defecto 3 mm; sin cobre hasta 2 mm más allá del agujero (tornillo y arandela)
+let holeSel=null;
+function hasHoles(){return (doc.holes||[]).length>0}
+function cornerHoles(){return [0,1,2,3].map(c=>({id:uid(),corner:c,d:HOLE_D}))}
+function normHoles(h){return h===true?cornerHoles():Array.isArray(h)?h:[]} // los diseños viejos guardaban true
+// los de esquina siguen al contorno; al arrastrar uno queda donde lo dejaste
+function holeList(){const o=doc.outline;return (doc.holes||[]).map(h=>{let x=h.x,y=h.y;
+    if(h.corner!=null){if(!o)return null;x=h.corner%2?o.x+o.w-HOLE_IN:o.x+HOLE_IN;y=h.corner>1?o.y+o.h-HOLE_IN:o.y+HOLE_IN}
+    return {id:h.id,corner:h.corner,x,y,d:h.d,keep:h.d/2+HOLE_RING,src:h}}).filter(Boolean)}
+function hitHole(wx,wy){return holeList().find(h=>Math.hypot(h.x-wx,h.y-wy)<=h.d/2+Math.max(.6,5/scale))||null}
+function holesToggle(){if(!hasHoles()&&!doc.outline){toast('Primero dibujá el contorno de la placa');return}pushUndo();doc.holes=hasHoles()?[]:cornerHoles();holeSel=null;toast(hasHoles()?'Agujeros de fijación: sí':'Agujeros de fijación: no');changed()}
+function setHoleD(h,d){if(!(d>=1&&d<=10)){toast('Diámetro entre 1 y 10 mm');return}pushUndo();h.d=Math.round(d*10)/10;toast(`Agujero de ${f2(h.d)} mm`);changed()}
+function holeDDlg(h){const ov=dialog('Diámetro del agujero',`<div class="field"><label for="hd">Diámetro en mm</label><input id="hd" inputmode="decimal" value="${f2(h.d)}"></div>`,
+  [{t:'Cancelar'},{t:'Aplicar',pri:1,f:()=>{const v=parseFloat(document.getElementById('hd').value.replace(',','.'));if(!(v>=1&&v<=10)){toast('Diámetro entre 1 y 10 mm');return false}setHoleD(h,v)}}]);setTimeout(()=>{const i=document.getElementById('hd');i&&i.select()},30)}
 function thermalToggle(){if(!doc.plane)return;pushUndo();doc.plane={...doc.plane,thermal:doc.plane.thermal===false};toast(doc.plane.thermal?'Alivio térmico: sí':'Alivio térmico: no');changed()}
+// nada se suelta encima de otro componente ni sobre un agujero (ni su zona sin cobre)
+const NO_DROP='No se puede soltar encima de otro componente o de un agujero';
+function boxHit(a,b){return Math.min(a[2],b[2])-Math.max(a[0],b[0])>0.01&&Math.min(a[3],b[3])-Math.max(a[1],b[1])>0.01}
+function boxCircle(b,x,y,r){const dx=Math.max(b[0]-x,0,x-b[2]),dy=Math.max(b[1]-y,0,y-b[3]);return dx*dx+dy*dy<r*r-1e-6}
+function compBlocked(c,ignore){const b=compBox(c);return doc.comps.some(o=>o.id!==c.id&&!(ignore&&ignore.has(o.id))&&boxHit(b,compBox(o)))||holeList().some(h=>boxCircle(b,h.x,h.y,h.keep))}
+function holeBlocked(x,y,keep,skipId){return doc.comps.some(c=>boxCircle(compBox(c),x,y,keep))||holeList().some(h=>h.id!==skipId&&Math.hypot(h.x-x,h.y-y)<h.keep+keep-1e-6)}
+function anyBlocked(){const s=selComps();return s.some(c=>compBlocked(c,sel))}
+function addHoleAt(x,y){if(holeBlocked(x,y,HOLE_D/2+HOLE_RING)){toast(NO_DROP);return}pushUndo();doc.holes=[...(doc.holes||[]),{id:uid(),corner:null,x,y,d:HOLE_D}];toast('Agujero agregado');changed()}
 function drawHoles(){const H=holeList();if(!H.length)return;const pr=view==='plancha';worldT();
-  H.forEach(h=>{if(!pr){ctx.strokeStyle=C['ws-edge'];ctx.lineWidth=Math.max(.15,1/scale);ctx.setLineDash([.5,.4]);ctx.beginPath();ctx.arc(h.x,h.y,HOLE_KEEP,0,Math.PI*2);ctx.stroke();ctx.setLineDash([])}
-    ctx.fillStyle=pr?C.paper:C['ws-bg'];ctx.strokeStyle=pr?C.toner:C['ws-edge'];ctx.lineWidth=Math.max(.2,1.2/scale);ctx.beginPath();ctx.arc(h.x,h.y,HOLE_D/2,0,Math.PI*2);ctx.fill();ctx.stroke()})}
+  H.forEach(h=>{const on=h.id===holeSel&&!pr;
+    if(!pr){ctx.strokeStyle=on&&drag&&drag.type==='hole'&&holeBlocked(h.x,h.y,h.keep,h.id)?C.err:on?C.sel:C['ws-edge'];ctx.lineWidth=Math.max(.15,(on?2:1)/scale);ctx.setLineDash([.5,.4]);ctx.beginPath();ctx.arc(h.x,h.y,h.keep,0,Math.PI*2);ctx.stroke();ctx.setLineDash([])}
+    ctx.fillStyle=pr?C.paper:C['ws-bg'];ctx.strokeStyle=pr?C.toner:on?C.sel:C['ws-edge'];ctx.lineWidth=Math.max(.2,1.2/scale);ctx.beginPath();ctx.arc(h.x,h.y,h.d/2,0,Math.PI*2);ctx.fill();ctx.stroke()});
+  if(holeSel&&!pr){const h=H.find(x=>x.id===holeSel);if(h){const [sx,sy]=toS(h.x,h.y);label(`⌀ ${f2(h.d)} mm`,sx,sy-h.keep*scale-14)}}}
 
 /* ================= menús ================= */
 const MENUS=[
@@ -1345,7 +1381,7 @@ const MENUS=[
  ['Herramientas',[
    ...TOOLS.map(t=>t.soon?{t:t.name+' (próximamente)',f:soon(t.name),soon:1}:{t:t.name,k:t.key,c:()=>tool===t.id,f:()=>setTool(t.id)}),'-',
    {t:'Enganche a la grilla',c:()=>prefs.snap,f:()=>toggle('snap','Enganche')},'-',
-   {t:'Autorruteador…',k:'A',f:routeDlg},{t:'Lágrimas en los pads',c:()=>!!doc.tears,f:tearsToggle},{t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},{t:'Alivio térmico en el plano',c:()=>!!doc.plane&&doc.plane.thermal!==false,d:()=>!doc.plane,f:thermalToggle},{t:'Agujeros de fijación (M3)',c:()=>!!doc.holes,f:holesToggle},{t:'Revisar reglas de diseño',k:'D',f:drcDlg},{t:'Asistente con IA',soon:1,f:soon('Asistente con IA')}]],
+   {t:'Autorruteador…',k:'A',f:routeDlg},{t:'Lágrimas en los pads',c:()=>!!doc.tears,f:tearsToggle},{t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},{t:'Alivio térmico en el plano',c:()=>!!doc.plane&&doc.plane.thermal!==false,d:()=>!doc.plane,f:thermalToggle},{t:'Agujeros de fijación',c:hasHoles,f:holesToggle},{t:'Revisar reglas de diseño',k:'D',f:drcDlg},{t:'Asistente con IA',soon:1,f:soon('Asistente con IA')}]],
  ['Preferencias',[{t:'Preferencias…',f:prefsDlg},'-',{t:'Grilla fina 2,54 mm',c:()=>prefs.grid===2.54,f:()=>{prefs.grid=2.54;LS.set('pcb.prefs',prefs);draw();refreshUI()}},{t:'Grilla fina 1,27 mm',c:()=>prefs.grid===1.27,f:()=>{prefs.grid=1.27;LS.set('pcb.prefs',prefs);draw();refreshUI()}}]],
  ['Ayuda',[{t:'Atajos de teclado',f:keysDlg},{t:'Acerca de Mesa PCB',f:aboutDlg}]]
 ];
@@ -1382,7 +1418,7 @@ const TB=[
  {copper:1},{wsel:1},'|',
  {k:'major',l:'1 cm',f:()=>toggle('major','Líneas de 1 cm'),p:()=>prefs.major,tip:'Líneas guía de 1 cm'},{k:'fine',l:'Grilla',f:()=>toggle('fine','Grilla fina'),p:()=>prefs.fine,tip:'Grilla fina de 2,54 mm'},
  {k:'ruler',l:'Reglas',f:()=>toggle('rulers','Reglas'),p:()=>prefs.rulers,tip:'Reglas en los bordes'},{k:'snap',l:'Enganche',f:()=>toggle('snap','Enganche'),p:()=>prefs.snap,tip:'Enganchar a la grilla'},'|',
- {k:'rotate',l:'Rotar',f:rotateSel,d:()=>!sel.size&&!placing,tip:'Rotar 90° (R)'},{k:'trash',l:'Borrar',f:deleteSel,d:()=>!sel.size&&!outlineSel&&!trackSel&&!linkSel,tip:'Borrar (Supr)'},'|',
+ {k:'rotate',l:'Rotar',f:rotateSel,d:()=>!sel.size&&!placing,tip:'Rotar 90° (R)'},{k:'trash',l:'Borrar',f:deleteSel,d:()=>!sel.size&&!outlineSel&&!trackSel&&!linkSel&&!holeSel,tip:'Borrar (Supr)'},'|',
  {k:'route',l:'Rutear',f:routeDlg,tip:'Autorruteador (A)'},{k:'drc',l:'Reglas',f:drcDlg,tip:'Revisar reglas de diseño (D)'},'|',
  {k:'zout',l:'',f:()=>{zoomAt(W/2,H/2,.8);draw()},tip:'Alejar'},{zoom:1},{k:'zin',l:'',f:()=>{zoomAt(W/2,H/2,1.25);draw()},tip:'Acercar'},{k:'fit',l:'Ajustar',f:fit,tip:'Ajustar a la pantalla (F)'},'|',
  {k:'props',l:'Propiedades',f:()=>toggle('props'),p:()=>prefs.props,tip:'Barra de propiedades al seleccionar'}
@@ -1468,7 +1504,7 @@ function buildProps(){
     {const nl=doc.links.filter(l=>l.a.startsWith(c.id+':')||l.b.startsWith(c.id+':')).length;document.getElementById('pLinks').textContent=nl?`${nl} conex.`:'';const u=document.getElementById('pUn');u.disabled=!nl;u.onclick=()=>clearLinksOf(c.id)}
     const nm=R.querySelector('.pname');nm.textContent=c.name;if(comp)nm.title=comp.desc;R.querySelector('.pb-id small').textContent=fp?fp.pkg:c.enc;
     document.getElementById('pRef').value=c.ref;document.getElementById('pVal').value=c.val;document.getElementById('pX').value=c.x.toFixed(2);document.getElementById('pY').value=c.y.toFixed(2);document.getElementById('pRot').value=c.rot;
-    const set=(id,fn)=>document.getElementById(id).onchange=e=>{pushUndo();fn(e.target.value);changed()};
+    const set=(id,fn)=>document.getElementById(id).onchange=e=>{pushUndo();fn(e.target.value);if(compBlocked(c)){restore(undo.pop());toast(NO_DROP);return}changed()};
     set('pRef',v=>c.ref=v.trim()||c.ref);set('pVal',v=>c.val=v);set('pX',v=>{c.x=+v||c.x});set('pY',v=>{c.y=+v||c.y});set('pRot',v=>{c.rot=+v;snapComp(c)});
     document.getElementById('pR').onclick=rotateSel;
     document.getElementById('pLock').onclick=()=>{pushUndo();c.lock=!c.lock;toast(c.lock?`${c.ref} fijo`:'Candado quitado');changed()};
@@ -1501,7 +1537,7 @@ document.addEventListener('keydown',e=>{
   else if(mod&&k==='a'){e.preventDefault();selectAll()}
   else if(mod&&k==='s'){e.preventDefault();save(false)}
   else if(mod)return;
-  else if(k==='escape'){closeMenu();if(trackDraw){finishTrack();return}if(linkFrom){linkFrom=null;hint(HINTS.link);draw();return}if(placing){placing=null;hint(null)}else if(tool!=='select')setTool('select');else{sel.clear();outlineSel=false;trackSel=null;linkSel=null}measure=null;refreshUI();draw()}
+  else if(k==='escape'){closeMenu();if(trackDraw){finishTrack();return}if(linkFrom){linkFrom=null;hint(HINTS.link);draw();return}if(placing){placing=null;hint(null)}else if(tool!=='select')setTool('select');else{sel.clear();outlineSel=false;holeSel=null;trackSel=null;linkSel=null}measure=null;refreshUI();draw()}
   else if(k==='r'){rotateSel()}
   else if(k==='backspace'&&trackDraw){e.preventDefault();if(trackDraw.pts.length>1)trackDraw.pts.pop();else trackDraw=null;draw()}
   else if(k==='enter'&&trackDraw){finishTrack()}
@@ -1509,7 +1545,7 @@ document.addEventListener('keydown',e=>{
   else if(k==='v')setTool('select');else if(k==='h')setTool('hand');else if(k==='b')setTool('outline');else if(k==='m')setTool('measure');else if(k==='c')setTool('link');else if(k==='t')setTool('track');else if(k==='d')drcDlg();else if(k==='a')routeDlg();
   else if(k==='f')fit();else if(k==='+'||k==='=')(zoomAt(W/2,H/2,1.25),draw());else if(k==='-')(zoomAt(W/2,H/2,.8),draw());
   else if(k===' '&&!spaceDown){spaceDown=true;cv.style.cursor='grab';e.preventDefault()}
-  else if(e.key.startsWith('Arrow')&&sel.size){e.preventDefault();if(selComps().some(c=>c.lock)){toast('Tiene candado: no se mueve');return}pushUndo();const g=prefs.snap?prefs.grid:0.1;const d={arrowleft:[-g,0],arrowright:[g,0],arrowup:[0,-g],arrowdown:[0,g]}[k];selComps().forEach(c=>{c.x+=d[0];c.y+=d[1]});changed()}
+  else if(e.key.startsWith('Arrow')&&sel.size){e.preventDefault();if(selComps().some(c=>c.lock)){toast('Tiene candado: no se mueve');return}pushUndo();const g=prefs.snap?prefs.grid:0.1;const d={arrowleft:[-g,0],arrowright:[g,0],arrowup:[0,-g],arrowdown:[0,g]}[k];selComps().forEach(c=>{c.x+=d[0];c.y+=d[1]});if(anyBlocked()){restore(undo.pop());toast(NO_DROP);return}changed()}
 });
 document.addEventListener('keyup',e=>{if(e.key===' '){spaceDown=false;cv.style.cursor=tool==='hand'?'grab':tool==='select'?'default':'crosshair'}});
 
@@ -1520,7 +1556,7 @@ function example(){
   doc={name:null,example:true,comps:[],outline:null};
   items.forEach(([a,x,y,r])=>{const comp=pick(a);if(comp)doc.comps.push(makeComp(comp,x,y,r))});
   const e=doc.comps.find(c=>c.name.startsWith('Electrolítico'));if(e)e.val='10 µF';
-  doc.tracks=[];doc.links=[];doc.jumpers=[];doc.tears=false;doc.plane=null;doc.holes=false;const R={};doc.comps.forEach(c=>R[c.ref]=c.id);const K=s=>{const [r,n]=s.split('.');return pkey(R[r],n)};
+  doc.tracks=[];doc.links=[];doc.jumpers=[];doc.tears=false;doc.plane=null;doc.holes=[];const R={};doc.comps.forEach(c=>R[c.ref]=c.id);const K=s=>{const [r,n]=s.split('.');return pkey(R[r],n)};
   [['U1.8','U1.4'],['U1.8','R1.1'],['R1.2','U1.7'],['U1.7','R2.1'],['R2.2','U1.6'],['U1.6','U1.2'],['U1.2','C1.1'],['C1.2','U1.1'],['U1.3','R3.1'],['R3.2','LED1.2'],['LED1.1','U1.1'],['J1.1','U1.8'],['J1.2','U1.1']]
     .forEach(([a,b])=>{if(R[a.split('.')[0]]&&R[b.split('.')[0]])doc.links.push({a:K(a),b:K(b)})});
 }
@@ -1548,7 +1584,7 @@ buildMenus();buildToolbar();readColors();applyTheme();
   LIB=j;DB=j.componentes;document.getElementById('libn').textContent=`· ${DB.length}`;buildLib();
   const last=LS.get('pcb.actual',null);
   if(last&&Array.isArray(last.comps)&&(last.comps.length||last.outline))doc=last;else example();
-  doc.tracks=doc.tracks||[];doc.links=doc.links||[];doc.jumpers=doc.jumpers||[];ensureLinkIds();
+  doc.tracks=doc.tracks||[];doc.links=doc.links||[];doc.jumpers=doc.jumpers||[];doc.holes=normHoles(doc.holes);ensureLinkIds();
   const first=DB.find(c=>c.alias.includes('ne555'))||DB[0];openCat=first.cat;buildLib();setPreview(first);
   refreshUI();requestAnimationFrame(()=>{resize();fit()});
 }).catch(()=>{document.getElementById('libs').innerHTML='<p class="muted">No se pudo cargar la biblioteca. Recargá la página.</p>'});
