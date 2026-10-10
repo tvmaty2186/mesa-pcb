@@ -13,7 +13,8 @@ Este archivo es para que cualquier sesión de Claude retome el proyecto sin empe
 ## Próximos pasos (en este orden)
 
 1. **Pads más grandes donde sobre lugar** (más fáciles de soldar y agujerear a mano), **zonas prohibidas** (áreas donde no pasa ninguna pista, por ejemplo debajo de un disipador) y **varias alternativas de ruteo** para elegir.
-2. **Asistente con IA** (dictar "agregá un 555 y conectá la pata 3 al LED").
+2. **Asistente con IA** (dictar "agregá un 555 y conectá la pata 3 al LED"), **pago por uso** (pedido de Matías). Falta decidir medio de pago y modelo de cobro; cobrar y llamar a la IA necesita un servidor (Firebase Functions, plan Blaze), porque la clave de la IA no puede ir en la página.
+3. Conectar los avisos reales: banner (AdSense) y pantalla completa (Ad Manager, anuncios con recompensa).
 
 Pendiente chico: "entrada de audio lejos de la salida" al reacomodar (falta marcar en la biblioteca qué pata es entrada/salida de audio).
 
@@ -72,6 +73,8 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 - **Sin textos de ayuda automáticos** (nada de carteles que expliquen cómo usar una herramienta). Solo avisos cortos de confirmación.
 - **Sin barra de estado** abajo.
 - **Franja publicitaria reservada abajo de todo**: 468 × 60 en computadora, 320 × 50 en celular (comentario en `index.html` donde va el código del aviso).
+- **Publicidad de pantalla completa antes de guardar, imprimir (una o varias), exportar (PDF, Gerber, diseño), importar y autorrutear** (también el rerruteo de la revisión de reglas), pedido de Matías (`withAd`, `AD_SECONDS`=5). Va después del pedido de cuenta: primero "Entrá con Google", después el aviso, después la acción. Cuenta regresiva "Podés seguir en N" → "Continuar"; la ✕ cancela la acción. El aviso real va en `#adFull`: **Google Ad Manager con anuncios con recompensa** (AdSense no permite obligar a ver un aviso para seguir). Hoy es un espacio reservado.
+- **Botón "Asistente con IA"** abajo del panel izquierdo, en lugar de "Colocar en el tablero" (para colocar: arrastrar, o doble clic en la lista). Hoy abre un aviso de "muy pronto, pago por uso" (`aiDlg`).
 - **Botón dividido "Pista ▾"**: se elige Pista o Conectar con la flechita.
 - Tres vistas: componentes (arriba), cobre visto de abajo (espejado), hoja para planchar (negro, **sin espejar** porque el cobre va abajo).
 - Cuadros de opciones con el estilo del autorruteador: bloques con título, interruptores para sí/no, botones unidos para pocas opciones, listas para muchas.
