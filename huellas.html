@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important}img{max-width:100%}</style>
+<script src="biblioteca/componentes.js"></script>
+<title>Buscador de Huellas PCB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Chakra+Petch:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: banco de trabajo — pedido arriba, lista de materiales a la izquierda, la placa a escala como protagonista a la derecha */
+:root{
+  --bg:#eef2ee; --surface:#fbfcfa; --ink:#142019; --muted:#56665c; --line:#d3dcd5;
+  --accent:#a95b17; --accent-soft:#f3e4d4; --accent-ink:#ffffff; --warn:#9a3b1c; --warn-soft:#f8e3da;
+  /* colores de la placa: iguales en ambos temas, representan el material real */
+  --mask:#1d4a33; --mask-grid:rgba(255,255,255,.08); --silk:#eef0e4; --copper:#d4914a; --hole:#0d1a12;
+  --padtext:#3a2410; --dim:#9fe0d0; --paper:#ffffff; --toner:#111111; --paper-grid:#e4e4e4;
+  --f-display:"Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Atkinson Hyperlegible", "Verdana", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "Consolas", monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1612; --surface:#17211b; --ink:#e6ede7; --muted:#9aaba0; --line:#2a3830;
+  --accent:#e09a52; --accent-soft:#3a2a1a; --accent-ink:#1a1006; --warn:#f0a080; --warn-soft:#3a201a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1612; --surface:#17211b; --ink:#e6ede7; --muted:#9aaba0; --line:#2a3830;
+  --accent:#e09a52; --accent-soft:#3a2a1a; --accent-ink:#1a1006; --warn:#f0a080; --warn-soft:#3a201a; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.6;margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:18px;padding-block:28px 48px;display:flex;flex-direction:column;gap:22px}
+h1,h2{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(1.7rem,4vw,2.4rem);letter-spacing:.01em}
+h2{font-size:1.35rem}
+.lead{color:var(--muted);max-width:62ch;margin:6px 0 0}
+.eyebrow{font-family:var(--f-mono);font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+
+.ask{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.ask label{font-weight:700}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+#q{flex:1 1 320px;min-width:0;font:inherit;font-size:1.05rem;padding:12px 14px;border-radius:10px;border:2px solid var(--line);background:var(--bg);color:var(--ink)}
+#q:focus{outline:none;border-color:var(--accent)}
+button{font:inherit;cursor:pointer}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;padding:12px 22px;font-weight:700}
+.btn:focus-visible,.chip:focus-visible,.item:focus-visible,.tab:focus-visible,.ghost:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chips span{color:var(--muted);font-size:.9rem}
+.chip{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:5px 13px;font-size:.92rem}
+.chip:hover{border-color:var(--accent)}
+
+.main{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:22px;align-items:start}
+@media (max-width:820px){.main{grid-template-columns:minmax(0,1fr)}}
+
+.bom{display:flex;flex-direction:column;gap:10px;min-width:0}
+.bom h2{font-size:1.1rem}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;text-align:left;background:var(--surface);border:2px solid var(--line);border-radius:12px;padding:10px 12px;color:var(--ink);min-width:0}
+.item[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.item .qty{font-family:var(--f-mono);font-weight:600;font-size:.85rem;background:var(--bg);border-radius:6px;padding:2px 7px}
+.item .nm{font-weight:700;line-height:1.25;min-width:0}
+.item .pk{display:block;font-family:var(--f-mono);font-size:.78rem;color:var(--muted);font-weight:400}
+.item.miss{border-style:dashed;background:var(--warn-soft);cursor:default}
+.item.miss .pk{color:var(--warn)}
+.ok{width:10px;height:10px;border-radius:50%;background:var(--copper)}
+.ok.no{background:var(--warn)}
+
+.manual{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.manual h3{margin:0;font-size:1rem}
+.manual p{margin:0;color:var(--muted);font-size:.9rem}
+.manual select,.manual input{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);min-width:0}
+.manual .row > *{flex:1 1 110px}
+.ghost{background:transparent;border:2px solid var(--accent);color:var(--accent);border-radius:10px;padding:8px 14px;font-weight:700}
+
+.viewer{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.vhead{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start}
+.vhead .desc{color:var(--muted);margin:4px 0 0;max-width:60ch}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{border:2px solid var(--line);background:transparent;color:var(--ink);border-radius:9px;padding:7px 12px;font-size:.92rem;font-weight:700}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.stage{border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+.stage svg{display:block;width:100%;height:auto;max-height:460px}
+.note{font-size:.92rem;color:var(--muted);margin:0}
+.note b{color:var(--ink)}
+.tip{background:var(--accent-soft);border-radius:10px;padding:10px 14px;font-size:.95rem;margin:0}
+
+.specs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.spec{background:var(--surface);padding:10px 12px}
+.spec dt{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.spec dd{margin:0;font-family:var(--f-mono);font-weight:600;font-variant-numeric:tabular-nums}
+.pins{overflow-x:auto}
+.pins table{border-collapse:collapse;font-size:.92rem;min-width:100%}
+.pins th,.pins td{text-align:left;padding:5px 10px;border-bottom:1px solid var(--line)}
+.pins th{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.pins td:first-child{font-family:var(--f-mono);font-weight:600;width:60px}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.lib{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.lib .row{align-items:center;justify-content:space-between}
+#libq{font:inherit;padding:9px 12px;border-radius:9px;border:2px solid var(--line);background:var(--bg);color:var(--ink);flex:0 1 320px;min-width:0}
+.cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.cat h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin:0 0 6px;font-family:var(--f-mono)}
+.cat ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.cat button{width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid var(--line);color:var(--ink);padding:6px 2px;display:flex;justify-content:space-between;gap:8px}
+.cat button:hover{color:var(--accent)}
+.cat button span{font-family:var(--f-mono);font-size:.78rem;color:var(--muted);white-space:nowrap}
+.cat button:focus-visible{outline:3px solid var(--accent)}
+.foot{color:var(--muted);font-size:.88rem;border-top:1px solid var(--line);padding-top:14px}
+@media (prefers-reduced-motion:no-preference){.item,.tab,.chip{transition:border-color .15s,background .15s}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Prototipo 1 · Placas de una cara para planchado</div>
+    <h1>Buscador de Huellas PCB</h1>
+    <p class="lead">Escribí los componentes como los dirías en voz alta. El programa reconoce cada uno, elige su encapsulado y dibuja la huella a escala, sin descargar ninguna librería.</p>
+  </header>
+
+  <section class="ask" aria-label="Pedido de componentes">
+    <label for="q">¿Qué componentes vas a usar?</label>
+    <div class="row">
+      <input id="q" type="text" autocomplete="off" value="un 555, dos LEDs, un capacitor de 100uF, una resistencia y un BC547">
+      <button class="btn" id="go">Buscar huellas</button>
+    </div>
+    <div class="chips" id="examples"><span>Probá con:</span></div>
+  </section>
+
+  <div class="main">
+    <aside class="bom">
+      <h2>Lista de materiales</h2>
+      <div class="list" id="list"></div>
+      <div class="manual" aria-label="Armar una huella a mano">
+        <h3>¿No apareció tu componente?</h3>
+        <p>Armala a mano eligiendo la forma. Si lo usás seguido, pedime que lo sume a la biblioteca.</p>
+        <div class="row">
+          <select id="mType" aria-label="Forma del componente">
+            <option value="dip">Integrado (DIP)</option>
+            <option value="sip">Fila de pines</option>
+            <option value="axial">Axial (como resistencia)</option>
+            <option value="radial">Radial (como capacitor)</option>
+          </select>
+          <input id="mPins" type="number" min="2" max="40" value="14" aria-label="Cantidad de pines">
+        </div>
+        <button class="ghost" id="mGo">Dibujar huella</button>
+      </div>
+    </aside>
+
+    <section class="viewer" aria-live="polite">
+      <div class="vhead">
+        <div>
+          <div class="eyebrow" id="vPkg"></div>
+          <h2 id="vName"></h2>
+          <p class="desc" id="vDesc"></p>
+        </div>
+        <div class="tabs" role="tablist" aria-label="Vista">
+          <button class="tab" role="tab" data-v="arriba" aria-selected="true">Componentes</button>
+          <button class="tab" role="tab" data-v="abajo" aria-selected="false">Cobre (de abajo)</button>
+          <button class="tab" role="tab" data-v="plancha" aria-selected="false">Hoja para planchar</button>
+        </div>
+      </div>
+      <div class="stage" id="stage"></div>
+      <p class="note" id="vNote"></p>
+      <dl class="specs" id="specs"></dl>
+      <div class="pins" id="pins"></div>
+      <div class="actions">
+        <button class="ghost" id="speak">Escuchar explicación</button>
+      </div>
+    </section>
+  </div>
+
+  <section class="lib" aria-label="Biblioteca">
+    <div class="row"><h2>Biblioteca guardada <span class="note" id="libcount"></span></h2>
+    <input id="libq" type="search" placeholder="Filtrar, por ejemplo: TIP o regulador" aria-label="Filtrar biblioteca"></div>
+    <div class="cats" id="cats"></div>
+  </section>
+
+  <p class="foot">Reglas para planchado y percloruro: pad de 2 mm, agujero de 0,8 mm (1 mm en diodos de potencia, borneras y TO-220), pista mínima de 0,8 mm y 0,6 mm de separación. La cuadrícula es de 2,54 mm, la medida estándar entre pines. En pantalla el tamaño puede variar; la medida real es la que figura en los datos.</p>
+</div>
+
+<script>
+const P=2.54;
+let LIB=null, DB=[];
+const pad=(n,x,y,o={})=>({n,x,y,d:o.d||2.0,drill:o.drill||0.8,sq:o.sq??(n===1)});
+const f2=n=>(Math.round(n*100)/100).toString().replace('.',',');
+const norm=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+
+/* ---------- huellas armadas a mano (las del catálogo vienen de componentes.json) ---------- */
+function dip(n,row=7.62){
+  const h=n/2,L=(h-1)*P,pads=[];
+  for(let i=0;i<h;i++)pads.push(pad(i+1,-row/2,-L/2+i*P));
+  for(let i=0;i<h;i++)pads.push(pad(h+i+1,row/2,L/2-i*P));
+  const bw=row-3.2,top=-L/2-1.6;
+  return {pkg:`DIP-${n}`,pads,row,silk:[{t:'rect',x:-bw/2,y:top,w:bw,h:L+3.2},{t:'path',d:`M -1 ${top} A 1 1 0 0 0 1 ${top}`,bb:[-1,top,1,top+1]}],dims:[[1,2,'2,54 mm'],[1,n,f2(row)+' mm']]};
+}
+function sip(n){const L=(n-1)*P;return {pkg:`Tira ${n} pines`,pads:Array.from({length:n},(_,i)=>pad(i+1,0,-L/2+i*P)),silk:[{t:'rect',x:-1.27,y:-L/2-1.27,w:2.54,h:L+2.54}],dims:n>1?[[1,2,'2,54 mm']]:[]}}
+function axial(){return {pkg:'Axial · 10,16 mm',pads:[pad(1,-5.08,0,{sq:false}),pad(2,5.08,0,{sq:false})],silk:[{t:'rect',x:-3.15,y:-1.25,w:6.3,h:2.5}],dims:[[1,2,'10,16 mm']]}}
+function radial(){return {pkg:'Radial · 2,54 mm',pads:[pad(1,-1.27,0),pad(2,1.27,0,{sq:false})],silk:[{t:'circle',cx:0,cy:0,r:2.5}],dims:[[1,2,'2,54 mm']]}}
+
+/* ---------- interpretación del pedido ---------- */
+const NUM={un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10,doce:12,veinte:20};
+function capValue(raw){ // devuelve {v, unidad} en nF y µF
+  const m=raw.match(/(\d+(?:[.,]\d+)?)\s*(pf|nf|uf|µf|mf|u|n|p)(?![a-z0-9])/); if(!m) return null;
+  const v=parseFloat(m[1].replace(',','.')), u=m[2][0];
+  const nF=u==='p'?v/1000:u==='n'?v:v*1000; return {nF,uF:nF/1000,txt:m[1]+' '+(u==='p'?'pF':u==='n'?'nF':'µF')};
+}
+function pickCap(raw){
+  const cv=capValue(raw), isCap=/capacit|condensad|electrolit|ceramic|lenteja|poliester|mkt|mylar|mkp|multicapa/.test(raw)||cv;
+  if(!isCap||/tantal/.test(raw)) return null;
+  let fam=/poliester|mkt|mylar|mkp/.test(raw)?'poliester':/ceramic|lenteja|multicapa|disco/.test(raw)?'ceramico':/electrolit/.test(raw)?'electrolitico':
+    cv?(cv.uF>=1?'electrolitico':'ceramico'):null;
+  if(!fam) return null;
+  const list=DB.filter(c=>c.familia===fam);
+  const val=cv?(fam==='electrolitico'?cv.uF:cv.nF):(fam==='electrolitico'?100:10);
+  const c=list.find(c=>val>c.rango[0]&&val<=c.rango[1])||list[list.length-1];
+  return {comp:c,valor:cv?cv.txt:null};
+}
+function match(seg){
+  const raw=norm(seg).trim(); if(!raw) return null;
+  let qty=1;const w=raw.split(/\s+/);
+  if(NUM[w[0]])qty=NUM[w[0]];else if(/^\d+$/.test(w[0])&&w.length>1&&!/^(pines|vias|pin|uf|nf|pf|k|ohm|w)$/.test(w[1]))qty=+w[0];
+  const cap=pickCap(raw); if(cap) return {seg:seg.trim(),qty,...cap};
+  const flat=raw.replace(/[\s\-_.\/]/g,'');
+  let best=null,score=0;
+  for(const c of DB)for(const a of c.alias){if(a.length>score&&flat.includes(a)){best=c;score=a.length}}
+  const rv=raw.match(/(\d+(?:[.,]\d+)?\s*(k|m|r)?\s*(ohm|ohms|Ω)?)(?=\s|$)/);
+  return {seg:seg.trim(),qty,comp:best,valor:best&&best.cat==='Resistencias'&&/\d\s*(k|ohm|r\b|m\b)/.test(raw)?raw.match(/\d+(?:[.,]\d+)?\s*(k|m)?\s*(ohms?|r)?/)[0].trim():null};
+}
+function parse(text){return text.split(/,|;|\+|\n|\sy\s|\se\s/i).map(match).filter(Boolean)}
+
+function footprintOf(c,seg){
+  if(c.enc==='SIP-n'){const m=norm(seg||'').match(/(\d+)\s*(pines|pin|contactos)/);const n=m?Math.min(Math.max(+m[1],1),40):4;return LIB.encapsulados['SIP-'+n]}
+  return LIB.encapsulados[c.enc];
+}
+
+/* ---------- dibujo ---------- */
+const state={items:[],sel:0,view:'arriba',manual:null};
+function bbox(fp){
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;const add=(a,b,c,d)=>{x0=Math.min(x0,a);y0=Math.min(y0,b);x1=Math.max(x1,c);y1=Math.max(y1,d)};
+  fp.pads.forEach(p=>{const w=(p.w||p.d)/2,h=(p.h||p.d)/2;add(p.x-w,p.y-h,p.x+w,p.y+h)});
+  fp.silk.forEach(s=>{if(s.t==='rect')add(s.x,s.y,s.x+s.w,s.y+s.h);else if(s.t==='circle')add(s.cx-s.r,s.cy-s.r,s.cx+s.r,s.cy+s.r);else if(s.t==='line')add(Math.min(s.x1,s.x2),Math.min(s.y1,s.y2),Math.max(s.x1,s.x2),Math.max(s.y1,s.y2));else if(s.bb)add(...s.bb)});
+  return [x0,y0,x1,y1];
+}
+function svgFor(fp,view){
+  const mir=view==='abajo',pr=view==='plancha',mx=x=>mir?-x:x;
+  const [bx0,by0,bx1,by1]=bbox(fp);
+  const X0=Math.min(bx0,-bx1),X1=Math.max(bx1,-bx0);
+  const m=6,vx=X0-m,vy=by0-m,vw=(X1-X0)+2*m,vh=(by1-by0)+2*m+4;
+  const bg=pr?'var(--paper)':'var(--mask)',grid=pr?'var(--paper-grid)':'var(--mask-grid)';
+  const mono='JetBrains Mono,monospace';
+  let o=`<svg viewBox="${vx} ${vy} ${vw} ${vh}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Huella ${fp.pkg}">
+  <defs><pattern id="g" width="${P}" height="${P}" patternUnits="userSpaceOnUse" x="${P/2}" y="${P/2}"><path d="M ${P} 0 L 0 0 0 ${P}" fill="none" stroke="${grid}" stroke-width="0.08"/></pattern></defs>
+  <rect x="${vx}" y="${vy}" width="${vw}" height="${vh}" fill="${bg}"/><rect x="${vx}" y="${vy}" width="${vw}" height="${vh}" fill="url(#g)"/>`;
+  if(!pr){
+    const st=mir?'stroke-dasharray="0.6 0.5" opacity="0.4"':'';
+    o+=`<g transform="scale(${mir?-1:1},1)" fill="none" stroke="var(--silk)" stroke-width="0.22" stroke-linecap="round" ${st}>`;
+    fp.silk.forEach(s=>{
+      if(s.t==='rect')o+=`<rect x="${s.x}" y="${s.y}" width="${s.w}" height="${s.h}" rx="${s.rx||0}" ${s.fill?'fill="var(--silk)"':''}/>`;
+      else if(s.t==='circle')o+=`<circle cx="${s.cx}" cy="${s.cy}" r="${s.r}"/>`;
+      else if(s.t==='line')o+=`<line x1="${s.x1}" y1="${s.y1}" x2="${s.x2}" y2="${s.y2}"/>`;
+      else o+=`<path d="${s.d}"/>`;});
+    o+='</g>';
+    if(!mir)(fp.texts||[]).forEach(t=>o+=`<text x="${mx(t.x)}" y="${t.y}" font-size="1.6" font-family="${mono}" font-weight="600" fill="var(--silk)" text-anchor="middle">${t.s}</text>`);
+  }
+  const cu=pr?'var(--toner)':'var(--copper)',ho=pr?'var(--paper)':'var(--hole)';
+  fp.pads.forEach(p=>{const x=mx(p.x);
+    if(p.w){const w=p.w,h=p.h,rx=p.sq?0:Math.min(w,h)/2;o+=`<rect x="${x-w/2}" y="${p.y-h/2}" width="${w}" height="${h}" rx="${rx}" fill="${cu}"/>`}
+    else{const r=p.d/2;o+=p.sq?`<rect x="${x-r}" y="${p.y-r}" width="${p.d}" height="${p.d}" fill="${cu}"/>`:`<circle cx="${x}" cy="${p.y}" r="${r}" fill="${cu}"/>`}
+    if(p.sw){const w=p.sw,h=p.sh;o+=`<rect x="${x-w/2}" y="${p.y-h/2}" width="${w}" height="${h}" rx="${Math.min(w,h)/2}" fill="${ho}"/>`}
+    else o+=`<circle cx="${x}" cy="${p.y}" r="${p.drill/2}" fill="${ho}"/>`;
+    const r=(p.w||p.d)/2,rh=(p.h||p.d)/2;
+    if(!pr)o+=`<text x="${x+r+0.15}" y="${p.y-rh+0.3}" font-size="0.95" font-family="${mono}" font-weight="600" fill="var(--silk)">${p.n}</text>`;
+  });
+  if(!pr)(fp.dims||[]).forEach(([a,b,l])=>{
+    const A=fp.pads.find(p=>p.n===a),B=fp.pads.find(p=>p.n===b);if(!A||!B)return;
+    const ax=mx(A.x),bx=mx(B.x);
+    if(Math.abs(ax-bx)<0.01){const x=ax+(ax<=0?-1:1)*((A.w||A.d)/2+2.2);
+      o+=`<g stroke="var(--dim)" stroke-width="0.14"><line x1="${x}" y1="${A.y}" x2="${x}" y2="${B.y}"/><line x1="${x-0.6}" y1="${A.y}" x2="${x+0.6}" y2="${A.y}"/><line x1="${x-0.6}" y1="${B.y}" x2="${x+0.6}" y2="${B.y}"/></g>
+      <text x="${x+(ax<=0?-0.7:0.7)}" y="${(A.y+B.y)/2+0.4}" font-size="1.05" font-family="${mono}" fill="var(--dim)" text-anchor="${ax<=0?'end':'start'}">${l}</text>`;}
+    else{const y=by0-2.6;
+      o+=`<g stroke="var(--dim)" stroke-width="0.14"><line x1="${ax}" y1="${y}" x2="${bx}" y2="${y}"/><line x1="${ax}" y1="${y-0.6}" x2="${ax}" y2="${y+0.6}"/><line x1="${bx}" y1="${y-0.6}" x2="${bx}" y2="${y+0.6}"/></g>
+      <text x="${(ax+bx)/2}" y="${y-0.7}" font-size="1.05" font-family="${mono}" fill="var(--dim)" text-anchor="middle">${l}</text>`;}
+  });
+  const sx=vx+2,sy=vy+vh-2.2,sc=pr?'var(--toner)':'var(--dim)';
+  o+=`<g stroke="${sc}" stroke-width="0.18"><line x1="${sx}" y1="${sy}" x2="${sx+10}" y2="${sy}"/><line x1="${sx}" y1="${sy-0.6}" x2="${sx}" y2="${sy+0.6}"/><line x1="${sx+10}" y1="${sy-0.6}" x2="${sx+10}" y2="${sy+0.6}"/></g><text x="${sx+5}" y="${sy-0.7}" font-size="1" font-family="${mono}" fill="${sc}" text-anchor="middle">10 mm</text>`;
+  return o+'</svg>';
+}
+
+const NOTES={
+  arriba:'Así se ve desde arriba, del lado donde van los componentes. El <b>pad cuadrado es el pin 1</b>.',
+  abajo:'Así se ve <b>dando vuelta la placa</b>, del lado del cobre. Está espejado: el pin 1 queda del otro lado. Es la vista que vas a ver al soldar.',
+  plancha:'Esto es lo que se imprime en papel ilustración o de revista con impresora láser. Como el cobre está abajo, <b>esta hoja va sin espejar</b>: al apoyarla boca abajo sobre el cobre y planchar, queda en el lugar correcto.'
+};
+
+function current(){
+  if(state.manual)return state.manual;
+  const it=state.items[state.sel];if(!it||!it.comp)return null;
+  const fp=footprintOf(it.comp,it.seg);
+  return {...fp,name:it.comp.nombre+(it.valor?` · ${it.valor}`:''),desc:it.comp.desc,pinNames:it.comp.pines,qty:it.qty};
+}
+function drawViewer(){
+  const fp=current(),$=id=>document.getElementById(id);
+  if(!fp){$('vName').textContent='Elegí un componente';['vPkg','vDesc','vNote'].forEach(i=>$(i).textContent='');$('stage').innerHTML='';$('specs').innerHTML='';$('pins').innerHTML='';return}
+  $('vPkg').textContent=fp.pkg;$('vName').textContent=fp.name;
+  $('vDesc').textContent=fp.desc+(fp.nota?' '+fp.nota:'');
+  $('stage').innerHTML=svgFor(fp,state.view);$('vNote').innerHTML=NOTES[state.view];
+  const [x0,y0,x1,y1]=bbox(fp),p0=fp.pads[0],p1=fp.pads[1];
+  const pitch=fp.paso||(p1?Math.hypot(p1.x-p0.x,p1.y-p0.y):0);
+  const drills=[...new Set(fp.pads.map(p=>p.sw?f2(p.sw)+' (ranura)':f2(p.drill)))].join(' / ');
+  const specs=[['Encapsulado',fp.pkg],['Pines',fp.pads.length],[fp.paso?'Paso entre patas':'Pin 1 a pin 2',pitch?f2(pitch)+' mm':'—']];
+  if(fp.row)specs.push(['Entre filas',f2(fp.row)+' mm']);
+  specs.push(['Pad',f2(p0.d)+' mm'],['Mecha',drills+' mm'],['Tamaño',`${f2(x1-x0)} × ${f2(y1-y0)} mm`]);
+  $('specs').innerHTML=specs.map(([k,v])=>`<div class="spec"><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+  $('pins').innerHTML=fp.pinNames?`<table><thead><tr><th>Pin</th><th>Función</th></tr></thead><tbody>${fp.pinNames.map((n,i)=>`<tr><td>${i+1}</td><td>${n}</td></tr>`).join('')}</tbody></table>`:'';
+}
+function drawList(){
+  const L=document.getElementById('list');L.innerHTML='';
+  if(!state.items.length){L.innerHTML='<p class="note">Escribí al menos un componente.</p>';return}
+  state.items.forEach((it,i)=>{
+    const b=document.createElement('button');b.className='item'+(it.comp?'':' miss');
+    b.setAttribute('aria-pressed',String(!state.manual&&i===state.sel));
+    b.innerHTML=`<span class="ok ${it.comp?'':'no'}"></span><span class="nm"></span><span class="qty">×${it.qty}</span>`;
+    const nm=b.querySelector('.nm');nm.textContent=it.comp?it.comp.nombre+(it.valor?` · ${it.valor}`:''):`"${it.seg}"`;
+    const pk=document.createElement('span');pk.className='pk';pk.textContent=it.comp?footprintOf(it.comp,it.seg).pkg:'No está en la biblioteca';nm.appendChild(pk);
+    if(it.comp)b.onclick=()=>{state.sel=i;state.manual=null;drawList();drawViewer()};else b.disabled=true;
+    L.appendChild(b);
+  });
+}
+function drawLib(){
+  const q=norm(document.getElementById('libq').value).replace(/[\s\-_.\/]/g,'');
+  const cats={};
+  DB.forEach(c=>{if(q&&!norm(c.nombre).replace(/[\s\-_.\/]/g,'').includes(q)&&!c.alias.some(a=>a.includes(q)))return;(cats[c.cat]=cats[c.cat]||[]).push(c)});
+  const box=document.getElementById('cats');box.innerHTML='';
+  Object.entries(cats).forEach(([cat,list])=>{
+    const d=document.createElement('div');d.className='cat';d.innerHTML=`<h3>${cat} · ${list.length}</h3><ul></ul>`;
+    list.forEach(c=>{const li=document.createElement('li'),b=document.createElement('button');
+      b.textContent=c.nombre;const s=document.createElement('span');s.textContent=c.enc==='SIP-n'?'Tira':LIB.encapsulados[c.enc].pkg.split(' ·')[0];b.appendChild(s);
+      b.onclick=()=>{state.items=[{seg:c.nombre,qty:1,comp:c}];state.sel=0;state.manual=null;drawList();drawViewer();document.querySelector('.viewer').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})};
+      li.appendChild(b);d.querySelector('ul').appendChild(li)});
+    box.appendChild(d);
+  });
+  if(!Object.keys(cats).length)box.innerHTML='<p class="note">Ningún componente coincide con ese filtro.</p>';
+}
+function run(){
+  if(!DB.length)return;
+  state.items=parse(document.getElementById('q').value);state.manual=null;
+  state.sel=Math.max(0,state.items.findIndex(i=>i.comp));drawList();drawViewer();
+}
+
+document.getElementById('go').onclick=run;
+document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter')run()});
+document.getElementById('libq').addEventListener('input',drawLib);
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{state.view=t.dataset.v;document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',String(x===t)));drawViewer()});
+['ATmega328P y un cristal de 16MHz','LM7805, 2 capacitores de 470uF y una bornera','CD4017, diez LEDs y un 1N4148','TDA7294, LM3886 y un TDA2030'].forEach(s=>{
+  const c=document.createElement('button');c.className='chip';c.textContent=s;c.onclick=()=>{document.getElementById('q').value=s;run()};document.getElementById('examples').appendChild(c)});
+document.getElementById('mGo').onclick=()=>{
+  const t=document.getElementById('mType').value;let n=Math.round(+document.getElementById('mPins').value||2);let fp;
+  if(t==='dip'){n=Math.max(4,n+(n%2));fp=dip(n,n>=24?15.24:7.62);fp.name=`Integrado de ${n} patas`;fp.desc='Huella armada a mano con medidas estándar DIP.'}
+  else if(t==='sip'){n=Math.min(Math.max(1,n),40);fp=sip(n);fp.name=`Fila de ${n} pines`;fp.desc='Pines en línea cada 2,54 mm.'}
+  else if(t==='axial'){fp=axial();fp.name='Componente axial';fp.desc='Dos patas, una en cada punta del cuerpo.'}
+  else{fp=radial();fp.name='Componente radial';fp.desc='Dos patas que salen del mismo lado del cuerpo.'}
+  state.manual=fp;drawList();drawViewer();
+};
+document.getElementById('speak').onclick=()=>{
+  const fp=current();if(!fp)return;
+  try{const txt=`${fp.name}. Encapsulado ${fp.pkg}. ${fp.desc} ${fp.nota||''} Usá mecha de ${f2(fp.pads[0].drill)} milímetros. ${NOTES[state.view].replace(/<[^>]+>/g,'')}`;
+    speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(txt);u.lang='es-AR';u.rate=0.95;speechSynthesis.speak(u)}catch(e){}
+};
+
+(window.COMPONENTES?Promise.resolve(window.COMPONENTES):fetch('biblioteca/componentes.json').then(r=>{if(!r.ok)throw 0;return r.json()})).then(j=>{
+  LIB=j;DB=j.componentes;
+  document.getElementById('libcount').textContent=`${DB.length} componentes · ${Object.keys(j.encapsulados).length} encapsulados`;
+  drawLib();run();
+}).catch(()=>{document.getElementById('list').innerHTML='<p class="note">No se pudo cargar la biblioteca. Recargá la página.</p>'});
+</script>
+
+</html>
