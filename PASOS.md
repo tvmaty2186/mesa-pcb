@@ -1,27 +1,22 @@
-# Pasos para seguir en Claude en la nube
+# Cómo seguir trabajando con Claude en la nube
 
-## 1. Crear la cuenta de GitHub (una sola vez)
-1. Entrá a github.com y tocá **Sign up**.
-2. Usá tu mail y elegí un nombre de usuario.
+## Abrir una sesión nueva
+1. Entrá a **claude.ai/code** y tocá **Nueva sesión**.
+2. Elegí el repositorio **tvmaty2186/mesa-pcb**.
+3. Escribí, por ejemplo:
+   > Leé CLAUDE.md completo y seguí con el próximo paso de la lista.
 
-## 2. Crear el repositorio
-1. Arriba a la derecha tocá **+** y después **New repository**.
-2. Nombre: `mesa-pcb`.
-3. Elegí **Private** (privado) por ahora.
-4. Tocá **Create repository**.
+`CLAUDE.md` tiene todo: qué está hecho, las reglas de fabricación, cómo te gusta trabajar y qué sigue.
 
-## 3. Subir los archivos
-1. Descomprimí el ZIP en tu compu.
-2. En la página del repositorio tocá **uploading an existing file**.
-3. Arrastrá **todo lo que hay dentro** de la carpeta `mesa-pcb` (no la carpeta en sí): `index.html`, `huellas.html`, `CLAUDE.md`, `README.md`, `PASOS.md`, y las carpetas `biblioteca` y `docs`.
-4. Abajo tocá **Commit changes**.
+## Ver los cambios
+- Claude sube los cambios directo a GitHub.
+- La página se actualiza sola en 1 o 2 minutos: https://tvmaty2186.github.io/mesa-pcb/
+- Recargá con **Ctrl+F5** para ver la versión nueva.
 
-## 4. Abrir la sesión en la nube
-1. Entrá a **claude.ai/code** (o la pestaña **Code** de la app).
-2. La primera vez te pide conectar GitHub: aceptá y dale acceso al repositorio `mesa-pcb`.
-3. Elegí el repositorio `mesa-pcb` y escribí, por ejemplo:
-   > Leé CLAUDE.md y seguí con el próximo paso: la revisión de reglas (DRC).
+## Para cuidar el crédito
+- Pedí varios cambios juntos en un mismo mensaje.
+- Cuando una conversación se hace muy larga, abrí una nueva: `CLAUDE.md` guarda el contexto.
 
-## 5. Ver los cambios
-- Cuando Claude termine, te ofrece guardar los cambios en GitHub. Aceptá.
-- Para probar: bajá el `index.html` nuevo y abrilo con doble clic, o activá GitHub Pages (Settings → Pages) para verlo en internet.
+## Cuentas y proyectos (Firebase)
+- Ya está configurado. Si algún día hay que revisarlo: `docs/configurar_firebase.md`.
+- Usuarios registrados: console.firebase.google.com → proyecto `mesa-pcb` → Authentication → Usuarios.
