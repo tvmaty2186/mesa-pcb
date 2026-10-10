@@ -2,7 +2,7 @@
 
 Este archivo es para que cualquier sesión de Claude retome el proyecto sin empezar de cero. **Leelo completo antes de tocar código.**
 
-Última actualización: 10/10/2026.
+Última actualización: 10/10/2026 (pads más grandes).
 
 ## Dónde está todo
 
@@ -12,7 +12,7 @@ Este archivo es para que cualquier sesión de Claude retome el proyecto sin empe
 
 ## Próximos pasos (en este orden)
 
-1. **Pads más grandes donde sobre lugar** (más fáciles de soldar y agujerear a mano), **zonas prohibidas** (áreas donde no pasa ninguna pista, por ejemplo debajo de un disipador) y **varias alternativas de ruteo** para elegir.
+1. ~~Pads más grandes donde sobre lugar~~ (hecho 10/10/2026), **zonas prohibidas** (áreas donde no pasa ninguna pista, por ejemplo debajo de un disipador) y **varias alternativas de ruteo** para elegir.
 2. **Asistente con IA** (dictar "agregá un 555 y conectá la pata 3 al LED"), **pago por uso** (pedido de Matías). **Decidido (10/10/2026): Mercado Pago y paquetes de créditos** (el usuario compra, por ejemplo, 50 pedidos y los va gastando). Plan:
    - Servidor con **Firebase Functions** (requiere pasar el proyecto `mesa-pcb` al plan **Blaze**, pago por uso con tarjeta; con poco uso sigue costando casi nada). La clave de la IA y la de Mercado Pago van como secretos del servidor, nunca en la página.
    - Créditos en Firestore `users/{uid}.credits`, que **solo el servidor** puede cambiar (las reglas no dejan que el usuario los toque).
@@ -74,7 +74,7 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
   - agujero: diámetro, volver a la esquina, borrar;
   - contorno: ajustar al mínimo, agujeros, plano, borrar;
   - marca roja de la revisión de reglas: explicación y arreglo automático;
-  - tablero vacío: autorruteador, reglas, plano, alivio térmico, rellenar, lágrimas, agujeros, agregar agujero.
+  - tablero vacío: autorruteador, reglas, plano, alivio térmico, rellenar, lágrimas, pads más grandes, agujeros, agregar agujero.
 - **Sin textos de ayuda automáticos** (nada de carteles que expliquen cómo usar una herramienta). Solo avisos cortos de confirmación.
 - **Sin barra de estado** abajo.
 - **Franja publicitaria reservada abajo de todo**: 468 × 60 en computadora, 320 × 50 en celular (comentario en `index.html` donde va el código del aviso).
@@ -104,12 +104,13 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 
 **Autorruteador** (tecla A, `autoroute`; cuadro `routeDlg`; opciones en `prefs.route`)
 - Grilla de 0,635 mm, A* con costos (largo, quiebres, cercanía), solo giros de 45°. Las pistas salen y llegan a un pad (sin uniones en T). Varias pasadas de arrancar y rerutear (Rápido/Normal/A fondo = 4/12/30).
-- Bloques del cuadro: **Pistas** (ancho de señal y de alimentación/masa, separación 0,8 cómoda o 0,6, primero alimentación y masa), **Puentes de alambre** (opcional; máximo 1/2/3/5; largo 7,62/10,16; nunca debajo de un componente; `doc.jumpers`), **Placa** (reacomodar componentes, tamaño: no tocar / mínimo / estándar 5×5 a 15×20 cm, agujeros de fijación), **Terminación** (lágrimas, plano de masa, conservar pistas dibujadas o solo las fijas, esfuerzo).
+- Bloques del cuadro: **Pistas** (ancho de señal y de alimentación/masa, separación 0,8 cómoda o 0,6, primero alimentación y masa), **Puentes de alambre** (opcional; máximo 1/2/3/5; largo 7,62/10,16; nunca debajo de un componente; `doc.jumpers`), **Placa** (reacomodar componentes, tamaño: no tocar / mínimo / estándar 5×5 a 15×20 cm, agujeros de fijación), **Terminación** (lágrimas, pads más grandes, plano de masa, conservar pistas dibujadas o solo las fijas, esfuerzo).
 - Detecta alimentación y masa por nombre de pata (GND/VCC/VDD/VSS/V+/V−) y por la entrada/salida de reguladores.
 - **Reacomodar** (`placeComps`): recocido simulado en grilla de 2,54 mm; respeta candados; cuida largo de conexiones, cruces, superposición, desacople junto al integrado, reguladores y borneras al borde.
 
 **Cobre extra**
 - **Lágrimas** en los pads (`tearShapes`), solo si respetan 0,6 mm.
+- **Pads más grandes donde sobra lugar** (`doc.bigPads`, `padBig`, `padDims`): cada pad crece de a 0,1 mm por lado, hasta 0,5 mm por lado (máx. 4 mm), parejo o solo a lo largo/ancho (queda ovalado). Siempre a 0,6 mm de los demás pads y del cobre ajeno, a 2 mm del borde y fuera de la zona de agujeros. Se recalcula con `geoVer`: si pasa una pista cerca, el pad se achica. El autorruteador y las lágrimas usan el pad base (`padShape(c,p,true)`, `copperItems(ph,{base:true})`); la revisión de reglas, el plano, el dibujo, la impresión y el Gerber usan el agrandado.
 - **Plano de masa** (`planeGeo` decide qué queda; `drawPlane` lo dibuja liso). Atado al contorno, hasta 2 mm del borde. **Rellena también los espacios vacíos** como cobre suelto para ahorrar percloruro (`doc.plane.fill`). **Alivio térmico** en las patas de masa: 0,6 mm libres y 4 rayos de 0,8 mm, solo los que llegan al plano (`doc.plane.thermal`). Sigue a las pistas en vivo mientras se arrastra. Sin GND, igual rellena (`doc.plane.key=null`).
 - **Agujeros de fijación** opcionales: 3 mm por defecto, en las esquinas a 4 mm del borde, sin cobre hasta 2 mm alrededor. Los de esquina siguen al contorno; se arrastran y se les cambia el diámetro con clic derecho (`doc.holes`).
 
@@ -145,7 +146,7 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 ## Notas técnicas
 
 - Unidades internas: milímetros. Origen arriba a la izquierda, Y hacia abajo. El contorno se muestra en cm.
-- Documento (`docData`, `docFrom`): `{name, comps:[{id,ref,name,enc,val,x,y,rot,lock?,group?}], outline:{x,y,w,h,group?}, tracks:[{id,pts:[[x,y]...],w,lock?,group?}], links:[{id,a:"compId:pad",b:"compId:pad",amps?}], jumpers:[{id,a,b,group?}], tears, plane:{key,thermal,fill}|null, holes:[{id,corner,x,y,d,group?}]}`. En el navegador se guarda la copia de trabajo en `localStorage` (`pcb.actual`).
+- Documento (`docData`, `docFrom`): `{name, comps:[{id,ref,name,enc,val,x,y,rot,lock?,group?}], outline:{x,y,w,h,group?}, tracks:[{id,pts:[[x,y]...],w,lock?,group?}], links:[{id,a:"compId:pad",b:"compId:pad",amps?}], jumpers:[{id,a,b,group?}], tears, bigPads, plane:{key,thermal,fill}|null, holes:[{id,corner,x,y,d,group?}]}`. En el navegador se guarda la copia de trabajo en `localStorage` (`pcb.actual`).
 - Rotación en pasos de 90° (`rot` 0 a 3). El pin 1 se engancha a la grilla.
 - Las funciones `path45` y `chamfer` aplican la regla de 45°: no las saltees en código nuevo de pistas.
 - `changed()` sube `geoVer` y marca la revisión de reglas para recalcular; plano y lágrimas se cachean por `geoVer`.
