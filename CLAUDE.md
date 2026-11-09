@@ -86,6 +86,7 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 ## Qué hace hoy (todo en `index.html`)
 
 **Biblioteca y mesa**
+- **Ejemplo precargado** (si no hay diseño guardado): detector de movimiento con LDR (`exampleLdr`, datos en `EX_LDR`: esquema de Thiago, E.E.S.T. N.º 2; dos LDR en puente, LM741, NE555, LED y buzzer, bornera de alimentación). Viene ubicado y conectado, sin pistas. Archivo → Ejemplos también abre el del 555 con un LED (`example`).
 - 161 componentes y 97 encapsulados (resistencias, capacitores, diodos, LEDs, transistores TO-92/TO-126/TO-220, reguladores, integrados DIP, microcontroladores, amplificadores de audio, relé, jack, borneras…).
 - Colocar, mover, rotar (R), duplicar, borrar, deshacer/rehacer, contorno (en **cm con decimales**), medir, tema claro/oscuro.
 - **No se suelta nada encima de otro**: ni un componente sobre otro o sobre la zona de un agujero, ni un agujero sobre un componente u otro agujero. El fantasma se pinta en rojo; si se suelta igual, vuelve (`compBlocked`, `holeBlocked`). Duplicar busca lugar libre.

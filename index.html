@@ -2118,7 +2118,8 @@ function aiPaint(){
 const MENUS=[
  ['Archivo',[
    {t:'Nuevo diseño',f:newDoc},{t:'Abrir…',f:openDlg},{t:'Guardar',k:'Ctrl+S',f:()=>save(false)},{t:'Guardar como…',f:()=>save(true)},'-',
-   {t:'Abrir ejemplo (555 con conexiones)',f:()=>{pushUndo();example();sel.clear();trackSel=null;outlineSel=false;changed();fit()}},
+   {t:'Ejemplo: detector de movimiento con LDR',f:()=>openExample(exampleLdr)},
+   {t:'Ejemplo: 555 con un LED',f:()=>openExample(example)},
    {t:'Importar archivo…',f:importFile},{t:'Exportar diseño…',f:exportDlg},'-',
    {t:'Imprimir hoja para planchar',k:'Ctrl+P',f:printSheet},{t:'Imprimir varias por hoja…',f:multiDlg},{t:'Exportar PDF a escala 1:1',f:exportPdf},{t:'Exportar Gerber (para fabricar)',f:exportGerber}]],
  ['Editar',[
@@ -2309,6 +2310,38 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('keyup',e=>{if(e.key===' '){spaceDown=false;cv.style.cursor=tool==='hand'?'grab':tool==='select'?'default':'crosshair'}});
 
 /* ================= ejemplo inicial ================= */
+function openExample(f){pushUndo();f();sel.clear();trackSel=null;outlineSel=false;changed();fit()}
+// ejemplo precargado: detector de movimiento por luz (dos LDR en puente, LM741 y NE555 que hace sonar el buzzer y prende el LED).
+// Esquema de Thiago (E.E.S.T. N.º 2), valores de su lista de materiales. Viene ubicado y conectado, sin pistas: se rutea con A.
+const EX_LDR={outline:{x:0,y:0,w:70,h:50},
+  comps:[ // [ref, pieza de la biblioteca, valor, x, y (mm), giro]
+    ['J1', 'Bornera 2 vías', '+V / 0 V', 63.5, 7.62, 3],
+    ['RV1', 'Preset 3386P (trimpot)', '250 kΩ', 59.69, 22.86, 1],
+    ['R1', 'Resistencia de carbón 1/4 W', '12 kΩ', 48.26, 20.32, 1],
+    ['R2', 'Resistencia de carbón 1/4 W', '12 kΩ', 53.34, 30.48, 2],
+    ['R3', 'LDR (fotorresistencia) 5 mm', 'LDR', 43.18, 31.32, 3],
+    ['R4', 'LDR (fotorresistencia) 5 mm', 'LDR', 30.48, 27.1, 1],
+    ['IC1', 'LM741 (amplificador operacional)', 'LM741', 39.37, 21.59, 2],
+    ['C4', 'Capacitor cerámico (más de 1 nF)', '100 nF', 53.34, 10.16, 0],
+    ['C1', 'Capacitor cerámico (más de 1 nF)', '100 nF', 27.94, 20.32, 2],
+    ['RV2', 'Preset 3386P (trimpot)', '500 kΩ', 17.78, 16.51, 2],
+    ['IC2', 'NE555 (temporizador)', 'NE555', 29.21, 8.89, 0],
+    ['R5', 'Resistencia de carbón 1/4 W', '470 Ω', 48.26, 5.08, 0],
+    ['C2', 'Electrolítico 22 µF', '22 µF', 44.72, 10.16, 2],
+    ['C3', 'Capacitor cerámico (más de 1 nF)', '10 nF', 38.1, 7.62, 3],
+    ['R6', 'Resistencia de carbón 1/4 W', '330 Ω', 20.32, 33.02, 1],
+    ['D1', 'LED 5 mm', 'Rojo', 27.94, 36.83, 1],
+    ['C5', 'Capacitor cerámico (más de 1 nF)', '100 nF', 10.16, 17.78, 3],
+    ['BZ1', 'Buzzer 12 mm', 'Buzzer', 10.16, 31.74, 1]],
+  nets:[['J1.1','RV1.2','IC1.7','C4.1','RV2.1','IC2.4','IC2.8','R5.1'],['J1.2','R4.2','R3.2','IC1.4','C4.2','RV2.3','IC2.1','C3.2','C2.2','D1.1','C5.2','BZ1.2'],
+    ['RV1.1','R1.1'],['RV1.3','R2.1'],['R1.2','R4.1','IC1.3'],['R2.2','R3.1','IC1.2'],['IC1.6','C1.1'],['C1.2','RV2.2','IC2.2'],['IC2.7','IC2.6','R5.2','C2.1'],['IC2.5','C3.1'],['IC2.3','R6.1','C5.1','BZ1.1'],['R6.2','D1.2']]};
+function exampleLdr(){
+  doc={name:'Detector de movimiento con LDR',example:true,comps:[],outline:{...EX_LDR.outline},tracks:[],links:[],jumpers:[],tears:false,plane:null,holes:[]};
+  const R={};
+  EX_LDR.comps.forEach(([ref,name,val,x,y,r])=>{const comp=DB.find(d=>d.nombre===name);if(!comp)return;const c=makeComp(comp,x,y,r);c.x=x;c.y=y;c.ref=ref;c.val=val;doc.comps.push(c);R[ref]=c.id});
+  const K=s=>{const [r,n]=s.split('.');return R[r]&&pkey(R[r],n)};
+  EX_LDR.nets.forEach(ks=>{for(let i=1;i<ks.length;i++){const a=K(ks[i-1]),b=K(ks[i]);if(a&&b)doc.links.push({id:uid(),a,b})}});
+}
 function example(){
   const pick=a=>DB.find(c=>c.alias.includes(a));
   const items=[['ne555',40,30,0],['resistencia',22,24,1],['resistencia',22,36,1],['electrolitico',30,46,0],['resistencia',58,24,0],['led',70,26,0],['bornera',42,50,0]];
@@ -2343,7 +2376,7 @@ buildMenus();buildToolbar();readColors();applyTheme();cloudInit();
 (window.COMPONENTES?Promise.resolve(window.COMPONENTES):fetch('biblioteca/componentes.json').then(r=>{if(!r.ok)throw 0;return r.json()})).then(j=>{
   LIB=j;DB=j.componentes;document.getElementById('libn').textContent=`· ${DB.length}`;buildLib();
   const last=LS.get('pcb.actual',null);
-  if(last&&Array.isArray(last.comps)&&(last.comps.length||last.outline))doc=last;else example();
+  if(last&&Array.isArray(last.comps)&&(last.comps.length||last.outline))doc=last;else exampleLdr();
   doc.tracks=doc.tracks||[];doc.links=doc.links||[];doc.jumpers=doc.jumpers||[];doc.holes=normHoles(doc.holes);ensureLinkIds();
   const first=DB.find(c=>c.alias.includes('ne555'))||DB[0];openCat=first.cat;buildLib();setPreview(first);
   refreshUI();requestAnimationFrame(()=>{resize();fit()});
