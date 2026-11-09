@@ -12,7 +12,8 @@ Este archivo es para que cualquier sesión de Claude retome el proyecto sin empe
 
 ## Próximos pasos (en este orden)
 
-1. **Pads más grandes donde sobre lugar** (más fáciles de soldar y agujerear a mano), **zonas prohibidas** (áreas donde no pasa ninguna pista, por ejemplo debajo de un disipador) y **varias alternativas de ruteo** para elegir.
+1. **Pads más grandes donde sobre lugar** (más fáciles de soldar y agujerear a mano) y **zonas prohibidas** (áreas donde no pasa ninguna pista, por ejemplo debajo de un disipador). Las alternativas de ruteo ya están (búsqueda de variantes).
+   - Autorruteo en placas muy justas: con el detector LDR en 5 × 5 la búsqueda automática todavía deja islas de masa sin unir (lo mejor: 4 patas de masa sin rutear); en 7 × 6 sale completo solo. Ideas pendientes: medir "bolsillos" de masa ya en el reacomodo y reservar canales.
 2. **Asistente con IA: hecho el código (10/10/2026), falta activarlo.** Matías tiene que hacer `docs/configurar_asistente.md`: plan Blaze, clave de Anthropic como secreto y subir `functions/` desde Google Cloud Shell. Después: **cobrar con Mercado Pago y paquetes de créditos** (decidido). Plan:
    - Una función crea una preferencia de Checkout Pro → el usuario paga → el webhook de Mercado Pago avisa a otra función, que suma `creditos` en `users/{uid}` (solo el servidor los cambia).
    - Falta que Matías pase las credenciales de producción de Mercado Pago (como secreto del servidor, nunca en el chat) y decida precios y paquetes.
@@ -107,7 +108,11 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 - Grilla de 0,635 mm, A* con costos (largo, quiebres, cercanía), solo giros de 45°. Las pistas salen y llegan a un pad (sin uniones en T). Varias pasadas de arrancar y rerutear (Rápido/Normal/A fondo = 4/12/30).
 - Bloques del cuadro: **Pistas** (ancho de señal y de alimentación/masa, separación 0,8 cómoda o 0,6, primero alimentación y masa), **Puentes de alambre** (opcional; máximo 1/2/3/5; largo 7,62/10,16; nunca debajo de un componente; `doc.jumpers`), **Placa** (reacomodar componentes, tamaño: no tocar / mínimo / estándar 5×5 a 15×20 cm, agujeros de fijación), **Terminación** (lágrimas, plano de masa, conservar pistas dibujadas o solo las fijas, esfuerzo).
 - Detecta alimentación y masa por nombre de pata (GND/VCC/VDD/VSS/V+/V−) y por la entrada/salida de reguladores.
-- **Reacomodar** (`placeComps`): recocido simulado en grilla de 2,54 mm; respeta candados; cuida largo de conexiones, cruces, superposición, desacople junto al integrado, reguladores y borneras al borde.
+- **Reacomodar** (`placeComps`): recocido simulado en grilla de 2,54 mm; respeta candados; cuida largo de conexiones, cruces, superposición (aire de 0,6 mm), desacople junto al integrado, reguladores y borneras al borde. Con plano, la masa no cuenta para largo ni cruces. Movimientos: correr, girar, intercambiar y "hacia lo que conecta".
+- **Ubicación por bloques** (`placeBlocks`, `o.smart`): cada pieza con el integrado con el que más se conecta (sin contar alimentación y masa), bloques en el orden de la señal, cada integrado prueba los 4 giros con sus piezas alrededor; después un recocido suave.
+- **Probar variantes y elegir** (`routeVariants`, interruptor en el bloque Placa cuando se reacomoda; también lo usa el asistente): varias ubicaciones por bloques con distinta semilla y después cambios chicos sobre la mejor (mover, girar, intercambiar), cada una ruteada de verdad y puntuada (sin rutear ×1000, puentes ×120, errores ×400, largo). Dura 20 s / 1 min / 3 min según el esfuerzo, se puede parar, y al final muestra las 3 mejores con imagen para elegir. Todo es un solo paso de deshacer.
+- **Patas intercambiables** (`swapEquivalentPins`): los extremos de presets y potenciómetros se dan vuelta si así quedan menos cruces (solo cambia el sentido de giro).
+- **Islas de masa** (`planeTargets`): con plano, las patas de masa encerradas se unen con una pista al punto más cercano del plano principal (no solo a otra pata); en la primera pasada las pistas dejan aire alrededor de las patas de masa.
 
 **Cobre extra**
 - **Texto en cobre** (herramienta Texto, tecla X; `doc.texts`, `textPolys`, `textDlg`, `textCtx`): letra de un trazo Hershey Sans (`HFONT`, MIT). Cada letra son tramos de pista: sale en plancha, PDF y Gerber, entra en la revisión de reglas, el plano la rodea, el autorruteador y el reacomodador la esquivan. Se guarda espejado para leerse derecho del lado del cobre. Se arrastra, se edita y se borra; alto 2 a 5 mm, trazo 0,5/0,6/0,8 mm.

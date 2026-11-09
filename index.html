@@ -1115,6 +1115,8 @@ function autoroute(opt){
         const c=j*NX+i,d=shapePtDist(S,gx0+i*g,gy0+j*g);if(d<thrJ)noJ[c]=1;if(mine)continue;
         if(d<thr)blk[c]=1;else if(opt.comfort&&d<thr+0.2)near[c]=Math.max(near[c],2);else if(d<thr+0.8)near[c]=Math.max(near[c],1)}};
     pads.forEach(S=>mark(S,true));segs.forEach(S=>mark(S,!!S.jp));holeObs.forEach(S=>mark(S,true));
+    if(opt.skip)pads.forEach(S=>{if(!opt.skip.has(S.n))return;const R2=thr+1.8; // con plano: dejar aire alrededor de las patas de masa para que el plano llegue
+      for(let j=Math.max(0,cj(S.b[1]-R2));j<=Math.min(NY-1,cj(S.b[3]+R2));j++)for(let i=Math.max(0,ci(S.b[0]-R2));i<=Math.min(NX-1,ci(S.b[2]+R2));i++){const c=j*NX+i;if(blk[c])continue;const d=shapePtDist(S,gx0+i*g,gy0+j*g);if(d<R2)near[c]=2}});
     doc.comps.forEach(c=>{const b=compBox(c);for(let j=Math.max(0,cj(b[1]));j<=Math.min(NY-1,cj(b[3]));j++)for(let i=Math.max(0,ci(b[0]));i<=Math.min(NX-1,ci(b[2]));i++)noJ[j*NX+i]=1}); // nada de puentes debajo de un componente
     const cellsIn=P=>{const out=[];P.forEach(S=>{const lim=Math.max(S.rin-0.15,0);let bestC=-1,bd=1e9;
       for(let j=cj(S.y-S.rin);j<=cj(S.y+S.rin);j++)for(let i=ci(S.x-S.rin);i<=ci(S.x+S.rin);i++){if(i<0||j<0||i>=NX||j>=NY)continue;
@@ -1186,8 +1188,10 @@ function planeTargets(){
   const {NX,NY,X0,Y0,lab}=P.grid,L=P.regLab[mi],sz=P.s,st=Math.max(1,Math.round(0.5/sz)),m=Math.max(1,Math.round(0.3/sz)),cand=[];
   const inL=(i,j)=>i>=0&&j>=0&&i<NX&&j<NY&&lab[j*NX+i]===L;
   for(let j=0;j<NY;j+=st)for(let i=0;i<NX;i+=st){if(!inL(i,j)||!inL(i-m,j)||!inL(i+m,j)||!inL(i,j-m)||!inL(i,j+m))continue;
-    const x=X0+(i+.5)*sz,y=Y0+(j+.5)*sz;let d=1e9;iso.forEach(q=>d=Math.min(d,Math.hypot(q.x-x,q.y-y)));cand.push([d,x,y])}
-  cand.sort((a,b)=>a[0]-b[0]);return {key,pts:cand.slice(0,120).map(([,x,y])=>({x,y,rin:0.3,k:key,virt:1}))};
+    cand.push([X0+(i+.5)*sz,Y0+(j+.5)*sz])}
+  // los más cercanos a cada pata aislada (no todos cerca de una sola)
+  const pick=new Set();iso.forEach(q=>cand.map((c,k)=>[Math.hypot(c[0]-q.x,c[1]-q.y),k]).sort((a,b)=>a[0]-b[0]).slice(0,16).forEach(([,k])=>pick.add(k)));
+  return {key,pts:[...pick].map(k=>({x:cand[k][0],y:cand[k][1],rin:0.3,k:key,virt:1}))};
 }
 // líneas de aire en línea recta (árbol mínimo por red): largo total y cruces entre redes distintas
 function airLines(){
@@ -1228,55 +1232,63 @@ function placeBlocks(Z,mov,TB,rnd){
   const area=c=>{const b=compBox(c);return (b[2]-b[0]+2)*(b[3]-b[1]+2)},bA=order.map(ic=>[ic,...blk.get(ic.id)].reduce((s,c)=>s+area(c),0)),At=bA.reduce((a,b)=>a+b,0);
   let x0=Z.x;const cols=order.map((ic,i)=>{const w=Z.w*bA[i]/At,col={x0,x1:x0+w};x0+=w;return col});
   mov.forEach(c=>{c.x=c.y=-1e5});const placed=[];
-  const fits=c=>{const b=compBox(c);if(b[0]<Z.x||b[1]<Z.y||b[2]>Z.x+Z.w||b[3]>Z.y+Z.h)return false;const B=[b[0]-1,b[1]-1,b[2]+1,b[3]+1];
+  const fits=c=>{const b=compBox(c);if(b[0]<Z.x||b[1]<Z.y||b[2]>Z.x+Z.w||b[3]>Z.y+Z.h)return false;const B=[b[0]-.6,b[1]-.6,b[2]+.6,b[3]+.6];
     return !doc.comps.some(o=>o!==c&&o.x>-1e4&&boxHit(B,compBox(o)))&&!holeList().some(h=>boxCircle(b,h.x,h.y,h.keep))&&!TB.some(t=>boxHit(B,t))};
   const pullCost=(c,tg)=>fpOf(c).pads.reduce((s,p)=>{const n=netOfK.get(pkey(c.id,p.n));if(n==null||pw.has(n))return s;const [px,py]=padWorld(c,p);
     let d=0,m=0;N[n].forEach(k=>{const q=padPos(k);if(!q||k.startsWith(c.id+':')||q.x<-1e4)return;d+=Math.hypot(q.x-px,q.y-py);m++});return s+(m?d/m:Math.hypot(px-tg[0],py-tg[1])*0.3)},0);
-  // integrados: centro de su columna, girados hacia sus vecinos
-  order.forEach((ic,i)=>{const col=cols[i],cx=(col.x0+col.x1)/2,cy=Z.y+Z.h/2;let best=null;
-    for(let r=0;r<4;r++){ic.rot=r;ic.x=cx;ic.y=cy;let s=0;fpOf(ic).pads.forEach(p=>{const n=netOfK.get(pkey(ic.id,p.n));if(n==null||pw.has(n))return;const [px]=padWorld(ic,p);
-      const prev=i>0&&[order[i-1],...blk.get(order[i-1].id)].some(c=>SG.get(c.id).has(n)),next=i<order.length-1&&[order[i+1],...blk.get(order[i+1].id)].some(c=>SG.get(c.id).has(n));
-      if(prev)s+=px-col.x0;if(next)s+=col.x1-px});if(!best||s<best.s)best={s,r}}
-    ic.rot=best.r;placed.push(ic)});
-  // el resto: primero lo más conectado; cada uno al lugar libre más cerca de lo que conecta
   const isEdge=c=>/^Regulador/.test(c.name)||/bornera|jack/.test(((DB.find(d=>d.nombre===c.name)||{}).alias||[]).join(' '));
-  const rest=others.slice().sort((a,b)=>(isEdge(a)-isEdge(b))||(SG.get(b.id).size-SG.get(a.id).size));
-  rest.forEach(c=>{const col=cols[order.indexOf(ICs.find(ic=>ic.id===owner.get(c.id)))];let tg;
-    const Q=[];fpOf(c).pads.forEach(p=>{const n=netOfK.get(pkey(c.id,p.n));if(n==null||pw.has(n))return;N[n].forEach(k=>{const q=padPos(k);if(q&&q.x>-1e4&&!k.startsWith(c.id+':'))Q.push(q)})});
-    tg=Q.length?[Q.reduce((s,q)=>s+q.x,0)/Q.length,Q.reduce((s,q)=>s+q.y,0)/Q.length]:[(col.x0+col.x1)/2,Z.y+Z.h/2];
+  // cada pieza al lugar libre más cerca de lo que conecta (bordes para borneras y reguladores)
+  const placeOne=(c,col)=>{const Q=[];fpOf(c).pads.forEach(p=>{const n=netOfK.get(pkey(c.id,p.n));if(n==null||pw.has(n))return;N[n].forEach(k=>{const q=padPos(k);if(q&&q.x>-1e4&&!k.startsWith(c.id+':'))Q.push(q)})});
+    let tg=Q.length?[Q.reduce((s,q)=>s+q.x,0)/Q.length,Q.reduce((s,q)=>s+q.y,0)/Q.length]:[(col.x0+col.x1)/2,Z.y+Z.h/2];
     if(isEdge(c)){const ds=[tg[0]-Z.x,Z.x+Z.w-tg[0],tg[1]-Z.y,Z.y+Z.h-tg[1]],m=ds.indexOf(Math.min(...ds));tg=m===0?[Z.x,tg[1]]:m===1?[Z.x+Z.w,tg[1]]:m===2?[tg[0],Z.y]:[tg[0],Z.y+Z.h]}
     const rots=fpOf(c).pads.length===2?[0,1]:[0,1,2,3];let best=null;
     for(let ring=0;ring<40&&!(best&&ring>best.ring+2);ring++)for(let a=-ring;a<=ring;a++)for(let b=-ring;b<=ring;b++){if(Math.max(Math.abs(a),Math.abs(b))!==ring)continue;
       for(const r of rots){c.rot=r;c.x=snapV(tg[0],1.27)+a*1.27;c.y=snapV(tg[1],1.27)+b*1.27;if(!fits(c))continue;const v=pullCost(c,tg)+ring*0.3;if(!best||v<best.v)best={v,x:c.x,y:c.y,r,ring}}}
-    if(best){c.x=best.x;c.y=best.y;c.rot=best.r}else{c.x=(col.x0+col.x1)/2;c.y=Z.y+Z.h/2}placed.push(c)});
+    if(best){c.x=best.x;c.y=best.y;c.rot=best.r;return best.v}c.x=c.y=-1e5;return 1e4};
+  // integrados: centro de su columna; se prueban los 4 giros con sus piezas alrededor y queda el que deja todo más cerca
+  const byArea=L=>L.slice().sort((a,b)=>(area(b)-area(a))||(SG.get(b.id).size-SG.get(a.id).size));
+  order.forEach((ic,i)=>{const col=cols[i],cx=(col.x0+col.x1)/2,cy=Z.y+Z.h/2,mem=byArea(blk.get(ic.id).filter(c=>!isEdge(c)));let best=null;
+    for(let r=0;r<4;r++){ic.rot=r;ic.x=cx;ic.y=cy;if(!fits(ic))continue;mem.forEach(c=>{c.x=c.y=-1e5});let v=0;
+      fpOf(ic).pads.forEach(p=>{const n=netOfK.get(pkey(ic.id,p.n));if(n==null||pw.has(n))return;const [px]=padWorld(ic,p);
+        if(i>0&&[order[i-1],...blk.get(order[i-1].id)].some(c=>SG.get(c.id).has(n)))v+=px-col.x0;
+        if(i<order.length-1&&[order[i+1],...blk.get(order[i+1].id)].some(c=>SG.get(c.id).has(n)))v+=col.x1-px});
+      mem.forEach(c=>v+=placeOne(c,col));if(!best||v<best.v)best={v,r,pos:mem.map(c=>[c.x,c.y,c.rot])}}
+    if(!best){ic.rot=0;ic.x=cx;ic.y=cy;return}ic.rot=best.r;ic.x=cx;ic.y=cy;mem.forEach((c,k)=>{[c.x,c.y,c.rot]=best.pos[k]})});
+  // lo que va al borde y lo que no encontró lugar
+  others.filter(c=>isEdge(c)||c.x<-1e4).forEach(c=>{const col=cols[order.indexOf(ICs.find(ic=>ic.id===owner.get(c.id)))]||cols[0];if(placeOne(c,col)>=1e4){c.x=(col.x0+col.x1)/2;c.y=Z.y+Z.h/2}});
 }
 // Probar variantes: varias ubicaciones (pensadas y al azar) y después pequeños cambios sobre la mejor
 // (mover una o dos piezas, dar vuelta otra); cada una se rutea de verdad y se puntúa por lo que quedó.
 // Corre de a una variante por vez sin trabar la pantalla; al final se elige entre las 3 mejores.
 let routeBusy=false;
 async function routeVariants(o){
-  if(routeBusy)return;routeBusy=true;pushUndo();const base=snapshot(),total={fast:8,normal:20,deep:48}[o.effort]||20;
+  if(routeBusy)return;routeBusy=true;pushUndo();const base=snapshot(),secs={fast:20,normal:60,deep:180}[o.effort]||60,t0=Date.now(),nPlace={fast:4,normal:8,deep:16}[o.effort]||8;
   let stop=false,i=0;const found=[];
   const ov=dialog('Buscando la mejor placa',`<p id="rvTxt">Preparando…</p><div style="height:8px;border-radius:4px;background:var(--panel2);overflow:hidden"><div id="rvBar" style="height:100%;width:0;background:var(--accent);transition:width .2s"></div></div>`,
     [{t:'Parar y elegir',pri:1,f:()=>{stop=true;return false}}]);
   const txt=ov.querySelector('#rvTxt'),bar=ov.querySelector('#rvBar');
   const fixedIds=new Set(doc.comps.filter(c=>c.lock).map(c=>c.id));
-  const score=()=>{const f=ratsnest().length,nj=(doc.jumpers||[]).length,d=runDrc().filter(x=>x.t!=='Sin rutear').length;let len=0;doc.tracks.forEach(t=>len+=trackLen(t));return {f,nj,d,len,v:f*1000+nj*120+d*40+len*0.02}};
+  const score=pl=>{const f=ratsnest().length,nj=(doc.jumpers||[]).length,d=runDrc().filter(x=>x.t!=='Sin rutear').length;let len=0;doc.tracks.forEach(t=>len+=trackLen(t));return {f,nj,d,len,v:f*1000+nj*120+d*400+len*0.02+(pl&&!pl.ok?5000:0)}};
   const keep=r=>{const snap=snapshot();if(found.some(x=>x.snap===snap))return;found.push({...r,snap});found.sort((a,b)=>a.v-b.v);if(found.length>6)found.pop()};
   const rv={...o,effort:o.effort==='deep'?'normal':o.effort};
   try{
-    for(i=0;i<total&&!stop;i++){
+    for(i=0;!stop&&(i<nPlace||Date.now()-t0<secs*1000);i++){
       const best=found[0];
-      if(i<Math.ceil(total*0.4)||!best){restore(base);routeCore({...rv,place:true,smart:i%3!==2,seed:11+i*37})}
+      let pl=null;if(i<nPlace||!best){restore(base);pl=routeCore({...rv,place:true,smart:true,placeEffort:'deep',seed:11+i*37}).pl}
       else{restore(best.snap);const mov=doc.comps.filter(c=>!fixedIds.has(c.id));let ok=false;
         for(let t=0;t<20&&!ok;t++){const sv=mov.map(c=>[c.x,c.y,c.rot]),n=1+(Math.random()<0.4);
-          for(let k=0;k<n;k++){const c=mov[Math.floor(Math.random()*mov.length)];if(Math.random()<0.8){c.x+=Math.round((Math.random()*2-1)*2)*1.27;c.y+=Math.round((Math.random()*2-1)*2)*1.27}else c.rot=(c.rot+2)%4}
-          ok=!mov.some(c=>compBlocked(c))&&(!doc.outline||mov.every(c=>{const b=compBox(c),q=doc.outline;return b[0]>=q.x+1&&b[1]>=q.y+1&&b[2]<=q.x+q.w-1&&b[3]<=q.y+q.h-1}));
+          for(let k=0;k<n;k++){const c=mov[Math.floor(Math.random()*mov.length)],m=Math.random();
+            if(m<0.65){c.x+=Math.round((Math.random()*2-1)*2)*1.27;c.y+=Math.round((Math.random()*2-1)*2)*1.27}
+            else if(m<0.8)c.rot=(c.rot+2)%4;else if(m<0.9){c.rot=(c.rot+1)%4}
+            else{const d=mov[Math.floor(Math.random()*mov.length)],A=compBox(c),B=compBox(d);if(d!==c&&Math.abs((A[2]-A[0])*(A[3]-A[1])-(B[2]-B[0])*(B[3]-B[1]))<40){const t=[c.x,c.y];c.x=d.x;c.y=d.y;d.x=t[0];d.y=t[1]}}}
+          const tbx=(doc.texts||[]).map(textBox),gap=(c,m)=>{const b=compBox(c);return [b[0]-m,b[1]-m,b[2]+m,b[3]+m]};
+          ok=!mov.some(c=>doc.comps.some(d=>d!==c&&boxHit(gap(c,.4),gap(d,.4)))||tbx.some(t=>boxHit(gap(c,.6),t))||holeList().some(h=>boxCircle(compBox(c),h.x,h.y,h.keep)))&&(!doc.outline||mov.every(c=>{const b=compBox(c),q=doc.outline;return b[0]>=q.x+1.6&&b[1]>=q.y+1.6&&b[2]<=q.x+q.w-1.6&&b[3]<=q.y+q.h-1.6}));
           if(!ok)mov.forEach((c,j)=>[c.x,c.y,c.rot]=sv[j])}
         if(!ok)continue;doc.tracks=doc.tracks.filter(t=>t.lock);doc.jumpers=[];changed();routeCore({...rv,place:false})}
-      const r=score();keep(r);const b=found[0];
-      txt.textContent=`Variante ${i+1} de ${total} · la mejor: ${b.f?b.f+' sin rutear, ':''}${b.nj} puente${b.nj===1?'':'s'}${b.d?', '+b.d+' error'+(b.d>1?'es':''):''}`;bar.style.width=Math.round((i+1)/total*100)+'%';
-      if(b.f===0&&b.nj===0&&b.d===0&&i>=Math.ceil(total*0.4))break;
+      const r=score(pl);keep(r);const b=found[0];
+      const el=Math.min(1,Math.max((i+1)/nPlace*0.3,(Date.now()-t0)/(secs*1000)));
+      txt.textContent=`Variante ${i+1} · la mejor: ${b.f?b.f+' sin rutear, ':''}${b.nj} puente${b.nj===1?'':'s'}${b.d?', '+b.d+' error'+(b.d>1?'es':''):''}`;bar.style.width=Math.round(el*100)+'%';
+      if(b.f===0&&b.nj===0&&b.d===0&&i>=nPlace)break;
       await new Promise(res=>setTimeout(res,30))}
   }finally{routeBusy=false;ov.remove()}
   if(!found.length){restore(base);toast('No se pudo rutear');return}
@@ -1380,9 +1392,10 @@ function placeComps(o){
   if(o.size==='std')R=stdRegion(o.std);else if(doc.outline)R={...doc.outline};
   else{const area=doc.comps.reduce((s,c)=>{const b=compBox(c);return s+(b[2]-b[0]+2)*(b[3]-b[1]+2)},0),side=Math.max(Math.sqrt(area*2.2),bb[2]-bb[0]+8,bb[3]-bb[1]+8);
     R={x:snapV((bb[0]+bb[2])/2-side/2,2.54),y:snapV((bb[1]+bb[3])/2-side/2,2.54),w:side,h:side}}
-  const E=DRC.edge,ix0=R.x+E,iy0=R.y+E,ix1=R.x+R.w-E,iy1=R.y+R.h-E,GAP=1.0;
+  const E=DRC.edge,ix0=R.x+E,iy0=R.y+E,ix1=R.x+R.w-E,iy1=R.y+R.h-E,GAP=0.6;
   const info=c=>DB.find(d=>d.nombre===c.name)||{};
-  const NETS=nets().map(ks=>ks.map(k=>{const [cid,n]=k.split(':');const c=doc.comps.find(x=>x.id===cid);const fp=c&&fpOf(c);return fp?{c,p:fp.pads.find(q=>String(q.n)===n)}:null}).filter(x=>x&&x.p));
+  const gk0=o.plane?gndKey():null; // con plano de masa la masa no lleva pistas: no cuenta para largo ni cruces
+  const NETS=nets().filter(ks=>!gk0||!ks.includes(gk0)).map(ks=>ks.map(k=>{const [cid,n]=k.split(':');const c=doc.comps.find(x=>x.id===cid);const fp=c&&fpOf(c);return fp?{c,p:fp.pads.find(q=>String(q.n)===n)}:null}).filter(x=>x&&x.p));
   const isG=k=>/^(GND|VSS|0V)$/.test(pinName(k)),isV=k=>/^(VCC|VDD|\+VS|VS|V\+)$/.test(pinName(k));
   const netKeys=nets(),netOfK=new Map();netKeys.forEach((g,i)=>g.forEach(k=>netOfK.set(k,i)));
   const decoup=[];doc.comps.forEach(c=>{if(!/^C\d/.test(c.ref))return;const fp=fpOf(c);if(!fp||fp.pads.length!==2)return;
@@ -1416,10 +1429,12 @@ function placeComps(o){
   const save=()=>doc.comps.map(c=>[c.x,c.y,c.rot]),load=s=>doc.comps.forEach((c,i)=>{[c.x,c.y,c.rot]=s[i]});
   if(o.smart)placeBlocks({x:ix0,y:iy0,w:ix1-ix0,h:iy1-iy0},mov,TB,rnd); // arranca de una ubicación pensada, no al azar
   let cur=cost(),best=cur,bestS=save();
-  const iters=({fast:4000,normal:15000,deep:45000}[o.effort]||15000)*Math.max(1,Math.min(3,mov.length/10))*(o.smart?0.5:1);
+  const iters=({fast:4000,normal:15000,deep:45000}[o.placeEffort||o.effort]||15000)*Math.max(1,Math.min(3,mov.length/10))*(o.smart?0.5:1)*(o.noAnneal?0:1);
   const span=Math.max(R.w,R.h)/2.54,T0=o.smart?Math.max(1,cur.t*0.008):Math.max(5,cur.t*0.05),T1=0.05;
   for(let it=0;it<iters;it++){const T=T0*Math.pow(T1/T0,it/iters),c=mov[Math.floor(rnd()*mov.length)],old=[c.x,c.y,c.rot],m=rnd();let other=null,oo=null;
-    if(m<0.7){const k=Math.max(1,Math.round(span*0.5*T/T0));c.x+=Math.round((rnd()*2-1)*k)*2.54;c.y+=Math.round((rnd()*2-1)*k)*2.54}
+    if(m<0.55){const k=Math.max(1,Math.round(span*0.5*T/T0));c.x+=Math.round((rnd()*2-1)*k)*2.54;c.y+=Math.round((rnd()*2-1)*k)*2.54}
+    else if(m<0.7){let sx=0,sy=0,n=0;NETS.forEach(L=>{if(!L.some(q=>q.c===c))return;L.forEach(q=>{if(q.c===c)return;const [x,y]=padWorld(q.c,q.p);sx+=x;sy+=y;n++})}); // hacia lo que conecta
+      if(!n)continue;const b=compBox(c),f=0.3+rnd()*0.7;c.x+=snapV((sx/n-(b[0]+b[2])/2)*f,2.54);c.y+=snapV((sy/n-(b[1]+b[3])/2)*f,2.54)}
     else if(m<0.85){c.rot=(c.rot+(rnd()<.5?1:3))%4;snapComp(c)}
     else{other=mov[Math.floor(rnd()*mov.length)];if(other===c)continue;oo=[other.x,other.y,other.rot];const ca=compBox(c),cb=compBox(other);
       const dx=(cb[0]+cb[2]-ca[0]-ca[2])/2,dy=(cb[1]+cb[3]-ca[1]-ca[3])/2;c.x+=dx;c.y+=dy;other.x-=dx;other.y-=dy;snapComp(c);snapComp(other)}
