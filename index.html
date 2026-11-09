@@ -160,6 +160,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .aisend{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;width:40px;height:34px;display:inline-flex;align-items:center;justify-content:center}
 .aisend svg{width:18px;height:18px}.aisend:disabled{opacity:.45}
 @media (max-width:820px){.aip{right:0;left:0;bottom:0;width:auto;height:min(70%,560px);border-radius:14px 14px 0 0}}
+/* alternativas del autorruteador */
+.alts{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.alt{display:flex;flex-direction:column;gap:4px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:8px;text-align:left}
+.alt img{width:100%;aspect-ratio:1;object-fit:contain;background:#fff;border-radius:6px}
+.alt span{font-size:.8rem;color:var(--muted)}
+.alt[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
 /* publicidad de pantalla completa */
 .adov{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px;z-index:80}
 .adfull{background:var(--panel);border-radius:14px;width:min(760px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;gap:12px;padding:12px 14px 14px}
@@ -1144,6 +1150,7 @@ function autoroute(opt){
     const segs=baseSegs.slice(),newT=[],newJ=[],fail=[],uf=UF();let len=0,total=0;
     for(const n of order){if(opt.skip&&opt.skip.has(n))continue;const root=k=>uf.f(ph0.f(k));
       for(;;){const grp=new Map();NETS[n].forEach(k=>{if(!padBy.has(k))return;const r=root(k);if(!grp.has(r))grp.set(r,[]);grp.get(r).push(padBy.get(k))});
+        if(opt.planeT&&n===opt.planeT.n){const gr=grp.get(root(opt.planeT.key));if(gr)gr.push(...opt.planeT.pts)} // puntos del plano principal de masa
         const G=[...grp.values()];if(G.length<2)break;
         let best=null;for(let a=0;a<G.length;a++)for(let b=a+1;b<G.length;b++)G[a].forEach(p=>G[b].forEach(q=>{const d=Math.hypot(p.x-q.x,p.y-q.y);if(!best||d<best.d)best={d,a,b,p,q}}));
         total++;const A=G[best.a],B=G[best.b];
@@ -1168,8 +1175,122 @@ function autoroute(opt){
     if(p>=3)for(let i=order.length-1;i>f.length;i--){const j=f.length+Math.floor(rnd()*(i-f.length+1));[order[i],order[j]]=[order[j],order[i]]}} // y el resto en otro orden
   return {tracks:base.concat(best.newT),jumpers:baseJ.concat(best.newJ),done:best.total-best.fail.length,total:best.total,nj:best.newJ.length};
 }
+/* ================= autorruteo: ayudas para que salga solo como a mano ================= */
+// Islas de masa: puntos del plano principal (el que junta más patas de masa) cerca de las patas de masa que
+// quedaron encerradas. El autorruteador puede llevar una pista corta a cualquiera de ellos en vez de a otra pata.
+function planeTargets(){
+  const P=planeGeo();if(!P||!P.grid||!P.regions.length)return null;
+  let mi=0;P.regions.forEach((ks,i)=>{if(ks.length>P.regions[mi].length)mi=i});
+  const key=P.regions[mi].find(k=>padPos(k));if(!key)return null;
+  const ph=physical(),net=nets().find(ks=>ks.includes(key))||[],iso=net.filter(k=>padPos(k)&&ph.f(k)!==ph.f(key)).map(padPos);if(!iso.length)return null;
+  const {NX,NY,X0,Y0,lab}=P.grid,L=P.regLab[mi],sz=P.s,st=Math.max(1,Math.round(0.5/sz)),m=Math.max(1,Math.round(0.3/sz)),cand=[];
+  const inL=(i,j)=>i>=0&&j>=0&&i<NX&&j<NY&&lab[j*NX+i]===L;
+  for(let j=0;j<NY;j+=st)for(let i=0;i<NX;i+=st){if(!inL(i,j)||!inL(i-m,j)||!inL(i+m,j)||!inL(i,j-m)||!inL(i,j+m))continue;
+    const x=X0+(i+.5)*sz,y=Y0+(j+.5)*sz;let d=1e9;iso.forEach(q=>d=Math.min(d,Math.hypot(q.x-x,q.y-y)));cand.push([d,x,y])}
+  cand.sort((a,b)=>a[0]-b[0]);return {key,pts:cand.slice(0,120).map(([,x,y])=>({x,y,rin:0.3,k:key,virt:1}))};
+}
+// líneas de aire en línea recta (árbol mínimo por red): largo total y cruces entre redes distintas
+function airLines(){
+  const E=[];nets().forEach((ks,ni)=>{const P=ks.map(padPos).filter(Boolean);if(P.length<2)return;const inT=[0],rest=P.map((_,i)=>i).slice(1);
+    while(rest.length){let bd=1e9,bi=0,bj=0;inT.forEach(i=>rest.forEach((j,jj)=>{const d=Math.hypot(P[i].x-P[j].x,P[i].y-P[j].y);if(d<bd){bd=d;bi=i;bj=jj}}));const j=rest.splice(bj,1)[0];inT.push(j);E.push([[P[bi].x,P[bi].y],[P[j].x,P[j].y],ni,bd])}});
+  let len=0,cross=0;E.forEach(e=>len+=e[3]);for(let i=0;i<E.length;i++)for(let j=i+1;j<E.length;j++)if(E[i][2]!==E[j][2]&&segCross(E[i][0],E[i][1],E[j][0],E[j][1]))cross++;
+  return {len,cross};
+}
+// patas intercambiables: los dos extremos de un preset o potenciómetro dan lo mismo (solo cambia el sentido de giro);
+// se queda con el lado que deja menos cruces y conexiones más cortas. No toca lo que tiene candado.
+const swapK=(ka,kb)=>doc.links.forEach(l=>{if(l.a===ka)l.a=kb;else if(l.a===kb)l.a=ka;if(l.b===ka)l.b=kb;else if(l.b===kb)l.b=ka});
+function swapEquivalentPins(){
+  let n=0;const sc=()=>{const a=airLines();return a.len+15*a.cross};
+  doc.comps.forEach(c=>{if(c.lock)return;const comp=DB.find(d=>d.nombre===c.name);if(!comp||!comp.pines)return;
+    const a=comp.pines.indexOf('Extremo 1')+1,b=comp.pines.indexOf('Extremo 2')+1;if(a<1||b<1)return;
+    const ka=pkey(c.id,a),kb=pkey(c.id,b),s0=sc();swapK(ka,kb);if(sc()<s0-0.01)n++;else swapK(ka,kb)});
+  if(n)ensureLinkIds();return n;
+}
+// Ubicación por bloques (como se arma a mano): cada componente va con el integrado con el que más se conecta,
+// los bloques se ordenan siguiendo la señal de izquierda a derecha y cada integrado se gira para que sus patas
+// miren hacia lo que conectan. Después cada pieza busca el lugar libre más cerca de lo que conecta.
+function placeBlocks(Z,mov,TB,rnd){
+  const ICs=mov.filter(c=>fpOf(c).pads.length>=6);if(!ICs.length)return;
+  const N=nets(),netOfK=new Map();N.forEach((ks,i)=>ks.forEach(k=>netOfK.set(k,i)));
+  const pw=new Set();N.forEach((ks,i)=>{if(isPowerNet(ks)||ks.some(k=>/^(GND|VSS|0V)$/.test(pinName(k))))pw.add(i)});
+  const sig=c=>{const S=new Set();fpOf(c).pads.forEach(p=>{const n=netOfK.get(pkey(c.id,p.n));if(n!=null&&!pw.has(n))S.add(n)});return S};
+  const SG=new Map(doc.comps.map(c=>[c.id,sig(c)])),shared=(a,b)=>{let k=0;SG.get(a.id).forEach(n=>{if(SG.get(b.id).has(n))k++});return k};
+  const others=mov.filter(c=>!ICs.includes(c)),blk=new Map(ICs.map(ic=>[ic.id,[]])),owner=new Map();
+  others.forEach(c=>{let best=null,bs=0;ICs.forEach(ic=>{const v=shared(c,ic);if(v>bs){bs=v;best=ic}});if(best){blk.get(best.id).push(c);owner.set(c.id,best.id)}});
+  for(let k=0;k<3;k++)others.forEach(c=>{if(owner.has(c.id))return;let best=null,bs=0;others.forEach(d=>{if(!owner.has(d.id))return;const v=shared(c,d);if(v>bs){bs=v;best=d}});if(best){const ic=owner.get(best.id);blk.get(ic).push(c);owner.set(c.id,ic)}});
+  others.forEach(c=>{if(!owner.has(c.id)){blk.get(ICs[ICs.length-1].id).push(c);owner.set(c.id,ICs[ICs.length-1].id)}});
+  // orden de los bloques: cadena que sigue las conexiones de señal entre bloques
+  const bw=(a,b)=>{let k=0;[a,...blk.get(a.id)].forEach(x=>[b,...blk.get(b.id)].forEach(y=>k+=shared(x,y)));return k};
+  const tot=ic=>ICs.reduce((s,o)=>o===ic?s:s+bw(ic,o),0);
+  const order=[ICs.slice().sort((a,b)=>tot(a)-tot(b)||a.x-b.x)[0]];while(order.length<ICs.length){const last=order[order.length-1];let best=null,bs=-1;ICs.forEach(ic=>{if(order.includes(ic))return;const v=bw(last,ic);if(v>bs){bs=v;best=ic}});order.push(best)}
+  if(rnd&&rnd()<0.5)order.reverse();
+  // columnas proporcionales al área de cada bloque
+  const area=c=>{const b=compBox(c);return (b[2]-b[0]+2)*(b[3]-b[1]+2)},bA=order.map(ic=>[ic,...blk.get(ic.id)].reduce((s,c)=>s+area(c),0)),At=bA.reduce((a,b)=>a+b,0);
+  let x0=Z.x;const cols=order.map((ic,i)=>{const w=Z.w*bA[i]/At,col={x0,x1:x0+w};x0+=w;return col});
+  mov.forEach(c=>{c.x=c.y=-1e5});const placed=[];
+  const fits=c=>{const b=compBox(c);if(b[0]<Z.x||b[1]<Z.y||b[2]>Z.x+Z.w||b[3]>Z.y+Z.h)return false;const B=[b[0]-1,b[1]-1,b[2]+1,b[3]+1];
+    return !doc.comps.some(o=>o!==c&&o.x>-1e4&&boxHit(B,compBox(o)))&&!holeList().some(h=>boxCircle(b,h.x,h.y,h.keep))&&!TB.some(t=>boxHit(B,t))};
+  const pullCost=(c,tg)=>fpOf(c).pads.reduce((s,p)=>{const n=netOfK.get(pkey(c.id,p.n));if(n==null||pw.has(n))return s;const [px,py]=padWorld(c,p);
+    let d=0,m=0;N[n].forEach(k=>{const q=padPos(k);if(!q||k.startsWith(c.id+':')||q.x<-1e4)return;d+=Math.hypot(q.x-px,q.y-py);m++});return s+(m?d/m:Math.hypot(px-tg[0],py-tg[1])*0.3)},0);
+  // integrados: centro de su columna, girados hacia sus vecinos
+  order.forEach((ic,i)=>{const col=cols[i],cx=(col.x0+col.x1)/2,cy=Z.y+Z.h/2;let best=null;
+    for(let r=0;r<4;r++){ic.rot=r;ic.x=cx;ic.y=cy;let s=0;fpOf(ic).pads.forEach(p=>{const n=netOfK.get(pkey(ic.id,p.n));if(n==null||pw.has(n))return;const [px]=padWorld(ic,p);
+      const prev=i>0&&[order[i-1],...blk.get(order[i-1].id)].some(c=>SG.get(c.id).has(n)),next=i<order.length-1&&[order[i+1],...blk.get(order[i+1].id)].some(c=>SG.get(c.id).has(n));
+      if(prev)s+=px-col.x0;if(next)s+=col.x1-px});if(!best||s<best.s)best={s,r}}
+    ic.rot=best.r;placed.push(ic)});
+  // el resto: primero lo más conectado; cada uno al lugar libre más cerca de lo que conecta
+  const isEdge=c=>/^Regulador/.test(c.name)||/bornera|jack/.test(((DB.find(d=>d.nombre===c.name)||{}).alias||[]).join(' '));
+  const rest=others.slice().sort((a,b)=>(isEdge(a)-isEdge(b))||(SG.get(b.id).size-SG.get(a.id).size));
+  rest.forEach(c=>{const col=cols[order.indexOf(ICs.find(ic=>ic.id===owner.get(c.id)))];let tg;
+    const Q=[];fpOf(c).pads.forEach(p=>{const n=netOfK.get(pkey(c.id,p.n));if(n==null||pw.has(n))return;N[n].forEach(k=>{const q=padPos(k);if(q&&q.x>-1e4&&!k.startsWith(c.id+':'))Q.push(q)})});
+    tg=Q.length?[Q.reduce((s,q)=>s+q.x,0)/Q.length,Q.reduce((s,q)=>s+q.y,0)/Q.length]:[(col.x0+col.x1)/2,Z.y+Z.h/2];
+    if(isEdge(c)){const ds=[tg[0]-Z.x,Z.x+Z.w-tg[0],tg[1]-Z.y,Z.y+Z.h-tg[1]],m=ds.indexOf(Math.min(...ds));tg=m===0?[Z.x,tg[1]]:m===1?[Z.x+Z.w,tg[1]]:m===2?[tg[0],Z.y]:[tg[0],Z.y+Z.h]}
+    const rots=fpOf(c).pads.length===2?[0,1]:[0,1,2,3];let best=null;
+    for(let ring=0;ring<40&&!(best&&ring>best.ring+2);ring++)for(let a=-ring;a<=ring;a++)for(let b=-ring;b<=ring;b++){if(Math.max(Math.abs(a),Math.abs(b))!==ring)continue;
+      for(const r of rots){c.rot=r;c.x=snapV(tg[0],1.27)+a*1.27;c.y=snapV(tg[1],1.27)+b*1.27;if(!fits(c))continue;const v=pullCost(c,tg)+ring*0.3;if(!best||v<best.v)best={v,x:c.x,y:c.y,r,ring}}}
+    if(best){c.x=best.x;c.y=best.y;c.rot=best.r}else{c.x=(col.x0+col.x1)/2;c.y=Z.y+Z.h/2}placed.push(c)});
+}
+// Probar variantes: varias ubicaciones (pensadas y al azar) y después pequeños cambios sobre la mejor
+// (mover una o dos piezas, dar vuelta otra); cada una se rutea de verdad y se puntúa por lo que quedó.
+// Corre de a una variante por vez sin trabar la pantalla; al final se elige entre las 3 mejores.
+let routeBusy=false;
+async function routeVariants(o){
+  if(routeBusy)return;routeBusy=true;pushUndo();const base=snapshot(),total={fast:8,normal:20,deep:48}[o.effort]||20;
+  let stop=false,i=0;const found=[];
+  const ov=dialog('Buscando la mejor placa',`<p id="rvTxt">Preparando…</p><div style="height:8px;border-radius:4px;background:var(--panel2);overflow:hidden"><div id="rvBar" style="height:100%;width:0;background:var(--accent);transition:width .2s"></div></div>`,
+    [{t:'Parar y elegir',pri:1,f:()=>{stop=true;return false}}]);
+  const txt=ov.querySelector('#rvTxt'),bar=ov.querySelector('#rvBar');
+  const fixedIds=new Set(doc.comps.filter(c=>c.lock).map(c=>c.id));
+  const score=()=>{const f=ratsnest().length,nj=(doc.jumpers||[]).length,d=runDrc().filter(x=>x.t!=='Sin rutear').length;let len=0;doc.tracks.forEach(t=>len+=trackLen(t));return {f,nj,d,len,v:f*1000+nj*120+d*40+len*0.02}};
+  const keep=r=>{const snap=snapshot();if(found.some(x=>x.snap===snap))return;found.push({...r,snap});found.sort((a,b)=>a.v-b.v);if(found.length>6)found.pop()};
+  const rv={...o,effort:o.effort==='deep'?'normal':o.effort};
+  try{
+    for(i=0;i<total&&!stop;i++){
+      const best=found[0];
+      if(i<Math.ceil(total*0.4)||!best){restore(base);routeCore({...rv,place:true,smart:i%3!==2,seed:11+i*37})}
+      else{restore(best.snap);const mov=doc.comps.filter(c=>!fixedIds.has(c.id));let ok=false;
+        for(let t=0;t<20&&!ok;t++){const sv=mov.map(c=>[c.x,c.y,c.rot]),n=1+(Math.random()<0.4);
+          for(let k=0;k<n;k++){const c=mov[Math.floor(Math.random()*mov.length)];if(Math.random()<0.8){c.x+=Math.round((Math.random()*2-1)*2)*1.27;c.y+=Math.round((Math.random()*2-1)*2)*1.27}else c.rot=(c.rot+2)%4}
+          ok=!mov.some(c=>compBlocked(c))&&(!doc.outline||mov.every(c=>{const b=compBox(c),q=doc.outline;return b[0]>=q.x+1&&b[1]>=q.y+1&&b[2]<=q.x+q.w-1&&b[3]<=q.y+q.h-1}));
+          if(!ok)mov.forEach((c,j)=>[c.x,c.y,c.rot]=sv[j])}
+        if(!ok)continue;doc.tracks=doc.tracks.filter(t=>t.lock);doc.jumpers=[];changed();routeCore({...rv,place:false})}
+      const r=score();keep(r);const b=found[0];
+      txt.textContent=`Variante ${i+1} de ${total} · la mejor: ${b.f?b.f+' sin rutear, ':''}${b.nj} puente${b.nj===1?'':'s'}${b.d?', '+b.d+' error'+(b.d>1?'es':''):''}`;bar.style.width=Math.round((i+1)/total*100)+'%';
+      if(b.f===0&&b.nj===0&&b.d===0&&i>=Math.ceil(total*0.4))break;
+      await new Promise(res=>setTimeout(res,30))}
+  }finally{routeBusy=false;ov.remove()}
+  if(!found.length){restore(base);toast('No se pudo rutear');return}
+  // las 3 mejores, distintas entre sí
+  const alts=found.slice(0,3).map(a=>{restore(a.snap);const im=renderSheet('image/png');return {...a,img:im&&im.url}});
+  restore(alts[0].snap);
+  const card=(a,k)=>`<button class="alt" data-k="${k}"><img src="${a.img}" alt=""><b>Opción ${k+1}</b><span>${a.f?a.f+' sin rutear · ':''}${a.nj?a.nj+' puente'+(a.nj>1?'s':''):'sin puentes'}${a.d?' · '+a.d+' error'+(a.d>1?'es':''):''}</span></button>`;
+  const d=dialog('Elegí la placa',`<div class="alts">${alts.map(card).join('')}</div>`,[{t:'Deshacer todo',f:()=>{doUndo()}},{t:'Listo',pri:1}]);
+  d.querySelector('.dlg').classList.add('wide');
+  const mark=k=>d.querySelectorAll('.alt').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.k===k)));mark(0);
+  d.querySelectorAll('.alt').forEach(b=>b.onclick=()=>{restore(alts[+b.dataset.k].snap);mark(+b.dataset.k);fit()});fit();
+}
 function routeOpts(){ // opciones del autorruteador: las últimas usadas, con lo de la placa actual
-  const o=Object.assign({sigW:0.8,powW:1.5,powerFirst:true,keep:'all',comfort:true,effort:'normal',jumps:false,maxJ:2,jLen:'both',place:false,size:'none',std:'5x7'},prefs.route||{});
+  const o=Object.assign({sigW:0.8,powW:1.5,powerFirst:true,keep:'all',comfort:true,effort:'normal',jumps:false,maxJ:2,jLen:'both',place:false,variants:true,size:'none',std:'5x7'},prefs.route||{});
   if(typeof o.keep!=='string')o.keep=o.keep?'all':'locked';o.tears=!!doc.tears;o.plane=!!doc.plane;o.holes=hasHoles();return o;
 }
 function routeDlg(){
@@ -1190,6 +1311,7 @@ function routeDlg(){
       <div class="rsub" data-if="jumps">${seg('maxJ','Máximo',[['1','1'],['2','2'],['3','3'],['5','5']])}${seg('jLen','Largo',[['7.62','7,62'],['10.16','10,16'],['both','Los dos']])}</div></section>
     <section class="rsec"><h4>Placa</h4>
       ${sw('place','Reacomodar componentes')}
+      <div class="rsub" data-if="place">${sw('variants','Probar variantes y elegir la mejor')}</div>
       ${seg('size','Tamaño',[['none','No tocar'],['min','Mínimo'],['std','Estándar']])}
       <div class="rsub" data-if="std">${sel('std','Medida',Object.keys(STD_BOARDS).map(k=>[k,k.replace('.',',').replace('x',' × ')+' cm']))}</div>
       ${sw('holes','Agujeros de fijación')}</section>
@@ -1198,7 +1320,7 @@ function routeDlg(){
       ${seg('keep','Pistas dibujadas',[['all','Conservar','Conservar todas las pistas que ya dibujaste'],['locked','Solo fijas','Conservar solo las pistas con candado y rehacer el resto']])}
       ${seg('effort','Esfuerzo',[['fast','Rápido'],['normal','Normal'],['deep','A fondo']])}</section>
   </div>`,
-   [{t:'Cancelar'},{t:'Rutear',pri:1,f:()=>{prefs.route=o;LS.set('pcb.prefs',prefs);withAd(()=>{toast('Ruteando…');setTimeout(()=>runRoute(o),30)})}}]);
+   [{t:'Cancelar'},{t:'Rutear',pri:1,f:()=>{prefs.route=o;LS.set('pcb.prefs',prefs);withAd(()=>{if(o.place&&o.variants){routeVariants(o);return}toast('Ruteando…');setTimeout(()=>runRoute(o),30)})}}]);
   ov.querySelector('.dlg').classList.add('wide');
   const NUM=new Set(['sigW','powW','maxJ']),BOOL=new Set(['comfort']);
   const val=(k,v)=>NUM.has(k)?+v:BOOL.has(k)?v==='1':v;
@@ -1206,7 +1328,7 @@ function routeDlg(){
     ov.querySelectorAll('.sw').forEach(b=>b.setAttribute('aria-checked',String(!!o[b.dataset.k])));
     ov.querySelectorAll('.seg').forEach(g=>g.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(val(g.dataset.k,b.dataset.v)===o[g.dataset.k]))));
     ov.querySelectorAll('select[data-k]').forEach(s=>s.value=String(o[s.dataset.k]));
-    ov.querySelector('[data-if="jumps"]').hidden=!o.jumps;ov.querySelector('[data-if="std"]').hidden=o.size!=='std'};
+    ov.querySelector('[data-if="jumps"]').hidden=!o.jumps;ov.querySelector('[data-if="place"]').hidden=!o.place;ov.querySelector('[data-if="std"]').hidden=o.size!=='std'};
   ov.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{o[b.dataset.k]=!o[b.dataset.k];paint()});
   ov.querySelectorAll('.seg').forEach(g=>g.querySelectorAll('button').forEach(b=>b.onclick=()=>{o[g.dataset.k]=val(g.dataset.k,b.dataset.v);paint()}));
   ov.querySelectorAll('select[data-k]').forEach(s=>s.onchange=()=>{o[s.dataset.k]=val(s.dataset.k,s.value);paint()});
@@ -1217,12 +1339,13 @@ function routeCore(o){
   linksFromTracks();trackSel=null;let extra='',pl=null;doc.holes=o.holes?(hasHoles()?doc.holes:cornerHoles()):[];
   if(o.place){pl=placeComps(o);if(!pl.ok)extra+=' · Algunos componentes no entran bien: revisá la placa'}
   else if(o.size==='std')doc.outline=stdRegion(o.std);
+  if(o.swap!==false){const ns=swapEquivalentPins();if(ns)extra+=` · ${ns} preset${ns>1?'s':''} dado${ns>1?'s':''} vuelta`}
   // con plano de masa, la masa la une el plano: primero se rutea todo lo demás, después se pone el plano
   // y solo se agregan pistas de masa para las patas que quedaron aisladas
   const gk=o.plane&&doc.outline?gndKey():null,gi=gk?nets().findIndex(ks=>ks.includes(gk)):-1;
   let r=autoroute(gi>=0?{...o,skip:new Set([gi])}:o);doc.tracks=r.tracks;doc.jumpers=r.jumpers;doc.tears=o.tears;
   if(gi>=0){doc.plane={key:gk,thermal:doc.plane?doc.plane.thermal!==false:true,fill:doc.plane?doc.plane.fill!==false:true};changed();
-    if(ratsnest().length){const r2=autoroute({...o,keep:'all',withPlane:true});doc.tracks=r2.tracks;doc.jumpers=r2.jumpers;r.nj+=r2.nj}
+    if(ratsnest().length){const T=planeTargets(),r2=autoroute({...o,keep:'all',withPlane:true,planeT:T&&{...T,n:gi}});doc.tracks=r2.tracks;doc.jumpers=r2.jumpers;r.nj+=r2.nj}
     r.total=nets().reduce((a,ks)=>a+ks.length-1,0)}
   if(o.size==='min')shrinkOutline();
   if(o.size!=='none'&&doc.outline)extra=` · Placa de ${cm(doc.outline.w)} × ${cm(doc.outline.h)} cm`+extra;
@@ -1289,11 +1412,12 @@ function placeComps(o){
     return {t:W+12*X+60*O+60*B+Ru+K,O,B,X};
   }
   let seed=o.seed||11;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647; // o.seed: otra variante de acomodo
-  mov.forEach(c=>snapComp(c));
+  if(!o.smart)mov.forEach(c=>snapComp(c));
   const save=()=>doc.comps.map(c=>[c.x,c.y,c.rot]),load=s=>doc.comps.forEach((c,i)=>{[c.x,c.y,c.rot]=s[i]});
+  if(o.smart)placeBlocks({x:ix0,y:iy0,w:ix1-ix0,h:iy1-iy0},mov,TB,rnd); // arranca de una ubicación pensada, no al azar
   let cur=cost(),best=cur,bestS=save();
-  const iters=({fast:4000,normal:15000,deep:45000}[o.effort]||15000)*Math.max(1,Math.min(3,mov.length/10));
-  const span=Math.max(R.w,R.h)/2.54,T0=Math.max(5,cur.t*0.05),T1=0.05;
+  const iters=({fast:4000,normal:15000,deep:45000}[o.effort]||15000)*Math.max(1,Math.min(3,mov.length/10))*(o.smart?0.5:1);
+  const span=Math.max(R.w,R.h)/2.54,T0=o.smart?Math.max(1,cur.t*0.008):Math.max(5,cur.t*0.05),T1=0.05;
   for(let it=0;it<iters;it++){const T=T0*Math.pow(T1/T0,it/iters),c=mov[Math.floor(rnd()*mov.length)],old=[c.x,c.y,c.rot],m=rnd();let other=null,oo=null;
     if(m<0.7){const k=Math.max(1,Math.round(span*0.5*T/T0));c.x+=Math.round((rnd()*2-1)*k)*2.54;c.y+=Math.round((rnd()*2-1)*k)*2.54}
     else if(m<0.85){c.rot=(c.rot+(rnd()<.5?1:3))%4;snapComp(c)}
@@ -1388,13 +1512,13 @@ function planeGeo(){
   // quedarse con las partes que tocan cobre de masa
   // relleno: las partes que no tocan masa también quedan (cobre suelto, a 0,8 mm de todo: no hay corto) para gastar menos percloruro;
   // se borran los pedacitos de menos de 2 mm² para que quede prolijo
-  const FILL=doc.plane.fill!==false,lab=new Int32Array(N).fill(-1),keep=[],keepG=[],regions=[];let L=0,kept=0;
+  const FILL=doc.plane.fill!==false,lab=new Int32Array(N).fill(-1),keep=[],keepG=[],regions=[],regLab=[];let L=0,kept=0;
   for(let c0=0;c0<N;c0++){if(!fin[c0]||lab[c0]>=0)continue;const st=[c0];lab[c0]=L;let touch=false;const cells=[];
     while(st.length){const c=st.pop();cells.push(c);if(own[c])touch=true;const i=c%NX,j=(c-i)/NX;
       for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]){const ii=i+a,jj=j+b;if(ii<0||jj<0||ii>=NX||jj>=NY)continue;const c2=jj*NX+ii;if(fin[c2]&&lab[c2]<0){lab[c2]=L;st.push(c2)}}}
     const big=cells.length*s*s>=4; // nada de pedacitos de menos de 4 mm², ni sueltos ni unidos a masa
     if(!touch&&FILL&&big){keep[L]=1;kept++}
-    if(touch&&big){keep[L]=1;keepG[L]=1;kept++;const keys=new Set();cells.forEach(c=>{if(!own[c])return;const x=cx(c%NX),y=cy(Math.floor(c/NX));items.forEach(it=>{if(sameNet(it,me)&&shapePtDist(it,x,y)<=0)keys.add(it.k)})});regions.push([...keys])}
+    if(touch&&big){keep[L]=1;keepG[L]=1;kept++;const keys=new Set();cells.forEach(c=>{if(!own[c])return;const x=cx(c%NX),y=cy(Math.floor(c/NX));items.forEach(it=>{if(sameNet(it,me)&&shapePtDist(it,x,y)<=0)keys.add(it.k)})});regions.push([...keys]);regLab.push(L)}
     L++}
   // rayos térmicos: solo los que llegan a una parte del plano que queda (nada de rayos colgando)
   thermal.forEach(t=>[[1,0],[-1,0],[0,1],[0,-1]].forEach(([ux,uy])=>{const L=(ux?t.hx:t.hy)+TGAP+0.35,x=t.pc[0]+ux*L,y=t.pc[1]+uy*L,i=Math.floor((x-X0)/s),j=Math.floor((y-Y0)/s);
@@ -1405,7 +1529,7 @@ function planeGeo(){
   const clip=new Path2D(),ok=c=>fin[c]&&keep[lab[c]],drop=[];
   for(let j=0;j<NY;j++){let i=0;while(i<NX){const c=j*NX+i;if(free[c]&&!ok(c)){let q=i;while(q<NX&&free[j*NX+q]&&!ok(j*NX+q))q++;drop.push([X0+i*s-s*0.5,Y0+j*s-s*0.5,(q-i+1)*s,2*s]);i=q}else i++}}
   for(let j=0;j<NY;j++){let i=0;while(i<NX){if(ok(j*NX+i)){let q=i;while(q<NX&&ok(j*NX+q))q++;clip.rect(X0+(i-1)*s,Y0+(j-1)*s,(q-i+2)*s,3*s);i=q}else i++}}
-  planeCache.geo={regions,rect:[X0,Y0,W0,H0],foreign,thermal,holes,clip,drop,s,empty:!kept};return planeCache.geo;
+  planeCache.geo={regions,regLab,grid:{NX,NY,X0,Y0,lab,fin},rect:[X0,Y0,W0,H0],foreign,thermal,holes,clip,drop,s,empty:!kept};return planeCache.geo;
 }
 // dibujo liso del plano: rectángulo de la placa menos el cobre ajeno con su separación, anillos térmicos con rayos
 let planeCv=null;
@@ -2086,6 +2210,7 @@ function aiRoute(h){
   if(h.ancho_senal)o.sigW=Math.max(.5,Math.min(2.5,+h.ancho_senal));if(h.ancho_potencia)o.powW=Math.max(.5,Math.min(2.5,+h.ancho_potencia));
   if(typeof h.plano==='boolean')o.plane=h.plano;
   o.near=pairs(h.juntos);o.apart=pairs(h.separados);o.edge=ids(h.borde);o.first=(h.primero||[]).map(aiPad).filter(Boolean);
+  if(o.place){routeVariants({...o,variants:true});return}
   pushUndo();const base=snapshot(),tries=[o,{...o,effort:'deep'}];
   if(o.place)[23,37,53].forEach(seed=>tries.push({...o,effort:'deep',seed}));if(o.jumps)tries.push({...o,effort:'deep',maxJ:Math.min(5,o.maxJ+1)});
   let best=null,bestS=null;
