@@ -2313,32 +2313,32 @@ document.addEventListener('keyup',e=>{if(e.key===' '){spaceDown=false;cv.style.c
 function openExample(f){pushUndo();f();sel.clear();trackSel=null;outlineSel=false;changed();fit()}
 // ejemplo precargado: detector de movimiento por luz (dos LDR en puente, LM741 y NE555 que hace sonar el buzzer y prende el LED).
 // Esquema de Thiago (E.E.S.T. N.º 2), valores de su lista de materiales. Viene ubicado y conectado, sin pistas: se rutea con A.
-const EX_LDR={outline:{x:0,y:0,w:70,h:50},
+const EX_LDR={outline:{x:0,y:0,w:90,h:70},
   comps:[ // [ref, pieza de la biblioteca, valor, x, y (mm), giro]
-    ['J1', 'Bornera 2 vías', '+V / 0 V', 63.5, 7.62, 3],
-    ['RV1', 'Preset 3386P (trimpot)', '250 kΩ', 59.69, 22.86, 1],
-    ['R1', 'Resistencia de carbón 1/4 W', '12 kΩ', 48.26, 20.32, 1],
-    ['R2', 'Resistencia de carbón 1/4 W', '12 kΩ', 53.34, 30.48, 2],
-    ['R3', 'LDR (fotorresistencia) 5 mm', 'LDR', 43.18, 31.32, 3],
-    ['R4', 'LDR (fotorresistencia) 5 mm', 'LDR', 30.48, 27.1, 1],
-    ['IC1', 'LM741 (amplificador operacional)', 'LM741', 39.37, 21.59, 2],
-    ['C4', 'Capacitor cerámico (más de 1 nF)', '100 nF', 53.34, 10.16, 0],
-    ['C1', 'Capacitor cerámico (más de 1 nF)', '100 nF', 27.94, 20.32, 2],
-    ['RV2', 'Preset 3386P (trimpot)', '500 kΩ', 17.78, 16.51, 2],
-    ['IC2', 'NE555 (temporizador)', 'NE555', 29.21, 8.89, 0],
-    ['R5', 'Resistencia de carbón 1/4 W', '470 Ω', 48.26, 5.08, 0],
-    ['C2', 'Electrolítico 22 µF', '22 µF', 44.72, 10.16, 2],
-    ['C3', 'Capacitor cerámico (más de 1 nF)', '10 nF', 38.1, 7.62, 3],
-    ['R6', 'Resistencia de carbón 1/4 W', '330 Ω', 20.32, 33.02, 1],
-    ['D1', 'LED 5 mm', 'Rojo', 27.94, 36.83, 1],
-    ['C5', 'Capacitor cerámico (más de 1 nF)', '100 nF', 10.16, 17.78, 3],
-    ['BZ1', 'Buzzer 12 mm', 'Buzzer', 10.16, 31.74, 1]],
+    ['J1','Bornera 2 vías','+V / 0 V',55.88,12.7,3],
+    ['RV1','Preset 3386P (trimpot)','250 kΩ',35.56,46.99,0],
+    ['R1','Resistencia de carbón 1/4 W','12 kΩ',27.94,43.18,3],
+    ['R2','Resistencia de carbón 1/4 W','12 kΩ',33.02,55.88,2],
+    ['R3','LDR (fotorresistencia) 5 mm','LDR',21.16,50.8,2],
+    ['R4','LDR (fotorresistencia) 5 mm','LDR',34.72,38.1,0],
+    ['IC1','LM741 (amplificador operacional)','LM741',29.21,29.21,3],
+    ['C4','Capacitor cerámico (más de 1 nF)','100 nF',45.72,20.32,2],
+    ['C1','Capacitor cerámico (más de 1 nF)','100 nF',38.1,30.48,1],
+    ['RV2','Preset 3386P (trimpot)','500 kΩ',17.78,31.75,2],
+    ['IC2','NE555 (temporizador)','NE555',46.99,29.21,3],
+    ['R5','Resistencia de carbón 1/4 W','470 Ω',55.88,35.56,3],
+    ['C2','Electrolítico 22 µF','22 µF',61.96,22.86,0],
+    ['C3','Capacitor cerámico (más de 1 nF)','10 nF',55.88,22.86,3],
+    ['R6','Resistencia de carbón 1/4 W','330 Ω',66.04,43.18,0],
+    ['D1','LED 5 mm','Rojo',69.85,50.8,0],
+    ['C5','Capacitor cerámico (más de 1 nF)','100 nF',55.88,48.26,1],
+    ['BZ1','Buzzer 12 mm','Buzzer',64.76,33.02,0]],
   nets:[['J1.1','RV1.2','IC1.7','C4.1','RV2.1','IC2.4','IC2.8','R5.1'],['J1.2','R4.2','R3.2','IC1.4','C4.2','RV2.3','IC2.1','C3.2','C2.2','D1.1','C5.2','BZ1.2'],
     ['RV1.1','R1.1'],['RV1.3','R2.1'],['R1.2','R4.1','IC1.3'],['R2.2','R3.1','IC1.2'],['IC1.6','C1.1'],['C1.2','RV2.2','IC2.2'],['IC2.7','IC2.6','R5.2','C2.1'],['IC2.5','C3.1'],['IC2.3','R6.1','C5.1','BZ1.1'],['R6.2','D1.2']]};
 function exampleLdr(){
   doc={name:'Detector de movimiento con LDR',example:true,comps:[],outline:{...EX_LDR.outline},tracks:[],links:[],jumpers:[],tears:false,plane:null,holes:[]};
   const R={};
-  EX_LDR.comps.forEach(([ref,name,val,x,y,r])=>{const comp=DB.find(d=>d.nombre===name);if(!comp)return;const c=makeComp(comp,x,y,r);c.x=x;c.y=y;c.ref=ref;c.val=val;doc.comps.push(c);R[ref]=c.id});
+  EX_LDR.comps.forEach(([ref,name,val,x,y,r])=>{const comp=DB.find(d=>d.nombre===name);if(!comp)return;const c=makeComp(comp,x,y,r);c.x=x;c.y=y;snapComp(c);c.ref=ref;c.val=val;doc.comps.push(c);R[ref]=c.id});
   const K=s=>{const [r,n]=s.split('.');return R[r]&&pkey(R[r],n)};
   EX_LDR.nets.forEach(ks=>{for(let i=1;i<ks.length;i++){const a=K(ks[i-1]),b=K(ks[i]);if(a&&b)doc.links.push({id:uid(),a,b})}});
 }
