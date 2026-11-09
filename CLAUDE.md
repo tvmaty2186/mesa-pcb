@@ -31,6 +31,7 @@ Pendientes chicos:
 
 ## Cómo hablar con Matías
 
+- **Todo en castellano, siempre**: también los avisos cortos mientras se trabaja ("estoy probando…", "ya lo subo"). Matías no entiende inglés (pedido del 9/11/2026).
 - Castellano rioplatense (voseo). Respuestas **cortas, claras y en orden**. Frases simples.
 - Prefiere dictar y escuchar: evitá bloques largos de texto y tecnicismos sin explicar.
 - Al terminar un cambio: decí qué cambió en pocas líneas, sin repetir todo lo hecho.
