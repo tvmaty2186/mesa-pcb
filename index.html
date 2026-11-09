@@ -2368,35 +2368,42 @@ document.addEventListener('keyup',e=>{if(e.key===' '){spaceDown=false;cv.style.c
 /* ================= ejemplo inicial ================= */
 function openExample(f){pushUndo();f();sel.clear();trackSel=null;outlineSel=false;changed();fit()}
 // ejemplo precargado: detector de movimiento por luz (dos LDR en puente, LM741 y NE555 que hace sonar el buzzer y prende el LED).
-// Esquema de Thiago (E.E.S.T. N.º 2), valores de su lista de materiales. Viene ubicado y conectado, sin pistas: se rutea con A.
-const EX_LDR={outline:{x:0,y:0,w:90,h:70},
+// Esquema de Thiago (E.E.S.T. N.º 2), valores de su lista de materiales. Placa de 5 × 5 cm ya ruteada: masa por el plano,
+// 2 puentes de masa y "THIAGO RUSSO" en cobre.
+const EX_LDR={outline:{x:0,y:0,w:50,h:50},
+  texts:[{s:'THIAGO RUSSO',x:25,y:46,h:2.5,w:0.6}],
+  tracks:[[0.8,[[23.495,33.02],[27.94,33.02],[33.02,27.94],[33.02,26.035]]],[0.8,[[32.385,25.4],[32.385,24.13],[22.86,14.605]]],[0.8,[[10.16,38.1],[13.97,41.91],[20.32,41.91],[22.86,39.37]]],[0.8,[[33.02,18.415],[34.925,18.415]]],[0.8,[[32.385,17.78],[32.385,15.24]]],[0.8,[[35.56,17.78],[35.56,13.97]]],[0.8,[[13.97,27.305],[13.335,27.94],[13.335,29.845]]],[0.8,[[15.24,27.305],[17.78,27.305]]],[0.8,[[10.16,13.97],[13.335,17.145],[13.97,17.145]]],[0.8,[[10.16,27.305],[10.795,27.94],[10.795,29.845]]],[0.8,[[8.89,26.67],[6.985,24.765],[5.08,24.765]]],[0.8,[[38.1,17.78],[40.005,15.875]]],[0.8,[[13.97,13.335],[11.43,10.795],[8.255,10.795],[6.35,12.7],[6.35,14.605],[8.89,17.145]]],[0.8,[[45.085,16.51],[45.085,14.605]]],[0.8,[[35.56,26.035],[35.56,27.94],[37.465,29.845]]],[0.8,[[38.735,30.48],[41.91,27.305],[44.45,27.305]]],[0.8,[[38.1,30.48],[38.1,37.465]]],[1,[[13.335,37.465],[13.335,36.83],[15.24,34.925],[16.51,34.925],[19.685,38.1]]],[1,[[39.37,5.08],[32.385,5.08]]],[1,[[12.7,3.81],[19.685,3.81]]],[1,[[38.1,25.4],[38.1,24.13],[35.56,21.59],[32.385,21.59],[29.845,19.05],[29.845,18.415]]],[1,[[31.115,5.08],[28.575,7.62],[24.13,7.62],[20.955,4.445]]],[1,[[31.75,5.715],[28.575,8.89],[28.575,16.51],[29.845,17.78]]],[0.8,[[19.685,4.445],[19.685,21.59],[20.955,22.86],[20.955,29.21],[13.335,36.83],[13.335,37.465]]],[0.8,[[19.685,33.02],[24.13,28.575],[24.13,21.59]]],[0.8,[[16.51,21.59],[17.78,22.86],[17.78,23.495]]],[0.8,[[17.78,23.495],[15.875,21.59],[5.715,21.59]]],[0.8,[[5.715,31.75],[7.62,29.845]]],[1,[[19.685,33.02],[26.67,26.035],[29.845,26.035]]]], // [ancho, puntos]
+  jumpers:[[[24.13,21.59],[16.51,21.59]],[[5.715,21.59],[5.715,31.75]]],
   comps:[ // [ref, pieza de la biblioteca, valor, x, y (mm), giro]
-    ['J1','Bornera 2 vías','+V / 0 V',55.88,12.7,3],
-    ['RV1','Preset de carbón 10 mm (horizontal)','250 kΩ',43.22,45.8,3],
-    ['R1','Resistencia de carbón 1/4 W','12 kΩ',30.48,48.26,2],
-    ['R2','Resistencia de carbón 1/4 W','12 kΩ',45.72,58.42,0],
-    ['R3','LDR (fotorresistencia) 5 mm','LDR',57.58,58.42,0],
-    ['R4','LDR (fotorresistencia) 5 mm','LDR',29.64,33.02,0],
-    ['IC1','LM741 (amplificador operacional)','LM741',57.15,49.53,3],
-    ['C4','Capacitor cerámico (más de 1 nF)','100 nF',43.18,33.02,0],
-    ['C1','Capacitor cerámico (más de 1 nF)','100 nF',60.96,40.64,0],
-    ['RV2','Preset de carbón 10 mm (horizontal)','500 kΩ',58.34,30.52,0],
-    ['IC2','NE555 (temporizador)','NE555',44.45,24.13,2],
-    ['R5','Resistencia de carbón 1/4 W','470 Ω',35.56,30.48,3],
-    ['C2','Electrolítico 22 µF','22 µF',34.56,20.32,2],
-    ['C3','Capacitor cerámico (más de 1 nF)','10 nF',40.64,12.7,3],
-    ['R6','Resistencia de carbón 1/4 W','330 Ω',60.96,22.86,0],
-    ['D1','LED 5 mm','Rojo',72.39,22.86,2],
-    ['C5','Capacitor cerámico (más de 1 nF)','100 nF',68.58,30.48,1],
-    ['BZ1','Buzzer 12 mm','Buzzer',67.3,12.7,0]],
+    ['J1','Bornera 2 vías','+V / 0 V',42.5,6,0],
+    ['RV1','Preset de carbón 10 mm (horizontal)','250 kΩ',12,9,3],
+    ['R1','Resistencia de carbón 1/4 W','12 kΩ',9.5,22,1],
+    ['R2','Resistencia de carbón 1/4 W','12 kΩ',14.5,22,1],
+    ['R3','LDR (fotorresistencia) 5 mm','LDR',18,26,3],
+    ['R4','LDR (fotorresistencia) 5 mm','LDR',4.5,26,1],
+    ['IC1','LM741 (amplificador operacional)','LM741',12,34,1],
+    ['C4','Capacitor cerámico (más de 1 nF)','100 nF',19.6,36,3],
+    ['C1','Capacitor cerámico (más de 1 nF)','100 nF',23,36,3],
+    ['RV2','Preset de carbón 10 mm (horizontal)','500 kΩ',23,9,1],
+    ['IC2','NE555 (temporizador)','NE555',34,22,3],
+    ['R5','Resistencia de carbón 1/4 W','470 Ω',31.6,10,1],
+    ['C2','Electrolítico 22 µF','22 µF',35.8,12.8,3],
+    ['C3','Capacitor cerámico (más de 1 nF)','10 nF',40.2,13.5,3],
+    ['R6','Resistencia de carbón 1/4 W','330 Ω',45,22.4,3],
+    ['D1','LED 5 mm','Rojo',45,13,1],
+    ['C5','Capacitor cerámico (más de 1 nF)','100 nF',40.5,30.2,0],
+    ['BZ1','Buzzer 12 mm','Buzzer',42,38,0]],
   nets:[['J1.1','RV1.2','IC1.7','C4.1','RV2.1','IC2.4','IC2.8','R5.1'],['J1.2','R4.2','R3.2','IC1.4','C4.2','RV2.3','IC2.1','C3.2','C2.2','D1.1','C5.2','BZ1.2'],
     ['RV1.1','R1.1'],['RV1.3','R2.1'],['R1.2','R4.1','IC1.3'],['R2.2','R3.1','IC1.2'],['IC1.6','C1.1'],['C1.2','RV2.2','IC2.2'],['IC2.7','IC2.6','R5.2','C2.1'],['IC2.5','C3.1'],['IC2.3','R6.1','C5.1','BZ1.1'],['R6.2','D1.2']]};
 function exampleLdr(){
   doc={name:'Detector de movimiento con LDR',example:true,comps:[],outline:{...EX_LDR.outline},tracks:[],links:[],jumpers:[],tears:false,plane:null,holes:[]};
   const R={};
-  EX_LDR.comps.forEach(([ref,name,val,x,y,r])=>{const comp=DB.find(d=>d.nombre===name);if(!comp)return;const c=makeComp(comp,x,y,r);c.x=x;c.y=y;snapComp(c);c.ref=ref;c.val=val;doc.comps.push(c);R[ref]=c.id});
+  EX_LDR.comps.forEach(([ref,name,val,x,y,r])=>{const comp=DB.find(d=>d.nombre===name);if(!comp)return;const c=makeComp(comp,x,y,r);c.x=x;c.y=y;c.ref=ref;c.val=val;doc.comps.push(c);R[ref]=c.id});
   const K=s=>{const [r,n]=s.split('.');return R[r]&&pkey(R[r],n)};
   EX_LDR.nets.forEach(ks=>{for(let i=1;i<ks.length;i++){const a=K(ks[i-1]),b=K(ks[i]);if(a&&b)doc.links.push({id:uid(),a,b})}});
+  // ya ruteado: pistas, puentes, plano de masa y texto en cobre
+  doc.tracks=EX_LDR.tracks.map(([w,pts])=>({id:uid(),w,pts:pts.map(p=>[...p])}));doc.jumpers=EX_LDR.jumpers.map(([a,b])=>({id:uid(),a:[...a],b:[...b]}));
+  doc.texts=EX_LDR.texts.map(t=>({id:uid(),...t}));doc.plane={key:gndKey(),thermal:true,fill:true};
 }
 function example(){
   const pick=a=>DB.find(c=>c.alias.includes(a));
