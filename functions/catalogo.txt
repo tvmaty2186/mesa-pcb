@@ -6,6 +6,7 @@ Resistencia de cemento 5 W|Resistencias|AX-R5W|2
 LDR (fotorresistencia) 5 mm|Resistencias|LDR|2
 Termistor NTC|Resistencias|NTC|2
 Preset 3386P (trimpot)|Resistencias|3386P|3|Extremo 1,Cursor,Extremo 2
+Preset de carbón 10 mm (horizontal)|Resistencias|PT10V|3|Extremo 1,Cursor,Extremo 2
 Potenciómetro 9 mm|Resistencias|POT9|5|Extremo 1,Cursor,Extremo 2,Sujeción,Sujeción
 Electrolítico 1 µF|Capacitores|CE-D5|2|+,−
 Electrolítico 2,2 µF|Capacitores|CE-D5|2|+,−

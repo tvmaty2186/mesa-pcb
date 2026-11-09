@@ -150,6 +150,10 @@ add("PUL6", {"pkg": "Pulsador 6×6 mm", "pads": [pad(1, -3.25, -2.25, 2.1, 1.0),
              "silk": [{"t": "rect", "x": -3, "y": -3, "w": 6, "h": 6}, {"t": "circle", "cx": 0, "cy": 0, "r": 1.75}], "dims": [[1, 2, "6,5 mm"], [1, 3, "4,5 mm"]]})
 add("3386P", {"pkg": "Preset 3386P", "pads": [pad(1, -P, 1.27), pad(2, 0, -1.27, sq=False), pad(3, P, 1.27, sq=False)],
               "silk": [{"t": "rect", "x": -4.8, "y": -4.8, "w": 9.6, "h": 9.6}, {"t": "circle", "cx": 0, "cy": 0, "r": 3}], "dims": [[1, 3, "5,08 mm"]]})
+# preset de carbón abierto de 10 mm, acostado (Piher PT-10-V10, huella oficial de KiCad Potentiometer_Piher_PT-10-V10_Vertical):
+# extremos adelante a 5 mm, cursor atrás a 10 mm; agujeros de 1,3 mm porque las patas son planas
+add("PT10V", {"pkg": "PT10 (preset de carbón 10 mm)", "pads": [pad(1, 0, 0, 2.4, 1.3), pad(2, 10, -2.5, 2.4, 1.3, sq=False), pad(3, 0, -5, 2.4, 1.3, sq=False)],
+              "silk": [{"t": "circle", "cx": 5, "cy": -2.5, "r": 5.2}, {"t": "circle", "cx": 5, "cy": -2.5, "r": 1.5}], "dims": [[1, 3, "5 mm"], [1, 2, "10 mm"]]})
 add("POT9", {"pkg": "Potenciómetro 9 mm (RV09)", "pads": [pad(1, 0, 0, 2.4, 1.0, w=2.4, h=1.8), pad(2, 0, 2.5, 2.4, 1.0, w=2.4, h=1.8), pad(3, 0, 5, 2.4, 1.0, w=2.4, h=1.8),
              pad(4, 7.5, 7.3, 2.8, 1.1, sq=False, w=2.8, h=3.4, sw=1.1, sh=1.8), pad(5, 7.5, -2.3, 2.8, 1.1, sq=False, w=2.8, h=3.4, sw=1.1, sh=1.8)],
              "silk": [{"t": "rect", "x": 1, "y": -2.25, "w": 11.35, "h": 9.5}, {"t": "circle", "cx": 7.5, "cy": 2.5, "r": 3.5}], "dims": [[1, 2, "2,5 mm"]],
@@ -186,6 +190,7 @@ comp("Resistencia de cemento 5 W", "Resistencias", "AX-R5W", ["5w", "cemento", "
 comp("LDR (fotorresistencia) 5 mm", "Resistencias", "LDR", ["ldr", "fotorresistencia", "fotoresistencia", "gl5528", "sensordeluz"], "Su resistencia baja cuando le da la luz. No tiene polaridad. Medí la separación de tus patas: suele ser 3,4 mm.")
 comp("Termistor NTC", "Resistencias", "NTC", ["ntc", "termistor"], "Su resistencia baja cuando sube la temperatura. No tiene polaridad.")
 comp("Preset 3386P (trimpot)", "Resistencias", "3386P", ["preset", "trimpot", "trimmer", "3386"], "Resistencia ajustable con destornillador. La pata del medio es el cursor.", ["Extremo 1", "Cursor", "Extremo 2"])
+comp("Preset de carbón 10 mm (horizontal)", "Resistencias", "PT10V", ["preset", "presetcarbon", "preset10", "pt10", "trimmer"], "El preset abierto común: se acuesta sobre la placa y se ajusta con destornillador desde arriba. Las dos patas de adelante son los extremos; la de atrás, el cursor.", ["Extremo 1", "Cursor", "Extremo 2"])
 comp("Potenciómetro 9 mm", "Resistencias", "POT9", ["potenciometro", "pote", "rv09", "potenciometrochico"], "Potenciómetro con eje para perilla. El de 16 mm grande se conecta con cables.", ["Extremo 1", "Cursor", "Extremo 2", "Sujeción", "Sujeción"])
 
 # Capacitores electrolíticos (tamaño típico 16–25 V)
