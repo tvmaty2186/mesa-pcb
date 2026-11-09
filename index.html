@@ -397,11 +397,11 @@ function applyTheme(){
 try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{readColors();draw();drawPreview()})}catch(e){}
 
 /* ================= deshacer / rehacer ================= */
-const docData=()=>({comps:doc.comps,outline:doc.outline,tracks:doc.tracks,links:doc.links,jumpers:doc.jumpers||[],tears:!!doc.tears,plane:doc.plane||null,holes:doc.holes||[]});
-const docFrom=(o,name)=>({name,comps:o.comps,outline:o.outline||null,tracks:o.tracks||[],links:o.links||[],jumpers:o.jumpers||[],tears:!!o.tears,plane:o.plane||null,holes:normHoles(o.holes)});
+const docData=()=>({comps:doc.comps,outline:doc.outline,tracks:doc.tracks,links:doc.links,jumpers:doc.jumpers||[],tears:!!doc.tears,plane:doc.plane||null,holes:doc.holes||[],texts:doc.texts||[]});
+const docFrom=(o,name)=>({name,comps:o.comps,outline:o.outline||null,tracks:o.tracks||[],links:o.links||[],jumpers:o.jumpers||[],tears:!!o.tears,plane:o.plane||null,holes:normHoles(o.holes),texts:o.texts||[]});
 const snapshot=()=>JSON.stringify(docData());
 function pushUndo(){doc.example=false;undo.push(snapshot());if(undo.length>200)undo.shift();redo=[];refreshUI()}
-function restore(s){const o=JSON.parse(s);doc.comps=o.comps;doc.outline=o.outline;doc.tracks=o.tracks||[];doc.links=o.links||[];doc.jumpers=o.jumpers||[];doc.tears=!!o.tears;doc.plane=o.plane||null;doc.holes=normHoles(o.holes);if(holeSel&&!doc.holes.some(h=>h.id===holeSel))holeSel=null;if(trackSel&&!doc.tracks.some(t=>t.id===trackSel))trackSel=null;sel=newSel([...sel].filter(id=>doc.comps.some(c=>c.id===id)));if(!doc.outline)outlineSel=false;changed()}
+function restore(s){const o=JSON.parse(s);doc.comps=o.comps;doc.outline=o.outline;doc.tracks=o.tracks||[];doc.links=o.links||[];doc.jumpers=o.jumpers||[];doc.tears=!!o.tears;doc.plane=o.plane||null;doc.holes=normHoles(o.holes);doc.texts=o.texts||[];if(textSel&&!doc.texts.some(t=>t.id===textSel))textSel=null;if(holeSel&&!doc.holes.some(h=>h.id===holeSel))holeSel=null;if(trackSel&&!doc.tracks.some(t=>t.id===trackSel))trackSel=null;sel=newSel([...sel].filter(id=>doc.comps.some(c=>c.id===id)));if(!doc.outline)outlineSel=false;changed()}
 function doUndo(){if(!undo.length)return;redo.push(snapshot());restore(undo.pop());toast('Deshecho')}
 function doRedo(){if(!redo.length)return;undo.push(snapshot());restore(redo.pop());toast('Rehecho')}
 function ensureLinkIds(){(doc.links||[]).forEach(l=>{if(!l.id)l.id=uid()})}
@@ -635,6 +635,7 @@ function draw(){
   if(drag&&drag.type==='outline'&&drag.rect)drawOutline(drag.rect,true);
   drawCopperExtra();
   drawTracks();
+  drawTexts();
   worldT();
   doc.comps.forEach(c=>{const fp=fpOf(c);if(fp)drawFootprint(fp,c)});
   drawJumperWires();
@@ -733,7 +734,7 @@ const TOOLS=[
   {id:'measure',name:'Medir',key:'M',icon:'measure',sub:'Distancias'},
   {id:'link',name:'Conectar',key:'C',icon:'link',sub:'Unir pad con pad'},
   {id:'track',name:'Pista',key:'T',icon:'track',sub:'Dibujar cobre'},
-  {id:'text',name:'Texto',icon:'text',sub:'Próximamente',soon:1},
+  {id:'text',name:'Texto en cobre',key:'X',icon:'text',sub:'Nombre, fecha, versión'},
 ];
 const HINTS={link:'Conectar: tocá un pad y después el pad con el que se une. Aparece una línea de aire',track:'Pista: tocá un pad para empezar, hacé clic para quebrar y tocá el pad de llegada. Las esquinas se hacen solas a 45° · Esc termina · Retroceso borra el último tramo',outline:'Contorno de placa: hacé clic en una esquina y arrastrá hasta la esquina opuesta',measure:'Medir: hacé clic y arrastrá entre dos puntos',hand:'Arrastrá para mover la vista. La rueda del mouse hace zoom'};
 function setTool(t){
@@ -759,6 +760,7 @@ cv.addEventListener('pointerdown',e=>{
   if(e.button!==0)return;
   if(placing){const c={...placing.c,id:uid(),ref:nextRef(prefixOf(placing.comp))};snapComp(c);if(compBlocked(c)){toast(NO_DROP);return}pushUndo();doc.comps.push(c);sel=newSel([c.id]);outlineSel=false;
     toast(`${c.ref} colocado`);if(!e.shiftKey){placing=null;hint(null)}else placing.c=makeComp(placing.comp,wx,wy,placing.c.rot);changed();return}
+  if(tool==='text'){textDlg(null,snapPt(wx,wy));return}
   if(tool==='outline'){const p=snapPt(wx,wy);drag={type:'outline',a:p,rect:null};return}
   if(tool==='measure'){const p=snapPt(wx,wy);measure={a:p,b:p};drag={type:'measure'};draw();return}
   if(tool==='link'){const q=hitPad(wx,wy);
@@ -775,6 +777,8 @@ cv.addEventListener('pointerdown',e=>{
   // seleccionar
   {const hh=hitHole(wx,wy);if(hh){sel.clear();outlineSel=false;trackSel=null;linkSel=null;holeSel=hh.id;drag={type:'hole',h:hh.src,w0:[wx,wy],p0:[hh.x,hh.y],moved:false};refreshUI();draw();return}}
   holeSel=null;
+  {const tx=hitText(wx,wy);if(tx&&!hitPad(wx,wy)){sel.clear();outlineSel=false;trackSel=null;linkSel=null;textSel=tx.id;drag={type:'text',t:tx,w0:[wx,wy],p0:[tx.x,tx.y],moved:false};refreshUI();draw();return}}
+  textSel=null;
   {const he=hitLinkEnd(sx,sy);if(he){drag={type:'linkEnd',l:he.l,end:he.end};return}}
   if(!hitPad(wx,wy)){const L=hitLink(sx,sy);if(L){sel.clear();outlineSel=false;trackSel=null;linkSel=L.id;refreshUI();draw();return}}
   linkSel=null;
@@ -811,11 +815,13 @@ cv.addEventListener('pointermove',e=>{
       else if(prefs.snap){ax=snapV(dx,prefs.grid)-dx;ay=snapV(dy,prefs.grid)-dy} // arrastrando desde una pista: de a un paso de grilla
       drag.tStart.forEach((pts,id)=>{const t=doc.tracks.find(x=>x.id===id);if(t)t.pts=pts.map(([x,y])=>[x+dx+ax,y+dy+ay])});
       drag.jStart.forEach(([a,b],id)=>{const j=doc.jumpers.find(x=>x.id===id);if(j){j.a=[a[0]+dx+ax,a[1]+dy+ay];j.b=[b[0]+dx+ax,b[1]+dy+ay]}});
-      drag.hStart.forEach(([x,y],id)=>{const h=doc.holes.find(q=>q.id===id);if(h){h.x=x+dx+ax;h.y=y+dy+ay}});if(drag.oStart&&doc.outline){doc.outline.x=drag.oStart[0]+dx+ax;doc.outline.y=drag.oStart[1]+dy+ay}geoVer++;drcDirty=true;
+      drag.hStart.forEach(([x,y],id)=>{const h=doc.holes.find(q=>q.id===id);if(h){h.x=x+dx+ax;h.y=y+dy+ay}});if(drag.oStart&&doc.outline){doc.outline.x=drag.oStart[0]+dx+ax;doc.outline.y=drag.oStart[1]+dy+ay}(drag.xStart||new Map()).forEach(([x,y],id)=>{const t=doc.texts.find(q=>q.id===id);if(t){t.x=x+dx+ax;t.y=y+dy+ay}});geoVer++;drcDirty=true;
       doc.comps.forEach(k=>{if(sel.has(k.id)&&k!==p){const s=drag.start.get(k.id);k.x=s[0]+dx+ax;k.y=s[1]+dy+ay}});
     }
     else if(drag.type==='hole'){const dx=wx-drag.w0[0],dy=wy-drag.w0[1];if(!drag.moved&&Math.hypot(dx,dy)*scale<3)return;
       if(!drag.moved){pushUndo();drag.moved=true}const p=prefs.snap?[snapV(drag.p0[0]+dx,0.5),snapV(drag.p0[1]+dy,0.5)]:[drag.p0[0]+dx,drag.p0[1]+dy];drag.h.corner=null;drag.h.x=p[0];drag.h.y=p[1];geoVer++;drcDirty=true}
+    else if(drag.type==='text'){const dx=wx-drag.w0[0],dy=wy-drag.w0[1];if(!drag.moved&&Math.hypot(dx,dy)*scale<3)return;
+      if(!drag.moved){pushUndo();drag.moved=true}drag.t.x=prefs.snap?snapV(drag.p0[0]+dx,0.5):drag.p0[0]+dx;drag.t.y=prefs.snap?snapV(drag.p0[1]+dy,0.5):drag.p0[1]+dy;geoVer++;drcDirty=true}
     else if(drag.type==='moveOutline'){const dx=wx-drag.w0[0],dy=wy-drag.w0[1];if(!drag.moved&&Math.hypot(dx,dy)*scale<3)return;
       if(!drag.moved){pushUndo();drag.moved=true}const p=snapPt(drag.o0.x+dx,drag.o0.y+dy);doc.outline.x=p[0];doc.outline.y=p[1]}
     else if(drag.type==='outline'){const b=snapPt(wx,wy),a=drag.a;drag.rect={x:Math.min(a[0],b[0]),y:Math.min(a[1],b[1]),w:Math.abs(b[0]-a[0]),h:Math.abs(b[1]-a[1])}}
@@ -876,7 +882,7 @@ function ungroupSel(){const all=selObjs();if(!all.some(o=>o.group))return;pushUn
 const selGrouped=()=>selObjs().some(o=>o.group);
 function selName(){const n=sel.size,t=selT.size,j=selJ.size,h=selH.size;return [selO?'contorno':'',n?`${n} componente${n>1?'s':''}`:'',t?`${t} pista${t>1?'s':''}`:'',j?`${j} puente${j>1?'s':''}`:'',h?`${h} agujero${h>1?'s':''}`:''].filter(Boolean).join(' · ')}
 function moveStart(){return {start:new Map(doc.comps.filter(k=>sel.has(k.id)).map(k=>[k.id,[k.x,k.y]])),tStart:new Map(selTracks().map(t=>[t.id,t.pts.map(p=>[...p])])),jStart:new Map(selJumpers().map(j=>[j.id,[[...j.a],[...j.b]]])),
-  hStart:new Map(selHoles().map(h=>[h.id,[h.x,h.y]])),oStart:selO&&doc.outline?[doc.outline.x,doc.outline.y]:null}}
+  hStart:new Map(selHoles().map(h=>[h.id,[h.x,h.y]])),oStart:selO&&doc.outline?[doc.outline.x,doc.outline.y]:null,xStart:new Map(selO&&doc.outline?(doc.texts||[]).filter(t=>{const o=doc.outline;return t.x>=o.x&&t.x<=o.x+o.w&&t.y>=o.y&&t.y<=o.y+o.h}).map(t=>[t.id,[t.x,t.y]]):[])}}
 function rotateSel(){
   if(placing){placing.c.rot=(placing.c.rot+1)%4;snapComp(placing.c);draw();return}
   const s=selComps(),T=selTracks(),J=selJumpers(),Hs=selHoles(),O=selO&&doc.outline;if(!s.length&&!T.length&&!J.length&&!O&&!Hs.length)return;if(anyLockedSel()){toast('Tiene candado: no se rota');return}pushUndo();
@@ -892,6 +898,7 @@ function rotateSel(){
 function deleteSel(){
   if(linkSel){pushUndo();doc.links=doc.links.filter(l=>l.id!==linkSel);linkSel=null;toast('Conexión borrada');changed();return}
   if(holeSel){pushUndo();doc.holes=doc.holes.filter(h=>h.id!==holeSel);holeSel=null;toast('Agujero borrado');changed();return}
+  if(textSel){const t=doc.texts.find(q=>q.id===textSel);if(t&&t.lock){toast('Tiene candado: no se borra');return}pushUndo();doc.texts=doc.texts.filter(q=>q.id!==textSel);textSel=null;toast('Texto borrado');changed();return}
   if(trackSel&&(doc.tracks.find(t=>t.id===trackSel)||{}).lock){toast('Pista con candado: no se borra');return}
   if(trackSel){pushUndo();doc.tracks=doc.tracks.filter(t=>t.id!==trackSel);trackSel=null;toast('Pista borrada');changed();return}
   if(outlineSel&&doc.outline){pushUndo();doc.outline=null;outlineSel=false;toast('Contorno borrado');changed();return}
@@ -1082,7 +1089,7 @@ function autoroute(opt){
   const pads=[],padBy=new Map();
   doc.comps.forEach(c=>{const fp=fpOf(c);if(!fp)return;fp.pads.forEach(p=>{const k=pkey(c.id,p.n),[x,y]=padWorld(c,p);
     const S=box({...padShape(c,p),x,y,k,n:netOf.has(k)?netOf.get(k):-1,rin:Math.min(p.w||p.d,p.h||p.d)/2});pads.push(S);padBy.set(k,S)})});
-  const keepT=doc.tracks,keepJ=doc.jumpers;doc.tracks=base;doc.jumpers=baseJ;const ph0=physical(true);doc.tracks=keepT;doc.jumpers=keepJ;
+  const keepT=doc.tracks,keepJ=doc.jumpers;doc.tracks=base;doc.jumpers=baseJ;const ph0=physical(!opt.withPlane);doc.tracks=keepT;doc.jumpers=keepJ;
   const grpNet=new Map();netOf.forEach((i,k)=>{const r=ph0.f(k);if(!grpNet.has(r))grpNet.set(r,i)});
   const segsOf=(t,n)=>{const o=[];for(let j=1;j<t.pts.length;j++)o.push(box({pts:[t.pts[j-1],t.pts[j]],r:t.w/2,n}));return o};
   const jpOf=(j,n)=>[j.a,j.b].map(p=>box({pts:[p],r:JR,n,jp:1}));
@@ -1090,6 +1097,7 @@ function autoroute(opt){
   const baseSegs=[...base.flatMap(t=>segsOf(t,netOfKey('t:'+t.id))),...baseJ.flatMap(j=>jpOf(j,netOfKey('j:'+j.id)))];
   const power=NETS.map(isPowerNet);
   const holeObs=holeList().map(h=>box({pts:[[h.x,h.y]],r:h.keep-DRC.gap,n:-2}));
+  (doc.texts||[]).forEach(t=>textPolys(t).forEach(P=>{for(let j=1;j<P.length;j++)holeObs.push(box({pts:[P[j-1],P[j]],r:t.w/2,n:-2}))}));
   const ampW=NETS.map(()=>0);doc.links.forEach(l=>{const n=netOf.get(l.a);if(n!=null&&l.amps)ampW[n]=Math.max(ampW[n],AMP_W[l.amps]||0)});
   const ci=x=>Math.round((x-gx0)/g),cj=y=>Math.round((y-gy0)/g);
   function routeOne(src,dst,n,w,segs,jumps){
@@ -1134,7 +1142,7 @@ function autoroute(opt){
   }
   function pass(order){
     const segs=baseSegs.slice(),newT=[],newJ=[],fail=[],uf=UF();let len=0,total=0;
-    for(const n of order){const root=k=>uf.f(ph0.f(k));
+    for(const n of order){if(opt.skip&&opt.skip.has(n))continue;const root=k=>uf.f(ph0.f(k));
       for(;;){const grp=new Map();NETS[n].forEach(k=>{if(!padBy.has(k))return;const r=root(k);if(!grp.has(r))grp.set(r,[]);grp.get(r).push(padBy.get(k))});
         const G=[...grp.values()];if(G.length<2)break;
         let best=null;for(let a=0;a<G.length;a++)for(let b=a+1;b<G.length;b++)G[a].forEach(p=>G[b].forEach(q=>{const d=Math.hypot(p.x-q.x,p.y-q.y);if(!best||d<best.d)best={d,a,b,p,q}}));
@@ -1209,7 +1217,13 @@ function routeCore(o){
   linksFromTracks();trackSel=null;let extra='',pl=null;doc.holes=o.holes?(hasHoles()?doc.holes:cornerHoles()):[];
   if(o.place){pl=placeComps(o);if(!pl.ok)extra+=' · Algunos componentes no entran bien: revisá la placa'}
   else if(o.size==='std')doc.outline=stdRegion(o.std);
-  const r=autoroute(o);doc.tracks=r.tracks;doc.jumpers=r.jumpers;doc.tears=o.tears;
+  // con plano de masa, la masa la une el plano: primero se rutea todo lo demás, después se pone el plano
+  // y solo se agregan pistas de masa para las patas que quedaron aisladas
+  const gk=o.plane&&doc.outline?gndKey():null,gi=gk?nets().findIndex(ks=>ks.includes(gk)):-1;
+  let r=autoroute(gi>=0?{...o,skip:new Set([gi])}:o);doc.tracks=r.tracks;doc.jumpers=r.jumpers;doc.tears=o.tears;
+  if(gi>=0){doc.plane={key:gk,thermal:doc.plane?doc.plane.thermal!==false:true,fill:doc.plane?doc.plane.fill!==false:true};changed();
+    if(ratsnest().length){const r2=autoroute({...o,keep:'all',withPlane:true});doc.tracks=r2.tracks;doc.jumpers=r2.jumpers;r.nj+=r2.nj}
+    r.total=nets().reduce((a,ks)=>a+ks.length-1,0)}
   if(o.size==='min')shrinkOutline();
   if(o.size!=='none'&&doc.outline)extra=` · Placa de ${cm(doc.outline.w)} × ${cm(doc.outline.h)} cm`+extra;
   if(o.plane){const k=gndKey();if(doc.outline){doc.plane={key:k,thermal:doc.plane?doc.plane.thermal!==false:true,fill:doc.plane?doc.plane.fill!==false:true};if(!k)extra=' · No encontré la masa (GND): el relleno queda sin conectar'}else{doc.plane=null;extra=' · Plano de masa: falta el contorno'}}else doc.plane=null;
@@ -1253,6 +1267,7 @@ function placeComps(o){
     for(const [a,b] of [[n1,n2],[n2,n1]])if(netKeys[a].some(isG)){const v=netKeys[b].find(isV);if(v){const [cid,n]=v.split(':');const ic=doc.comps.find(x=>x.id===cid);decoup.push({c,ic,p:fpOf(ic).pads.find(q=>String(q.n)===n)});break}}});
   const byId=id=>doc.comps.find(c=>c.id===id),pairs=L=>(L||[]).map(([a,b])=>[byId(a),byId(b)]).filter(([a,b])=>a&&b&&a!==b);
   const nearP=pairs(o.near),apartP=pairs(o.apart),mid=c=>{const b=compBox(c);return [(b[0]+b[2])/2,(b[1]+b[3])/2]},dist=(a,b)=>{const p=mid(a),q=mid(b);return Math.hypot(p[0]-q[0],p[1]-q[1])};
+  const TB=(doc.texts||[]).map(textBox);
   const edgeComps=doc.comps.filter(c=>/^Regulador/.test(c.name)||/bornera|jack/.test((info(c).alias||[]).join(' '))||(o.edge||[]).includes(c.id));
   const segX=(a,b,c,d)=>segCross(a,b,c,d);
   function cost(){
@@ -1266,6 +1281,7 @@ function placeComps(o){
       B+=Math.max(0,ix0-a[0])+Math.max(0,iy0-a[1])+Math.max(0,a[2]-ix1)+Math.max(0,a[3]-iy1);
       for(let j=i+1;j<bx.length;j++){const b=bx[j],ox=Math.min(a[2],b[2])-Math.max(a[0],b[0])+GAP,oy=Math.min(a[3],b[3])-Math.max(a[1],b[1])+GAP;if(ox>0&&oy>0)O+=ox*oy+1}}
     holeList().forEach(h=>bx.forEach(a=>{const ox=Math.min(a[2],h.x+h.keep)-Math.max(a[0],h.x-h.keep),oy=Math.min(a[3],h.y+h.keep)-Math.max(a[1],h.y-h.keep);if(ox>0&&oy>0)O+=ox*oy+1}));
+    TB.forEach(t=>bx.forEach(a=>{const ox=Math.min(a[2],t[2])-Math.max(a[0],t[0])+GAP,oy=Math.min(a[3],t[3])-Math.max(a[1],t[1])+GAP;if(ox>0&&oy>0)O+=ox*oy+1})); // texto en cobre
     decoup.forEach(({c,ic,p})=>{const q=padWorld(ic,p),b=compBox(c);Ru+=2*Math.hypot((b[0]+b[2])/2-q[0],(b[1]+b[3])/2-q[1])});
     edgeComps.forEach(c=>{const b=compBox(c);Ru+=1.2*Math.min(b[0]-ix0,b[1]-iy0,ix1-b[2],iy1-b[3])});
     nearP.forEach(([a,b])=>Ru+=1.5*dist(a,b));apartP.forEach(([a,b])=>Ru+=3*Math.max(0,30-dist(a,b))); // indicaciones del asistente
@@ -1309,6 +1325,7 @@ function copperItems(ph,opt={}){
   doc.comps.forEach(c=>{const fp=fpOf(c);if(!fp)return;fp.pads.forEach(p=>{const k=pkey(c.id,p.n);items.push({k,cid:c.id,name:`${c.ref}.${p.n}`,...padShape(c,p)})})});
   doc.tracks.forEach(t=>{for(let j=1;j<t.pts.length;j++)items.push({k:'t:'+t.id,tid:t.id,name:'pista',pts:[t.pts[j-1],t.pts[j]],r:t.w/2})});
   jumperPads().forEach(q=>items.push({k:q.k,jid:q.jid,name:'puente',pts:[[q.x,q.y]],r:JR}));
+  (doc.texts||[]).forEach(t=>textPolys(t).forEach(P=>{for(let j=1;j<P.length;j++)items.push({k:'x:'+t.id,xid:t.id,name:'texto',pts:[P[j-1],P[j]],r:t.w/2})}));
   if(opt.tears)tearShapes().forEach(T=>items.push({k:'t:'+T.tid,tid:T.tid,name:'pista',pts:T.pts,r:0}));
   items.forEach(o=>{const xs=o.pts.map(p=>p[0]),ys=o.pts.map(p=>p[1]);o.b=[Math.min(...xs)-o.r,Math.min(...ys)-o.r,Math.max(...xs)+o.r,Math.max(...ys)+o.r];
     o.g=ph.f(o.k);o.n=netOf.has(o.k)?netOf.get(o.k):grpNet.has(o.g)?grpNet.get(o.g):null});
@@ -1467,6 +1484,8 @@ const AMP_W={1:1,2:1.5,3:2}; // IPC-2221 + margen casero (CLAUDE.md)
 cv.addEventListener('contextmenu',e=>{
   e.preventDefault();if(trackDraw||placing)return;
   const [sx,sy]=evPt(e),[wx,wy]=toW(sx,sy),X=e.clientX,Y=e.clientY,pad=hitPad(wx,wy);
+  const tx=!pad&&hitText(wx,wy);
+  if(tx){sel.clear();outlineSel=false;trackSel=null;linkSel=null;holeSel=null;textSel=tx.id;refreshUI();draw();textCtx(tx,X,Y);return}
   const hh=hitHole(wx,wy);
   if(hh){sel.clear();outlineSel=false;trackSel=null;linkSel=null;holeSel=hh.id;refreshUI();draw();const h=hh.src;
     showCtx(X,Y,`Agujero de fijación · ⌀ ${f2(h.d)} mm`,[...[2.5,3,3.2,3.5,4,4.5].map(d=>({t:`Diámetro ${f2(d)} mm${d===3?' (por defecto)':d===3.2?' (M3 pasante)':''}`,c:()=>h.d===d,f:()=>setHoleD(h,d)})),
@@ -1566,6 +1585,43 @@ function drcFixes(e){
 // M3 en las cuatro esquinas, a 4 mm de cada borde. Siguen al contorno y alrededor no va cobre.
 const HOLE_D=3,HOLE_IN=4,HOLE_RING=2; // diámetro por defecto 3 mm; sin cobre hasta 2 mm más allá del agujero (tornillo y arandela)
 let holeSel=null;
+/* ================= texto en cobre ================= */
+// Letra de un solo trazo (Hershey Sans, MIT): cada letra son tramos de pista, así sale igual en la plancha,
+// el PDF y el Gerber, respeta la separación de 0,6 mm y el plano de masa la rodea. Se guarda espejado
+// (como se ve desde arriba) para que en la placa terminada se lea derecho del lado del cobre.
+// doc.texts = [{id, s (texto), x, y (centro), h (alto de mayúscula, mm), w (trazo, mm), lock?}]
+const HFONT=["5|5,1 5,15;5,20 4,21 5,22 6,21 5,20","8|4,1 4,8;12,1 12,8","11|11,-3 4,29;17,-3 10,29;4,10 18,10;3,16 17,16","10|8,-3 8,26;12,-3 12,26;17,4 15,2 12,1 8,1 5,2 3,4 3,6 4,8 5,9 7,10 13,12 15,13 16,14 17,16 17,19 15,21 12,22 8,22 5,21 3,19","12|21,1 3,22;8,1 10,3 10,5 9,7 7,8 5,8 3,6 3,4 4,2 6,1 8,1 10,2 13,3 16,3 19,2 21,1;17,15 15,16 14,18 14,20 16,22 18,22 20,21 21,19 21,17 19,15 17,15","13|23,10 23,9 22,8 21,8 20,9 19,11 17,16 15,19 13,21 11,22 7,22 5,21 4,20 3,18 3,16 4,14 5,13 12,9 13,8 14,6 14,4 13,2 11,1 9,2 8,4 8,6 9,9 11,12 16,19 18,21 20,22 22,22 23,21 23,20","5|5,3 4,2 5,1 6,2 6,4 5,6 4,7","7|11,-3 9,-1 7,2 5,6 4,11 4,15 5,20 7,24 9,27 11,29","7|3,-3 5,-1 7,2 9,6 10,11 10,15 9,20 7,24 5,27 3,29","8|8,7 8,19;3,10 13,16;13,10 3,16","13|13,4 13,22;4,13 22,13","4|5,18 4,19 3,18 4,17 5,18 5,20 3,22","13|4,13 22,13","4|4,17 3,18 4,19 5,18 4,17","11|20,-3 2,29","10|9,1 6,2 4,5 3,10 3,13 4,18 6,21 9,22 11,22 14,21 16,18 17,13 17,10 16,5 14,2 11,1 9,1","10|6,5 8,4 11,1 11,22","10|4,6 4,5 5,3 6,2 8,1 12,1 14,2 15,3 16,5 16,7 15,9 13,12 3,22 17,22","10|5,1 16,1 10,9 13,9 15,10 16,11 17,14 17,16 16,19 14,21 11,22 8,22 5,21 4,20 3,18","10|13,1 3,15 18,15;13,1 13,22","10|15,1 5,1 4,10 5,9 8,8 11,8 14,9 16,11 17,14 17,16 16,19 14,21 11,22 8,22 5,21 4,20 3,18","10|16,4 15,2 12,1 10,1 7,2 5,5 4,10 4,15 5,19 7,21 10,22 11,22 14,21 16,19 17,16 17,15 16,12 14,10 11,9 10,9 7,10 5,12 4,15","10|17,1 7,22;3,1 17,1","10|8,1 5,2 4,4 4,6 5,8 7,9 11,10 14,11 16,13 17,15 17,18 16,20 15,21 12,22 8,22 5,21 4,20 3,18 3,15 4,13 6,11 9,10 13,9 15,8 16,6 16,4 15,2 12,1 8,1","10|16,8 15,11 13,13 10,14 9,14 6,13 4,11 3,8 3,7 4,4 6,2 9,1 10,1 13,2 15,4 16,8 16,13 15,18 13,21 10,22 8,22 5,21 4,19","4|4,10 3,11 4,12 5,11 4,10;4,17 3,18 4,19 5,18 4,17","4|4,10 3,11 4,12 5,11 4,10;5,18 4,19 3,18 4,17 5,18 5,20 3,22","12|20,4 4,13 20,22","13|4,10 22,10;4,16 22,16","12|4,4 20,13 4,22","9|3,6 3,5 4,3 5,2 7,1 11,1 13,2 14,3 15,5 15,7 14,9 13,10 9,12 9,15;9,20 8,21 9,22 10,21 9,20","14|18,9 17,7 15,6 12,6 10,7 9,8 8,11 8,14 9,16 11,17 14,17 16,16 17,14;12,6 10,8 9,11 9,14 10,16 11,17;18,6 17,14 17,16 19,17 21,17 23,15 24,12 24,10 23,7 22,5 20,3 18,2 15,1 12,1 9,2 7,3 5,5 4,7 3,10 3,13 4,16 5,18 7,20 9,21 12,22 15,22 18,21 20,20 21,19;19,6 18,14 18,16 19,17","9|9,1 1,22;9,1 17,22;4,15 14,15","10|4,1 4,22;4,1 13,1 16,2 17,3 18,5 18,7 17,9 16,10 13,11;4,11 13,11 16,12 17,13 18,15 18,18 17,20 16,21 13,22 4,22","11|18,6 17,4 15,2 13,1 9,1 7,2 5,4 4,6 3,9 3,14 4,17 5,19 7,21 9,22 13,22 15,21 17,19 18,17","10|4,1 4,22;4,1 11,1 14,2 16,4 17,6 18,9 18,14 17,17 16,19 14,21 11,22 4,22","9|4,1 4,22;4,1 17,1;4,11 12,11;4,22 17,22","8|4,1 4,22;4,1 17,1;4,11 12,11","11|18,6 17,4 15,2 13,1 9,1 7,2 5,4 4,6 3,9 3,14 4,17 5,19 7,21 9,22 13,22 15,21 17,19 18,17 18,14;13,14 18,14","11|4,1 4,22;18,1 18,22;4,11 18,11","4|4,1 4,22","8|12,1 12,17 11,20 10,21 8,22 6,22 4,21 3,20 2,17 2,15","10|4,1 4,22;18,1 4,15;9,10 18,22","7|4,1 4,22;4,22 16,22","12|4,1 4,22;4,1 12,22;20,1 12,22;20,1 20,22","11|4,1 4,22;4,1 18,22;18,1 18,22","11|9,1 7,2 5,4 4,6 3,9 3,14 4,17 5,19 7,21 9,22 13,22 15,21 17,19 18,17 19,14 19,9 18,6 17,4 15,2 13,1 9,1","10|4,1 4,22;4,1 13,1 16,2 17,3 18,5 18,8 17,10 16,11 13,12 4,12","11|9,1 7,2 5,4 4,6 3,9 3,14 4,17 5,19 7,21 9,22 13,22 15,21 17,19 18,17 19,14 19,9 18,6 17,4 15,2 13,1 9,1;12,18 18,24","10|4,1 4,22;4,1 13,1 16,2 17,3 18,5 18,7 17,9 16,10 13,11 4,11;11,11 18,22","10|17,4 15,2 12,1 8,1 5,2 3,4 3,6 4,8 5,9 7,10 13,12 15,13 16,14 17,16 17,19 15,21 12,22 8,22 5,21 3,19","8|8,1 8,22;1,1 15,1","11|4,1 4,16 5,19 7,21 10,22 12,22 15,21 17,19 18,16 18,1","9|1,1 9,22;17,1 9,22","12|2,1 7,22;12,1 7,22;12,1 17,22;22,1 17,22","10|3,1 17,22;17,1 3,22","9|1,1 9,11 9,22;17,1 9,11","10|17,1 3,22;3,1 17,1;3,22 17,22","7|4,-3 4,29;5,-3 5,29;4,-3 11,-3;4,29 11,29","7|0,1 14,25","7|9,-3 9,29;10,-3 10,29;3,-3 10,-3;3,29 10,29","8|8,-1 0,13;8,-1 16,13","9|0,29 18,29","4|5,6 3,8 3,10 4,11 5,10 4,9 3,10","10|15,8 15,22;15,11 13,9 11,8 8,8 6,9 4,11 3,14 3,16 4,19 6,21 8,22 11,22 13,21 15,19","9|4,1 4,22;4,11 6,9 8,8 11,8 13,9 15,11 16,14 16,16 15,19 13,21 11,22 8,22 6,21 4,19","9|15,11 13,9 11,8 8,8 6,9 4,11 3,14 3,16 4,19 6,21 8,22 11,22 13,21 15,19","10|15,1 15,22;15,11 13,9 11,8 8,8 6,9 4,11 3,14 3,16 4,19 6,21 8,22 11,22 13,21 15,19","9|3,14 15,14 15,12 14,10 13,9 11,8 8,8 6,9 4,11 3,14 3,16 4,19 6,21 8,22 11,22 13,21 15,19","7|10,1 8,1 6,2 5,5 5,22;2,8 9,8","10|15,8 15,24 14,27 13,28 11,29 8,29 6,28;15,11 13,9 11,8 8,8 6,9 4,11 3,14 3,16 4,19 6,21 8,22 11,22 13,21 15,19","10|4,1 4,22;4,12 7,9 9,8 12,8 14,9 15,12 15,22","4|3,1 4,2 5,1 4,0 3,1;4,8 4,22","5|5,1 6,2 7,1 6,0 5,1;6,8 6,25 5,28 3,29 1,29","8|4,1 4,22;14,8 4,18;8,14 15,22","4|4,1 4,22","15|4,8 4,22;4,12 7,9 9,8 12,8 14,9 15,12 15,22;15,12 18,9 20,8 23,8 25,9 26,12 26,22","10|4,8 4,22;4,12 7,9 9,8 12,8 14,9 15,12 15,22","10|8,8 6,9 4,11 3,14 3,16 4,19 6,21 8,22 11,22 13,21 15,19 16,16 16,14 15,11 13,9 11,8 8,8","9|4,8 4,29;4,11 6,9 8,8 11,8 13,9 15,11 16,14 16,16 15,19 13,21 11,22 8,22 6,21 4,19","10|15,8 15,29;15,11 13,9 11,8 8,8 6,9 4,11 3,14 3,16 4,19 6,21 8,22 11,22 13,21 15,19","6|4,8 4,22;4,14 5,11 7,9 9,8 12,8","9|14,11 13,9 10,8 7,8 4,9 3,11 4,13 6,14 11,15 13,16 14,18 14,19 13,21 10,22 7,22 4,21 3,19","7|5,1 5,18 6,21 8,22 10,22;2,8 9,8","10|4,8 4,18 5,21 7,22 10,22 12,21 15,18;15,8 15,22","8|2,8 8,22;14,8 8,22","11|3,8 7,22;11,8 7,22;11,8 15,22;19,8 15,22","9|3,8 14,22;14,8 3,22","8|2,8 8,22;14,8 8,22 6,26 4,28 2,29 1,29","9|14,8 3,22;3,8 14,8;3,22 14,22","7|9,-3 7,-2 6,-1 5,1 5,3 6,5 7,6 8,8 8,10 6,12;7,-2 6,0 6,2 7,4 8,5 9,7 9,9 8,11 4,13 8,15 9,17 9,19 8,21 7,22 6,24 6,26 7,28;6,14 8,16 8,18 7,20 6,21 5,23 5,25 6,27 7,28 9,29","4|4,-3 4,29","7|5,-3 7,-2 8,-1 9,1 9,3 8,5 7,6 6,8 6,10 8,12;7,-2 8,0 8,2 7,4 6,5 5,7 5,9 6,11 10,13 6,15 5,17 5,19 6,21 7,22 8,24 8,26 7,28;8,14 6,16 6,18 7,20 8,21 9,23 9,25 8,27 7,28 5,29","12|3,16 3,14 4,11 6,10 8,10 10,11 14,14 16,15 18,15 20,14 21,12;3,14 4,12 6,11 8,11 10,12 14,15 16,16 18,16 20,15 21,12 21,10","8|0,1 0,22 1,22 1,1 2,1 2,22 3,22 3,1 4,1 4,22 5,22 5,1 6,1 6,22 7,22 7,1 8,1 8,22 9,22 9,1 10,1 10,22 11,22 11,1 12,1 12,22 13,22 13,1 14,1 14,22 15,22 15,1 16,1 16,22"];
+let textSel=null;
+function textPolys(t){
+  const k=t.h/21,out=[];let cur=0;
+  for(const ch of String(t.s)){const g=HFONT[ch.charCodeAt(0)-33];if(ch===' '||!g){cur+=16;continue}
+    const [o,d]=g.split('|');d.split(';').forEach(st=>{const P=st.split(' ').map(q=>{const [a,b]=q.split(',').map(Number);return [cur+a,b]});if(P.length>1)out.push(P)});cur+=2*o}
+  const W=cur*k;return out.map(P=>P.map(([a,b])=>[t.x-(a*k-W/2),t.y+(b-22)*k+t.h/2]));
+}
+function textBox(t){const P=textPolys(t).flat();if(!P.length)return [t.x-1,t.y-1,t.x+1,t.y+1];const xs=P.map(p=>p[0]),ys=P.map(p=>p[1]),r=t.w/2;return [Math.min(...xs)-r,Math.min(...ys)-r,Math.max(...xs)+r,Math.max(...ys)+r]}
+function hitText(wx,wy){const m=Math.max(.3,3/scale);return (doc.texts||[]).find(t=>{const b=textBox(t);return wx>=b[0]-m&&wx<=b[2]+m&&wy>=b[1]-m&&wy<=b[3]+m})||null}
+function drawTexts(){const pr=view==='plancha',cu=pr?C.toner:C['ws-copper'];
+  (doc.texts||[]).forEach(t=>{textPolys(t).forEach(P=>strokePoly(P,t.w,cu));
+    if(t.id===textSel&&!pr){const b=textBox(t);let [x0,y0]=toS(b[0],b[1]),[x1,y1]=toS(b[2],b[3]);if(x0>x1)[x0,x1]=[x1,x0];screenT();ctx.strokeStyle=C.sel;ctx.lineWidth=1.5;ctx.setLineDash([5,3]);ctx.strokeRect(x0-4,y0-4,x1-x0+8,y1-y0+8);ctx.setLineDash([])}})}
+const TEXT_H=[2,2.5,3,4,5],TEXT_W=[0.5,0.6,0.8];
+function textDlg(t,at){
+  const o=Object.assign({s:'',h:3,w:0.6},t||{});
+  const seg=(k,label,vals)=>`<div class="rrow"><span>${label}</span><div class="seg" data-k="${k}">${vals.map(v=>`<button data-v="${v}">${f2(v)} mm</button>`).join('')}</div></div>`;
+  const ov=dialog(t?'Editar texto':'Texto en cobre',`<div class="rsec"><div class="rrow"><input id="txS" maxlength="40" placeholder="Por ejemplo: Thiago Russo" style="flex:1;font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--ws-bg);color:var(--ink)"></div>
+    ${seg('h','Alto de las letras',TEXT_H)}${seg('w','Grosor del trazo',TEXT_W)}</div>`,
+    [{t:'Cancelar'},{t:t?'Guardar':'Agregar',pri:1,f:()=>{const v=ov.querySelector('#txS').value.trim();if(!v){toast('Escribí el texto');return false}
+      pushUndo();if(t){t.s=v;t.h=o.h;t.w=o.w}else{const n={id:uid(),s:v,x:at[0],y:at[1],h:o.h,w:o.w};doc.texts=doc.texts||[];doc.texts.push(n);textSel=n.id;setTool('select')}
+      changed();toast(t?'Texto cambiado':'Texto agregado: arrastralo a su lugar')}}]);
+  const inp=ov.querySelector('#txS');inp.value=o.s;
+  const paint=()=>ov.querySelectorAll('.seg').forEach(g=>g.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.v===o[g.dataset.k]))));
+  ov.querySelectorAll('.seg').forEach(g=>g.querySelectorAll('button').forEach(b=>b.onclick=()=>{o[g.dataset.k]=+b.dataset.v;paint()}));paint();
+}
+function textCtx(t,X,Y){
+  showCtx(X,Y,`Texto en cobre · “${t.s}”`,[{t:'Editar texto…',f:()=>textDlg(t)},'-',
+    ...TEXT_H.map(h=>({t:`Alto ${f2(h)} mm`,c:()=>t.h===h,f:()=>{pushUndo();t.h=h;changed()}})),'-',
+    {t:t.lock?'Quitar candado':'Poner candado',f:()=>{pushUndo();t.lock=!t.lock;changed()}},
+    {t:'Borrar este texto',k:'Supr',i:'trash',danger:1,f:()=>{textSel=t.id;deleteSel()}}]);
+}
 function hasHoles(){return (doc.holes||[]).length>0}
 function cornerHoles(){return [0,1,2,3].map(c=>({id:uid(),corner:c,d:HOLE_D}))}
 function normHoles(h){return h===true?cornerHoles():Array.isArray(h)?h:[]} // los diseños viejos guardaban true
@@ -1706,7 +1762,7 @@ function exportGerber(){
   const region=pts=>{body.push('G36*');pts.forEach((p,i)=>body.push(`${X(p[0])}${Y(p[1])}${i?'D01':'D02'}*`));body.push(`${X(pts[0][0])}${Y(pts[0][1])}D01*`,'G37*')};
   const copper=()=>{
     doc.comps.forEach(c=>{const fp=fpOf(c);if(fp)fp.pads.forEach(p=>{const [x,y]=padWorld(c,p);flash(padAp(c,p,0),x,y)})});
-    doc.tracks.forEach(t=>stroke(C(t.w),t.pts));jumperPads().forEach(q=>flash(C(2*JR),q.x,q.y));
+    doc.tracks.forEach(t=>stroke(C(t.w),t.pts));(doc.texts||[]).forEach(t=>textPolys(t).forEach(P=>stroke(C(t.w),P)));jumperPads().forEach(q=>flash(C(2*JR),q.x,q.y));
     tearShapes().forEach(T=>region(T.pts))};
   const P=planeGeo();
   if(P&&!P.empty){const [x0,y0,w0,h0]=P.rect,m=P.s*0.75;body.push('%LPD*%');region([[x0,y0],[x0+w0,y0],[x0+w0,y0+h0],[x0,y0+h0]]);
@@ -2169,11 +2225,11 @@ const TB=[
  {k:'panel',l:'Panel',f:()=>toggle('left'),p:()=>prefs.left,tip:'Mostrar u ocultar el panel izquierdo'},'|',
  {k:'undo',l:'Deshacer',f:doUndo,d:()=>!undo.length,tip:'Deshacer (Ctrl+Z)'},{k:'redo',l:'Rehacer',f:doRedo,d:()=>!redo.length,tip:'Rehacer (Ctrl+Y)'},'|',
  {k:'select',l:'Seleccionar',f:()=>setTool('select'),p:()=>tool==='select'&&!placing,tip:'Seleccionar y mover (V)'},{k:'hand',l:'Mover vista',f:()=>setTool('hand'),p:()=>tool==='hand',tip:'Mover la vista (H)'},
- {k:'outline',l:'Contorno',f:()=>setTool('outline'),p:()=>tool==='outline',tip:'Dibujar el contorno de la placa (B)'},{k:'measure',l:'Medir',f:()=>setTool('measure'),p:()=>tool==='measure',tip:'Medir distancias (M)'},'|',
+ {k:'outline',l:'Contorno',f:()=>setTool('outline'),p:()=>tool==='outline',tip:'Dibujar el contorno de la placa (B)'},{k:'measure',l:'Medir',f:()=>setTool('measure'),p:()=>tool==='measure',tip:'Medir distancias (M)'},{k:'text',l:'Texto',f:()=>setTool('text'),p:()=>tool==='text',tip:'Texto en cobre (X)'},'|',
  {copper:1},{wsel:1},'|',
  {k:'major',l:'1 cm',f:()=>toggle('major','Líneas de 1 cm'),p:()=>prefs.major,tip:'Líneas guía de 1 cm'},{k:'fine',l:'Grilla',f:()=>toggle('fine','Grilla fina'),p:()=>prefs.fine,tip:'Grilla fina de 2,54 mm'},
  {k:'ruler',l:'Reglas',f:()=>toggle('rulers','Reglas'),p:()=>prefs.rulers,tip:'Reglas en los bordes'},{k:'snap',l:'Enganche',f:()=>toggle('snap','Enganche'),p:()=>prefs.snap,tip:'Enganchar a la grilla'},'|',
- {k:'rotate',l:'Rotar',f:rotateSel,d:()=>!sel.size&&!placing,tip:'Rotar 90° (R)'},{k:'trash',l:'Borrar',f:deleteSel,d:()=>!sel.size&&!outlineSel&&!trackSel&&!linkSel&&!holeSel,tip:'Borrar (Supr)'},'|',
+ {k:'rotate',l:'Rotar',f:rotateSel,d:()=>!sel.size&&!placing,tip:'Rotar 90° (R)'},{k:'trash',l:'Borrar',f:deleteSel,d:()=>!sel.size&&!outlineSel&&!trackSel&&!linkSel&&!holeSel&&!textSel,tip:'Borrar (Supr)'},'|',
  {k:'route',l:'Rutear',f:routeDlg,tip:'Autorruteador (A)'},{k:'drc',l:'Reglas',f:drcDlg,tip:'Revisar reglas de diseño (D)'},'|',
  {k:'zout',l:'',f:()=>{zoomAt(W/2,H/2,.8);draw()},tip:'Alejar'},{zoom:1},{k:'zin',l:'',f:()=>{zoomAt(W/2,H/2,1.25);draw()},tip:'Acercar'},{k:'fit',l:'Ajustar',f:fit,tip:'Ajustar a la pantalla (F)'},'|',
  {k:'props',l:'Propiedades',f:()=>toggle('props'),p:()=>prefs.props,tip:'Barra de propiedades al seleccionar'},{spacer:1},
@@ -2297,12 +2353,12 @@ document.addEventListener('keydown',e=>{
   else if(mod&&k==='s'){e.preventDefault();save(false)}
   else if(mod&&k==='p'){e.preventDefault();printSheet()}
   else if(mod)return;
-  else if(k==='escape'){closeMenu();if(trackDraw){finishTrack();return}if(linkFrom){linkFrom=null;hint(HINTS.link);draw();return}if(placing){placing=null;hint(null)}else if(tool!=='select')setTool('select');else{sel.clear();outlineSel=false;holeSel=null;trackSel=null;linkSel=null}measure=null;refreshUI();draw()}
+  else if(k==='escape'){closeMenu();if(trackDraw){finishTrack();return}if(linkFrom){linkFrom=null;hint(HINTS.link);draw();return}if(placing){placing=null;hint(null)}else if(tool!=='select')setTool('select');else{sel.clear();outlineSel=false;holeSel=null;textSel=null;trackSel=null;linkSel=null}measure=null;refreshUI();draw()}
   else if(k==='r'){rotateSel()}
   else if(k==='backspace'&&trackDraw){e.preventDefault();if(trackDraw.pts.length>1)trackDraw.pts.pop();else trackDraw=null;draw()}
   else if(k==='enter'&&trackDraw){finishTrack()}
   else if(k==='delete'||k==='backspace'){e.preventDefault();deleteSel()}
-  else if(k==='v')setTool('select');else if(k==='h')setTool('hand');else if(k==='b')setTool('outline');else if(k==='m')setTool('measure');else if(k==='c')setTool('link');else if(k==='t')setTool('track');else if(k==='d')drcDlg();else if(k==='a')routeDlg();
+  else if(k==='v')setTool('select');else if(k==='h')setTool('hand');else if(k==='b')setTool('outline');else if(k==='m')setTool('measure');else if(k==='x')setTool('text');else if(k==='c')setTool('link');else if(k==='t')setTool('track');else if(k==='d')drcDlg();else if(k==='a')routeDlg();
   else if(k==='f')fit();else if(k==='+'||k==='=')(zoomAt(W/2,H/2,1.25),draw());else if(k==='-')(zoomAt(W/2,H/2,.8),draw());
   else if(k===' '&&!spaceDown){spaceDown=true;cv.style.cursor='grab';e.preventDefault()}
   else if(e.key.startsWith('Arrow')&&sel.size){e.preventDefault();if(selComps().some(c=>c.lock)){toast('Tiene candado: no se mueve');return}pushUndo();const g=prefs.snap?prefs.grid:0.1;const d={arrowleft:[-g,0],arrowright:[g,0],arrowup:[0,-g],arrowdown:[0,g]}[k];selComps().forEach(c=>{c.x+=d[0];c.y+=d[1]});if(anyBlocked()){restore(undo.pop());toast(NO_DROP);return}changed()}

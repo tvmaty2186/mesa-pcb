@@ -109,6 +109,8 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 - **Reacomodar** (`placeComps`): recocido simulado en grilla de 2,54 mm; respeta candados; cuida largo de conexiones, cruces, superposición, desacople junto al integrado, reguladores y borneras al borde.
 
 **Cobre extra**
+- **Texto en cobre** (herramienta Texto, tecla X; `doc.texts`, `textPolys`, `textDlg`, `textCtx`): letra de un trazo Hershey Sans (`HFONT`, MIT). Cada letra son tramos de pista: sale en plancha, PDF y Gerber, entra en la revisión de reglas, el plano la rodea, el autorruteador y el reacomodador la esquivan. Se guarda espejado para leerse derecho del lado del cobre. Se arrastra, se edita y se borra; alto 2 a 5 mm, trazo 0,5/0,6/0,8 mm.
+- **Masa por el plano**: con plano de masa, el autorruteador rutea primero todo menos la masa, pone el plano y solo agrega pistas de masa para las patas que quedaron aisladas (`opt.skip`, `opt.withPlane` en `autoroute`).
 - **Lágrimas** en los pads (`tearShapes`), solo si respetan 0,6 mm.
 - **Plano de masa** (`planeGeo` decide qué queda; `drawPlane` lo dibuja liso). Atado al contorno, hasta 2 mm del borde. **Rellena también los espacios vacíos** como cobre suelto para ahorrar percloruro (`doc.plane.fill`). **Alivio térmico** en las patas de masa: 0,6 mm libres y 4 rayos de 0,8 mm, solo los que llegan al plano (`doc.plane.thermal`). Sigue a las pistas en vivo mientras se arrastra. Sin GND, igual rellena (`doc.plane.key=null`).
 - **Agujeros de fijación** opcionales: 3 mm por defecto, en las esquinas a 4 mm del borde, sin cobre hasta 2 mm alrededor. Los de esquina siguen al contorno; se arrastran y se les cambia el diámetro con clic derecho (`doc.holes`).
