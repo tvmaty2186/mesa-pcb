@@ -35,6 +35,7 @@ Pendientes chicos:
 - Al terminar un cambio: decí qué cambió en pocas líneas, sin repetir todo lo hecho.
 - Si algo no se puede o tiene un límite, decilo de entrada y con honestidad.
 - Cuidá su crédito: trabajo agrupado, sin vueltas de más.
+- **Informes y trabajos prácticos** (los de Thiago, E.E.S.T. N.º 2): redactar en **texto continuo**, no en viñetas ni enumeraciones (pedido de Matías, 27/11/2026). Que no parezca hecho con IA: frases simples, sin notas tipo "corrección aplicada". Normas de la escuela: Times New Roman 12, subtítulos 14, justificado, interlineado 1,5, bibliografía obligatoria, nombre del proyecto en la introducción, texto debajo de cada imagen, sin repetir información. El encabezado se completa a mano.
 
 ## Reglas de fabricación (no negociables)
 
