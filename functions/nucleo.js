@@ -56,7 +56,7 @@ El programa tiene un autorruteador (una cara, quiebres de 45°) y un reacomodado
 - primero: una pata de cada red que conviene rutear antes (masa y alimentación, después lo crítico).
 - puentes: máximo de puentes de alambre (0 si no hacen falta).
 - ancho_senal y ancho_potencia en mm: señal 0,8 (nunca menos de 0,5); 1 A → 1; 2 A → 1,5; 3 A → 2.
-- plano: true para plano de masa.
+- plano: true para rellenar la placa con cobre que no toca ninguna pista ni pata (la masa siempre va con pistas).
 Marcá también con "amperes" las redes de potencia que lo necesiten. En "respuesta" explicá en una o dos frases qué priorizaste.
 
 REGLAS DE FABRICACIÓN
