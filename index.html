@@ -2315,6 +2315,7 @@ const MENUS=[
  ['Archivo',[
    {t:'Nuevo diseño',f:newDoc},{t:'Abrir…',f:openDlg},{t:'Guardar',k:'Ctrl+S',f:()=>save(false)},{t:'Guardar como…',f:()=>save(true)},'-',
    {t:'Ejemplo: detector de movimiento con LDR',f:()=>openExample(exampleLdr)},
+   {t:'Ejemplo: temporizador con NE555',f:()=>openExample(exampleTimer)},
    {t:'Ejemplo: 555 con un LED',f:()=>openExample(example)},
    {t:'Importar archivo…',f:importFile},{t:'Exportar diseño…',f:exportDlg},'-',
    {t:'Imprimir hoja para planchar',k:'Ctrl+P',f:printSheet},{t:'Imprimir varias por hoja…',f:multiDlg},{t:'Exportar PDF a escala 1:1',f:exportPdf},{t:'Exportar Gerber (para fabricar)',f:exportGerber}]],
@@ -2535,16 +2536,31 @@ const EX_LDR={outline:{x:0,y:0,w:50,h:50},
     ['BZ1','Buzzer 12 mm','Buzzer',42,38,0]],
   nets:[['J1.1','RV1.2','IC1.7','C4.1','RV2.1','IC2.4','IC2.8','R5.1'],['J1.2','R4.2','R3.2','IC1.4','C4.2','RV2.3','IC2.1','C3.2','C2.2','D1.1','C5.2','BZ1.2'],
     ['RV1.1','R1.1'],['RV1.3','R2.1'],['R1.2','R4.1','IC1.3'],['R2.2','R3.1','IC1.2'],['IC1.6','C1.1'],['C1.2','RV2.2','IC2.2'],['IC2.7','IC2.6','R5.2','C2.1'],['IC2.5','C3.1'],['IC2.3','R6.1','C5.1','BZ1.1'],['R6.2','D1.2']]};
-function exampleLdr(){
-  doc={name:'Detector de movimiento con LDR',example:true,comps:[],outline:{...EX_LDR.outline},tracks:[],links:[],jumpers:[],tears:false,plane:null,holes:[]};
+// ejemplos guardados como datos: piezas (ref, pieza de la biblioteca, valor, x, y, giro), redes por patas REF.NÚMERO,
+// y si ya están ruteados, pistas, puentes, texto y plano de masa
+function loadExample(EX){
+  doc={name:EX.name,example:true,comps:[],outline:{...EX.outline},tracks:[],links:[],jumpers:[],tears:false,plane:null,holes:[]};
   const R={};
-  EX_LDR.comps.forEach(([ref,name,val,x,y,r])=>{const comp=DB.find(d=>d.nombre===name);if(!comp)return;const c=makeComp(comp,x,y,r);c.x=x;c.y=y;c.ref=ref;c.val=val;doc.comps.push(c);R[ref]=c.id});
+  EX.comps.forEach(([ref,name,val,x,y,r])=>{const comp=DB.find(d=>d.nombre===name);if(!comp)return;const c=makeComp(comp,x,y,r);c.x=x;c.y=y;c.ref=ref;c.val=val;doc.comps.push(c);R[ref]=c.id});
   const K=s=>{const [r,n]=s.split('.');return R[r]&&pkey(R[r],n)};
-  EX_LDR.nets.forEach(ks=>{for(let i=1;i<ks.length;i++){const a=K(ks[i-1]),b=K(ks[i]);if(a&&b)doc.links.push({id:uid(),a,b})}});
-  // ya ruteado: pistas, puentes, plano de masa y texto en cobre
-  doc.tracks=EX_LDR.tracks.map(([w,pts])=>({id:uid(),w,pts:pts.map(p=>[...p])}));doc.jumpers=EX_LDR.jumpers.map(([a,b])=>({id:uid(),a:[...a],b:[...b]}));
-  doc.texts=EX_LDR.texts.map(t=>({id:uid(),...t}));doc.plane={key:gndKey(),thermal:true,fill:true};
+  EX.nets.forEach(ks=>{for(let i=1;i<ks.length;i++){const a=K(ks[i-1]),b=K(ks[i]);if(a&&b)doc.links.push({id:uid(),a,b})}});
+  doc.tracks=(EX.tracks||[]).map(([w,pts])=>({id:uid(),w,pts:pts.map(p=>[...p])}));doc.jumpers=(EX.jumpers||[]).map(([a,b])=>({id:uid(),a:[...a],b:[...b]}));
+  doc.texts=(EX.texts||[]).map(t=>({id:uid(),...t}));if(EX.plane!==false)doc.plane={key:gndKey(),thermal:true,fill:true};
 }
+const exampleLdr=()=>loadExample({name:'Detector de movimiento con LDR',...EX_LDR});
+// temporizador con NE555 (actividad extra de Thiago): VR1+R2 a las patas 6 y 7 con C1, R1+C2 a la pata 2,
+// LED (con R3) y buzzer en paralelo entre +9 V y la salida. El pulsador S1 va afuera, en el cable de la batería.
+const EX_TIMER={name:'Temporizador con NE555',outline:{x:0,y:0,w:50,h:50},
+  comps:[ // [ref, pieza de la biblioteca, valor, x, y (mm), giro]
+    ['J1','Bornera 2 vías','+9 V / 0 V',17.78,43.18,0],['VR1','Preset de carbón 10 mm (horizontal)','1 MΩ',35.48,35.6,0],
+    ['R1','Resistencia de carbón 1/4 W','33 kΩ',17.78,13.97,1],['R2','Resistencia de carbón 1/4 W','10 kΩ',36.83,24.13,0],['R3','Resistencia de carbón 1/4 W','470 Ω',17.78,35.56,0],
+    ['C1','Electrolítico 220 µF','220 µF 25 V',36.35,17.78,2],['C2','Electrolítico 1 µF','0,47 µF',12.7,16.78,3],['C3','Capacitor cerámico (más de 1 nF)','10 nF',30.48,27.94,0],
+    ['IC1','NE555 (temporizador)','NE555',25,19.92,0],['D1','LED 5 mm','LED',22.86,30.48,0],['BZ1','Buzzer 12 mm','Buzzer',12.7,26.68,3]],
+  nets:[['J1.1','VR1.1','VR1.2','R1.1','IC1.4','IC1.8','R3.1','BZ1.1'],['J1.2','C1.2','C2.2','IC1.1','C3.2'],
+    ['VR1.3','R2.1'],['R2.2','IC1.6','IC1.7','C1.1'],['R1.2','IC1.2','C2.1'],['IC1.5','C3.1'],['IC1.3','D1.1','BZ1.2'],['R3.2','D1.2']],
+  tracks:[[0.8,[[28.575,24.13],[28.575,27.94]]],[0.8,[[18.415,19.05],[20.955,19.05]]],[0.8,[[17.145,19.05],[13.97,19.05],[12.7,17.78]]],[0.8,[[22.86,34.925],[24.765,33.02],[24.765,30.48]]],[0.8,[[20.955,21.59],[19.05,21.59],[17.78,22.86],[13.335,22.86]]],[0.8,[[13.335,22.86],[20.955,30.48]]],[0.8,[[28.575,20.955],[28.575,19.05]]],[0.8,[[41.91,23.495],[41.91,20.955],[38.735,17.78]]],[0.8,[[41.275,24.13],[35.56,24.13],[32.385,20.955],[29.21,20.955]]],[1,[[12.7,34.925],[12.7,31.115]]],[1,[[14.605,42.545],[14.605,38.1],[12.7,36.195]]],[1,[[31.115,37.465],[32.385,36.195],[40.005,36.195]]],[1,[[21.59,24.13],[22.86,24.13],[25.4,21.59],[25.4,17.145],[26.67,15.875],[28.575,15.875]]],[1,[[14.605,42.545],[18.415,38.735],[24.13,38.735],[27.305,35.56],[27.305,30.48],[20.955,24.13]]],[1,[[28.575,15.875],[21.59,8.89],[18.415,8.89]]],[1,[[14.605,42.545],[18.415,38.735],[29.845,38.735]]],[0.8,[[30.48,32.385],[30.48,26.035],[31.75,24.765]]]], // ruteado en 5 × 5: sin puentes, masa por el plano
+  jumpers:[]};
+const exampleTimer=()=>loadExample(EX_TIMER);
 function example(){
   const pick=a=>DB.find(c=>c.alias.includes(a));
   const items=[['ne555',40,30,0],['resistencia',22,24,1],['resistencia',22,36,1],['electrolitico',30,46,0],['resistencia',58,24,0],['led',70,26,0],['bornera',42,50,0]];
