@@ -83,6 +83,7 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 - **Botón "Asistente con IA"** abajo del panel izquierdo, en lugar de "Colocar en el tablero" (para colocar: arrastrar, o doble clic en la lista). Abre la ventana del asistente (`aiDlg`): flotante abajo a la derecha de la mesa (en celular, abajo de todo), no mueve el dibujo. Sin publicidad (es pago).
 - **Botón dividido "Pista ▾"**: se elige Pista o Conectar con la flechita.
 - Tres vistas: componentes (arriba), cobre visto de abajo (espejado), hoja para planchar (negro, **sin espejar** porque el cobre va abajo).
+- **Lado componentes**: cada pieza muestra en el centro su nomenclador (R1, IC1…) y abajo su valor, como la serigrafía (`drawCompLabel`, pedido de Matías). Con borde del color del fondo para leerse sobre las patas; en piezas angostas y altas va de costado. En la vista de cobre queda solo el nomenclador arriba a la izquierda.
 - Cuadros de opciones con el estilo del autorruteador: bloques con título, interruptores para sí/no, botones unidos para pocas opciones, listas para muchas.
 
 ## Qué hace hoy (todo en `index.html`)
