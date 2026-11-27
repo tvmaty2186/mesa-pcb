@@ -1303,7 +1303,7 @@ async function routeVariants(o){
 }
 function routeOpts(){ // opciones del autorruteador: las últimas usadas, con lo de la placa actual
   const o=Object.assign({sigW:0.8,powW:1.5,powerFirst:true,keep:'all',comfort:true,effort:'normal',jumps:false,maxJ:2,jLen:'both',place:false,variants:true,size:'none',std:'5x7'},prefs.route||{});
-  if(typeof o.keep!=='string')o.keep=o.keep?'all':'locked';o.tears=!!doc.tears;o.plane=!!doc.plane;o.holes=hasHoles();return o;
+  if(typeof o.keep!=='string')o.keep=o.keep?'all':'locked';o.tears=!!doc.tears;o.plane=!!doc.plane;if(doc.plane)o.planeIso=!!doc.plane.iso;else o.planeIso=!!o.planeIso;o.holes=hasHoles();return o;
 }
 function routeDlg(){
   if(!doc.links.length&&!linksFromTracks(true).added){toast('Primero uní los pads con Conectar (C) o con una pista');return}
@@ -1328,19 +1328,19 @@ function routeDlg(){
       <div class="rsub" data-if="std">${sel('std','Medida',Object.keys(STD_BOARDS).map(k=>[k,k.replace('.',',').replace('x',' × ')+' cm']))}</div>
       ${sw('holes','Agujeros de fijación')}</section>
     <section class="rsec"><h4>Terminación</h4>
-      ${sw('tears','Lágrimas en los pads')}${sw('plane','Plano de masa')}
+      ${sw('tears','Lágrimas en los pads')}${sw('plane','Plano de masa')}<div class="rsub" data-if="plane">${seg('planeIso','Plano',[['0','Unido a masa','La masa va por el plano'],['1','Sin conectar','Rellena la placa pero no toca ninguna pista ni pad; la masa va con pistas']])}</div>
       ${seg('keep','Pistas dibujadas',[['all','Conservar','Conservar todas las pistas que ya dibujaste'],['locked','Solo fijas','Conservar solo las pistas con candado y rehacer el resto']])}
       ${seg('effort','Esfuerzo',[['fast','Rápido'],['normal','Normal'],['deep','A fondo']])}</section>
   </div>`,
    [{t:'Cancelar'},{t:'Rutear',pri:1,f:()=>{prefs.route=o;LS.set('pcb.prefs',prefs);withAd(()=>{if(o.place&&o.variants){routeVariants(o);return}toast('Ruteando…');setTimeout(()=>runRoute(o),30)})}}]);
   ov.querySelector('.dlg').classList.add('wide');
-  const NUM=new Set(['sigW','powW','maxJ']),BOOL=new Set(['comfort']);
+  const NUM=new Set(['sigW','powW','maxJ']),BOOL=new Set(['comfort','planeIso']);
   const val=(k,v)=>NUM.has(k)?+v:BOOL.has(k)?v==='1':v;
   const paint=()=>{
     ov.querySelectorAll('.sw').forEach(b=>b.setAttribute('aria-checked',String(!!o[b.dataset.k])));
     ov.querySelectorAll('.seg').forEach(g=>g.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(val(g.dataset.k,b.dataset.v)===o[g.dataset.k]))));
     ov.querySelectorAll('select[data-k]').forEach(s=>s.value=String(o[s.dataset.k]));
-    ov.querySelector('[data-if="jumps"]').hidden=!o.jumps;ov.querySelector('[data-if="place"]').hidden=!o.place;ov.querySelector('[data-if="std"]').hidden=o.size!=='std'};
+    ov.querySelector('[data-if="jumps"]').hidden=!o.jumps;ov.querySelector('[data-if="place"]').hidden=!o.place;ov.querySelector('[data-if="std"]').hidden=o.size!=='std';ov.querySelector('[data-if="plane"]').hidden=!o.plane};
   ov.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{o[b.dataset.k]=!o[b.dataset.k];paint()});
   ov.querySelectorAll('.seg').forEach(g=>g.querySelectorAll('button').forEach(b=>b.onclick=()=>{o[g.dataset.k]=val(g.dataset.k,b.dataset.v);paint()}));
   ov.querySelectorAll('select[data-k]').forEach(s=>s.onchange=()=>{o[s.dataset.k]=val(s.dataset.k,s.value);paint()});
@@ -1354,14 +1354,14 @@ function routeCore(o){
   if(o.swap!==false){const ns=swapEquivalentPins();if(ns)extra+=` · ${ns} preset${ns>1?'s':''} dado${ns>1?'s':''} vuelta`}
   // con plano de masa, la masa la une el plano: primero se rutea todo lo demás, después se pone el plano
   // y solo se agregan pistas de masa para las patas que quedaron aisladas
-  const gk=o.plane&&doc.outline?gndKey():null,gi=gk?nets().findIndex(ks=>ks.includes(gk)):-1;
+  const gk=o.plane&&!o.planeIso&&doc.outline?gndKey():null,gi=gk?nets().findIndex(ks=>ks.includes(gk)):-1;
   let r=autoroute(gi>=0?{...o,skip:new Set([gi])}:o);doc.tracks=r.tracks;doc.jumpers=r.jumpers;doc.tears=o.tears;
-  if(gi>=0){doc.plane={key:gk,thermal:doc.plane?doc.plane.thermal!==false:true,fill:doc.plane?doc.plane.fill!==false:true};changed();
+  if(gi>=0){doc.plane={key:gk,thermal:doc.plane?doc.plane.thermal!==false:true,fill:doc.plane?doc.plane.fill!==false:true,iso:false};changed();
     if(ratsnest().length){const T=planeTargets(),r2=autoroute({...o,keep:'all',withPlane:true,planeT:T&&{...T,n:gi}});doc.tracks=r2.tracks;doc.jumpers=r2.jumpers;r.nj+=r2.nj}
     r.total=nets().reduce((a,ks)=>a+ks.length-1,0)}
   if(o.size==='min')shrinkOutline();
   if(o.size!=='none'&&doc.outline)extra=` · Placa de ${cm(doc.outline.w)} × ${cm(doc.outline.h)} cm`+extra;
-  if(o.plane){const k=gndKey();if(doc.outline){doc.plane={key:k,thermal:doc.plane?doc.plane.thermal!==false:true,fill:doc.plane?doc.plane.fill!==false:true};if(!k)extra=' · No encontré la masa (GND): el relleno queda sin conectar'}else{doc.plane=null;extra=' · Plano de masa: falta el contorno'}}else doc.plane=null;
+  if(o.plane){const k=gndKey();if(doc.outline){doc.plane={key:k,thermal:doc.plane?doc.plane.thermal!==false:true,fill:doc.plane?doc.plane.fill!==false:true,iso:!!o.planeIso};if(!k&&!o.planeIso)extra=' · No encontré la masa (GND): el relleno queda sin conectar'}else{doc.plane=null;extra=' · Plano de masa: falta el contorno'}}else doc.plane=null;
   changed();r.done=Math.max(0,r.total-ratsnest().length); // lo que de verdad quedó sin unir
   return {r,pl,extra};
 }
@@ -1394,7 +1394,7 @@ function placeComps(o){
     R={x:snapV((bb[0]+bb[2])/2-side/2,2.54),y:snapV((bb[1]+bb[3])/2-side/2,2.54),w:side,h:side}}
   const E=DRC.edge,ix0=R.x+E,iy0=R.y+E,ix1=R.x+R.w-E,iy1=R.y+R.h-E,GAP=0.6;
   const info=c=>DB.find(d=>d.nombre===c.name)||{};
-  const gk0=o.plane?gndKey():null; // con plano de masa la masa no lleva pistas: no cuenta para largo ni cruces
+  const gk0=o.plane&&!o.planeIso?gndKey():null; // con plano de masa la masa no lleva pistas: no cuenta para largo ni cruces
   const NETS=nets().filter(ks=>!gk0||!ks.includes(gk0)).map(ks=>ks.map(k=>{const [cid,n]=k.split(':');const c=doc.comps.find(x=>x.id===cid);const fp=c&&fpOf(c);return fp?{c,p:fp.pads.find(q=>String(q.n)===n)}:null}).filter(x=>x&&x.p));
   const isG=k=>/^(GND|VSS|0V)$/.test(pinName(k)),isV=k=>/^(VCC|VDD|\+VS|VS|V\+)$/.test(pinName(k));
   const netKeys=nets(),netOfK=new Map();netKeys.forEach((g,i)=>g.forEach(k=>netOfK.set(k,i)));
@@ -1498,7 +1498,8 @@ function planeGeo(){
   if(live&&planeCache.geo&&performance.now()-planeLast<120){clearTimeout(planeLater);planeLater=setTimeout(draw,130);return planeCache.geo}
   planeLast=performance.now();
   planeCache={ver:geoVer,geo:null};
-  const gk=doc.plane.key,ph=physical(true);if(gk&&!padPos(gk))return null; // sin masa (key null) igual rellena, todo suelto
+  const gk=doc.plane.iso?null:doc.plane.key,ph=physical(true);if(gk&&!padPos(gk))return null; // iso: relleno que no toca nada
+  // sin masa (key null) igual rellena, todo suelto
   const items=copperItems(ph,{tears:true}),me={g:gk?ph.f(gk):'sin-masa',n:null};const NETS=nets();me.n=gk?NETS.findIndex(g=>g.includes(gk)):-1;if(me.n<0)me.n=null;
   // la grilla solo sirve para saber qué partes tocan masa y sacar islas y tiras finas; el dibujo es liso (drawPlane)
   const o=doc.outline,e=DRC.edge,X0=o.x+e,Y0=o.y+e,W0=o.w-2*e,H0=o.h-2*e;if(W0<1||H0<1)return null;
@@ -1576,6 +1577,7 @@ function planeToggle(){
   if(!doc.outline){toast('Primero dibujá el contorno de la placa');return}
   const k=gndKey();pushUndo();doc.plane={key:k,thermal:true,fill:true};toast(k?'Plano de masa agregado':'Relleno de cobre agregado · no encontré la masa (GND): queda sin conectar');changed();
 }
+function isoToggle(){if(!doc.plane)return;pushUndo();doc.plane={...doc.plane,iso:!doc.plane.iso};toast(doc.plane.iso?'Relleno sin conectar: no toca ninguna pista ni pad':'Plano de masa unido a la masa');changed()}
 function fillToggle(){if(!doc.plane)return;pushUndo();doc.plane={...doc.plane,fill:doc.plane.fill===false};toast(doc.plane.fill?'Rellenar espacios vacíos: sí':'Rellenar espacios vacíos: no');changed()}
 function tearsToggle(){pushUndo();doc.tears=!doc.tears;toast(doc.tears?'Lágrimas en los pads: sí':'Lágrimas en los pads: no');changed()}
 function drawCopperExtra(){ // plano, lágrimas y pads de puentes (lado cobre)
@@ -1665,7 +1667,7 @@ cv.addEventListener('contextmenu',e=>{
       {t:'Agujeros de fijación',c:hasHoles,f:holesToggle},{t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},'-',
       {t:'Borrar contorno',k:'Supr',i:'trash',danger:1,f:deleteSel}]);return}
   showCtx(X,Y,null,[{t:'Autorruteador…',k:'A',i:'route',f:routeDlg},{t:'Revisar reglas de diseño',k:'D',i:'drc',f:drcDlg},'-',
-    {t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},{t:'Alivio térmico en el plano',c:()=>!!doc.plane&&doc.plane.thermal!==false,d:()=>!doc.plane,f:thermalToggle},{t:'Rellenar espacios vacíos',c:()=>!!doc.plane&&doc.plane.fill!==false,d:()=>!doc.plane,f:fillToggle},
+    {t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},{t:'Alivio térmico en el plano',c:()=>!!doc.plane&&doc.plane.thermal!==false,d:()=>!doc.plane,f:thermalToggle},{t:'Rellenar espacios vacíos',c:()=>!!doc.plane&&doc.plane.fill!==false,d:()=>!doc.plane,f:fillToggle},{t:'Relleno sin conectar (no toca nada)',c:()=>!!doc.plane&&!!doc.plane.iso,d:()=>!doc.plane,f:isoToggle},
     {t:'Lágrimas en los pads',c:()=>!!doc.tears,f:tearsToggle},{t:'Agujeros de fijación',c:hasHoles,f:holesToggle},{t:'Agregar un agujero acá',f:()=>addHoleAt(snapV(wx,0.5),snapV(wy,0.5))},'-',
     {t:'Ajustar a la pantalla',k:'F',i:'fit',f:fit}]);
 });
@@ -2135,7 +2137,7 @@ function aiDesign(){
   const N=nets();
   if(N.length){L.push('Redes:');N.forEach(ks=>{const a=Math.max(0,...doc.links.filter(l=>ks.includes(l.a)).map(l=>l.amps||0));L.push(ks.map(padName).join(' ')+(a?` (${a} A)`:''))})}
   if(doc.links.length)L.push(`Ruteo: ${doc.tracks.length} pistas, ${(doc.jumpers||[]).length} puentes, ${ratsnest().length} conexiones sin rutear.`);
-  if(doc.plane)L.push('Plano de masa: sí.');
+  if(doc.plane)L.push(doc.plane.iso?'Relleno de cobre sin conectar (no toca pistas ni pads): sí.':'Plano de masa: sí.');
   if(doc.comps.length){const d=drcDirty?runDrc():drcList,g=new Map();d.forEach(x=>{if(!g.has(x.t))g.set(x.t,[]);g.get(x.t).push(x.m)});
     if(d.length)L.push('Revisión de reglas: '+[...g].map(([t,ms])=>`${t} ×${ms.length} (${ms.slice(0,3).join('; ')})`).join(' · '))}
   const s=selComps();if(s.length)L.push('Seleccionado: '+s.map(c=>c.ref).join(', '));
@@ -2333,7 +2335,7 @@ const MENUS=[
  ['Herramientas',[
    ...TOOLS.map(t=>t.soon?{t:t.name+' (próximamente)',f:soon(t.name),soon:1}:{t:t.name,k:t.key,c:()=>tool===t.id,f:()=>setTool(t.id)}),'-',
    {t:'Enganche a la grilla',c:()=>prefs.snap,f:()=>toggle('snap','Enganche')},'-',
-   {t:'Autorruteador…',k:'A',f:routeDlg},{t:'Lágrimas en los pads',c:()=>!!doc.tears,f:tearsToggle},{t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},{t:'Alivio térmico en el plano',c:()=>!!doc.plane&&doc.plane.thermal!==false,d:()=>!doc.plane,f:thermalToggle},{t:'Rellenar espacios vacíos',c:()=>!!doc.plane&&doc.plane.fill!==false,d:()=>!doc.plane,f:fillToggle},{t:'Agujeros de fijación',c:hasHoles,f:holesToggle},{t:'Revisar reglas de diseño',k:'D',f:drcDlg},{t:'Asistente con IA',f:aiDlg}]],
+   {t:'Autorruteador…',k:'A',f:routeDlg},{t:'Lágrimas en los pads',c:()=>!!doc.tears,f:tearsToggle},{t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},{t:'Alivio térmico en el plano',c:()=>!!doc.plane&&doc.plane.thermal!==false,d:()=>!doc.plane,f:thermalToggle},{t:'Rellenar espacios vacíos',c:()=>!!doc.plane&&doc.plane.fill!==false,d:()=>!doc.plane,f:fillToggle},{t:'Relleno sin conectar (no toca nada)',c:()=>!!doc.plane&&!!doc.plane.iso,d:()=>!doc.plane,f:isoToggle},{t:'Agujeros de fijación',c:hasHoles,f:holesToggle},{t:'Revisar reglas de diseño',k:'D',f:drcDlg},{t:'Asistente con IA',f:aiDlg}]],
  ['Preferencias',[{t:'Preferencias…',f:prefsDlg},'-',{t:'Grilla fina 2,54 mm',c:()=>prefs.grid===2.54,f:()=>{prefs.grid=2.54;LS.set('pcb.prefs',prefs);draw();refreshUI()}},{t:'Grilla fina 1,27 mm',c:()=>prefs.grid===1.27,f:()=>{prefs.grid=1.27;LS.set('pcb.prefs',prefs);draw();refreshUI()}}]],
  ['Ayuda',[{t:'Guía para hacer tu plaqueta',f:()=>window.open('guia.html','_blank')},{t:'Atajos de teclado',f:keysDlg},'-',{t:'Política de privacidad',f:()=>window.open('privacidad.html','_blank')},{t:'Términos de uso',f:()=>window.open('terminos.html','_blank')},'-',{t:'Acerca de Mesa PCB',f:aboutDlg}]]
 ];

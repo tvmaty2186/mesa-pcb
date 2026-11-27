@@ -2,7 +2,7 @@
 
 Este archivo es para que cualquier sesión de Claude retome el proyecto sin empezar de cero. **Leelo completo antes de tocar código.**
 
-Última actualización: 10/10/2026 (asistente con IA).
+Última actualización: 27/11/2026 (asistente con IA).
 
 ## Dónde está todo
 
@@ -118,7 +118,7 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 - **Texto en cobre** (herramienta Texto, tecla X; `doc.texts`, `textPolys`, `textDlg`, `textCtx`): letra de un trazo Hershey Sans (`HFONT`, MIT). Cada letra son tramos de pista: sale en plancha, PDF y Gerber, entra en la revisión de reglas, el plano la rodea, el autorruteador y el reacomodador la esquivan. Se guarda espejado para leerse derecho del lado del cobre. Se arrastra, se edita y se borra; alto 2 a 5 mm, trazo 0,5/0,6/0,8 mm. Signos extra que no trae la letra Hershey: `HEXTRA` (hoy el °).
 - **Masa por el plano**: con plano de masa, el autorruteador rutea primero todo menos la masa, pone el plano y solo agrega pistas de masa para las patas que quedaron aisladas (`opt.skip`, `opt.withPlane` en `autoroute`).
 - **Lágrimas** en los pads (`tearShapes`), solo si respetan 0,6 mm.
-- **Plano de masa** (`planeGeo` decide qué queda; `drawPlane` lo dibuja liso). Atado al contorno, hasta 2 mm del borde. **Rellena también los espacios vacíos** como cobre suelto para ahorrar percloruro (`doc.plane.fill`). **Alivio térmico** en las patas de masa: 0,6 mm libres y 4 rayos de 0,8 mm, solo los que llegan al plano (`doc.plane.thermal`). Sigue a las pistas en vivo mientras se arrastra. Sin GND, igual rellena (`doc.plane.key=null`).
+- **Plano de masa** (`planeGeo` decide qué queda; `drawPlane` lo dibuja liso). Atado al contorno, hasta 2 mm del borde. **Rellena también los espacios vacíos** como cobre suelto para ahorrar percloruro (`doc.plane.fill`). **Alivio térmico** en las patas de masa: 0,6 mm libres y 4 rayos de 0,8 mm, solo los que llegan al plano (`doc.plane.thermal`). Sigue a las pistas en vivo mientras se arrastra. Sin GND, igual rellena (`doc.plane.key=null`). **Relleno sin conectar** (`doc.plane.iso`, pedido de Matías): el plano rellena igual pero no toca ninguna pista ni pad (todo con 0,8 mm de aire, sin alivios); la masa va con pistas. Se elige en Herramientas, en el clic derecho del tablero y en el autorruteador (Plano: Unido a masa / Sin conectar, `o.planeIso`).
 - **Agujeros de fijación** opcionales: 3 mm por defecto, en las esquinas a 4 mm del borde, sin cobre hasta 2 mm alrededor. Los de esquina siguen al contorno; se arrastran y se les cambia el diámetro con clic derecho (`doc.holes`).
 
 **Imprimir y exportar** (menú Archivo)
