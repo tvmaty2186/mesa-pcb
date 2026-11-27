@@ -49,7 +49,7 @@ Placas de **una sola cara**, componentes de **agujero pasante** (nada de SMD), h
 | Ancho de pista de señal | 0,8 mm por defecto, nunca menos de 0,5 mm |
 | Potencia (IPC-2221 + margen casero) | 1 A → 1 mm · 2 A → 1,5 mm · 3 A → 2 mm |
 | Borde de placa | 2 mm libres |
-| **Esquinas** | **Nunca a 90°. Siempre quiebres de 45°** (una esquina de 90° = dos de 45°). Prohibidos los ángulos agudos. Rige para pistas manuales, autorruteador y uniones en T. Decisión de Matías. |
+| **Esquinas** | **Nunca a 90°. Siempre quiebres de 45°** (una esquina de 90° = dos de 45°). Prohibidos los ángulos agudos: dos pistas que salen del mismo punto (una pata, un puente o una unión) nunca forman menos de 90°; **en T (90°) sí se puede** (27/11/2026). Rige para pistas manuales, autorruteador y uniones. Decisión de Matías. |
 | Pads | Ovalados donde haga falta para mantener 0,6 mm. Pad 1 cuadrado. |
 | Entre patas de un DIP | No entra ninguna pista (quedan 0,74 mm). Entre filas sí, hasta 3. |
 | Grilla | 2,54 mm para enganchar componentes (1,27 opcional). Líneas guía de 1 cm aparte. |
@@ -102,11 +102,11 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 - **Ancho por corriente** en cada conexión (`link.amps` → 1 / 1,5 / 2 mm).
 
 **Revisión de reglas** (tecla D, `runDrc`)
-- Marca en rojo: corto, separación < 0,6 mm, pista < 0,5 mm, cobre a menos de 2 mm del borde o en la zona de un agujero, esquinas fuera de la regla de 45°, conexiones sin rutear.
+- Marca en rojo: corto, separación < 0,6 mm, pista < 0,5 mm, cobre a menos de 2 mm del borde o en la zona de un agujero, esquinas fuera de la regla de 45°, conexiones sin rutear. Ángulo agudo: en cada pata o unión se miran las direcciones de las pistas que salen; si dos forman menos de 90° se marca (una unión en T a mitad de otra pista vale y también cuenta como conexión).
 - **Clic derecho sobre la marca**: explica en palabras simples (`DRC_WHY`) y ofrece arreglarlo (`drcFixes`): ancho a 0,8 mm, rehacer con 45°, rutear por otro lado, correr un componente (`moveCompFix`), agrandar el contorno, quitar agujeros, rutear lo que falta. Nunca toca lo que tiene candado.
 
 **Autorruteador** (tecla A, `autoroute`; cuadro `routeDlg`; opciones en `prefs.route`)
-- Grilla de 0,635 mm, A* con costos (largo, quiebres, cercanía), solo giros de 45°. Las pistas salen y llegan a un pad (sin uniones en T). Varias pasadas de arrancar y rerutear (Rápido/Normal/A fondo = 4/12/30).
+- Grilla de 0,635 mm, A* con costos (largo, quiebres, cercanía), solo giros de 45°. Cerca de cada pata (hasta 0,9 mm del pad) no deja salir ni llegar una pista a menos de 90° de otra que ya sale de esa pata (`padOf`, `acute` en `routeOne`). Las pistas salen y llegan a un pad (sin uniones en T). Varias pasadas de arrancar y rerutear (Rápido/Normal/A fondo = 4/12/30).
 - Bloques del cuadro: **Pistas** (ancho de señal y de alimentación/masa, separación 0,8 cómoda o 0,6, primero alimentación y masa), **Puentes de alambre** (opcional; máximo 1/2/3/5; largo 7,62/10,16; nunca debajo de un componente; `doc.jumpers`), **Placa** (reacomodar componentes, tamaño: no tocar / mínimo / estándar 5×5 a 15×20 cm, agujeros de fijación), **Terminación** (lágrimas, plano de masa, conservar pistas dibujadas o solo las fijas, esfuerzo).
 - Detecta alimentación y masa por nombre de pata (GND/VCC/VDD/VSS/V+/V−) y por la entrada/salida de reguladores.
 - **Reacomodar** (`placeComps`): recocido simulado en grilla de 2,54 mm; respeta candados; cuida largo de conexiones, cruces, superposición (aire de 0,6 mm), desacople junto al integrado, reguladores y borneras al borde. Con plano, la masa no cuenta para largo ni cruces. Movimientos: correr, girar, intercambiar y "hacia lo que conecta".

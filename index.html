@@ -450,7 +450,8 @@ function physical(noPlane){ // patas unidas de verdad por cobre (pistas, puentes
   doc.tracks.forEach(t=>{const tk='t:'+t.id;[t.pts[0],t.pts[t.pts.length-1]].forEach(([x,y])=>near(x,y).forEach(q=>uf.u(q.k,tk)))});
   for(let i=0;i<doc.tracks.length;i++)for(let j=i+1;j<doc.tracks.length;j++){const A=doc.tracks[i],B=doc.tracks[j];
     const ends=(T)=>[T.pts[0],T.pts[T.pts.length-1]];
-    if(ends(A).some(e=>B.pts.some(p=>Math.hypot(p[0]-e[0],p[1]-e[1])<.01))||ends(B).some(e=>A.pts.some(p=>Math.hypot(p[0]-e[0],p[1]-e[1])<.01)))uf.u('t:'+A.id,'t:'+B.id)}
+    const on=(e,T)=>T.pts.some((p,k)=>k&&segDist(e[0],e[1],T.pts[k-1],p)<.01); // también una unión en T, a mitad de la otra pista
+    if(ends(A).some(e=>on(e,B))||ends(B).some(e=>on(e,A)))uf.u('t:'+A.id,'t:'+B.id)}
   (doc.jumpers||[]).forEach(j=>{const jk='j:'+j.id;[j.a,j.b].forEach(p=>doc.tracks.forEach(t=>[t.pts[0],t.pts[t.pts.length-1]].forEach(e=>{if(Math.hypot(e[0]-p[0],e[1]-p[1])<=JR+.01)uf.u(jk,'t:'+t.id)})))});
   if(!noPlane){const P=planeGeo();if(P)P.regions.forEach(ks=>ks.forEach(k=>uf.u(ks[0],k)))}
   return uf;
@@ -1054,13 +1055,20 @@ function runDrc(){
   // 4. esquinas: quiebres de 45° como máximo, también en uniones entre pistas
   const turnOk=(u,v)=>u[0]*v[0]+u[1]*v[1]>=0.69;
   doc.tracks.forEach(t=>{for(let i=1;i<t.pts.length-1;i++)if(!turnOk(dirOf(t.pts[i-1],t.pts[i]),dirOf(t.pts[i],t.pts[i+1]))){add('Esquina','Pista con esquina fuera de regla',t.pts[i][0],t.pts[i][1],[{tid:t.id,lock:!!t.lock}]);break}});
+  // uniones: en T (90°) sí; nunca un ángulo agudo (menos de 90°) entre dos pistas que salen del mismo punto,
+  // sea una pata, un puente o una unión entre pistas. Dos pistas que se continúan son una esquina: 45° como máximo.
   const pads=[...padsAll(),...jumperPads()],joints=new Set();
-  doc.tracks.forEach(t=>{[[0,1],[t.pts.length-1,t.pts.length-2]].forEach(([e,nb])=>{const E=t.pts[e];if(t.pts.length<2||pads.some(q=>Math.hypot(q.x-E[0],q.y-E[1])<=q.r+.01))return;
-    const u=dirOf(t.pts[nb],E);let touch=false,ok=false;
-    doc.tracks.forEach(T=>{if(T===t)return;for(let j=1;j<T.pts.length;j++){const a=T.pts[j-1],b=T.pts[j];if(segDist(E[0],E[1],a,b)>.01)continue;touch=true;
-      const atA=Math.hypot(a[0]-E[0],a[1]-E[1])<.01,atB=Math.hypot(b[0]-E[0],b[1]-E[1])<.01;
-      if(atA)ok=ok||turnOk(u,dirOf(a,b));else if(atB)ok=ok||turnOk(u,dirOf(b,a));else{const v=dirOf(a,b);ok=ok||Math.abs(u[0]*v[0]+u[1]*v[1])>=0.69}}});
-    const key=E.map(v=>v.toFixed(2)).join(',');if(touch&&!ok&&!joints.has(key)){joints.add(key);add('Esquina','Unión de pistas fuera de regla',E[0],E[1],[{tid:t.id,lock:!!t.lock}])}})});
+  const nodes=[];pads.forEach(q=>nodes.push({x:q.x,y:q.y,r:q.r+.01,pad:1}));
+  doc.tracks.forEach(t=>{if(t.pts.length<2)return;[t.pts[0],t.pts[t.pts.length-1]].forEach(E=>{if(!pads.some(q=>Math.hypot(q.x-E[0],q.y-E[1])<=q.r+.01))nodes.push({x:E[0],y:E[1],r:.01})})});
+  nodes.forEach(N0=>{const key=N0.x.toFixed(2)+','+N0.y.toFixed(2);if(joints.has(key))return;joints.add(key);
+    const D=[];doc.tracks.forEach(T=>{for(let j=1;j<T.pts.length;j++){const a=T.pts[j-1],b=T.pts[j],da=Math.hypot(a[0]-N0.x,a[1]-N0.y),db=Math.hypot(b[0]-N0.x,b[1]-N0.y);
+      if(da<=N0.r&&db>N0.r)D.push({u:dirOf(a,b),t:T});else if(db<=N0.r&&da>N0.r)D.push({u:dirOf(b,a),t:T});
+      else if(!N0.pad&&da>N0.r&&db>N0.r&&segDist(N0.x,N0.y,a,b)<.01){D.push({u:dirOf([N0.x,N0.y],a),t:T,mid:1});D.push({u:dirOf([N0.x,N0.y],b),t:T,mid:1})}}});
+    if(D.length<2)return;
+    let bad=false;
+    if(!N0.pad&&D.length===2&&!D[0].mid)bad=!turnOk(D[0].u,[-D[1].u[0],-D[1].u[1]]); // dos pistas que se continúan: esquina
+    else for(let i=0;i<D.length&&!bad;i++)for(let k=i+1;k<D.length;k++)if(D[i].u[0]*D[k].u[0]+D[i].u[1]*D[k].u[1]>0.05){bad=true;break}
+    if(bad)add('Esquina',N0.pad?'Ángulo agudo entre pistas en una pata':'Unión de pistas con ángulo agudo',N0.x,N0.y,[...new Set(D.map(d=>d.t))].map(t=>({tid:t.id,lock:!!t.lock})))});
   // 4b. cortos: una pista (o puente) une patas de dos conexiones distintas
   {const netIdx=new Map();nets().forEach((g,i)=>g.forEach(k=>netIdx.set(k,i)));const grp=new Map();
     padsAll().forEach(q=>{if(!netIdx.has(q.k))return;const r=ph.f(q.k);if(!grp.has(r))grp.set(r,[]);grp.get(r).push(q)});
@@ -1140,6 +1148,15 @@ function autoroute(opt){
         const d=Math.hypot(gx0+i*g-S.x,gy0+j*g-S.y),c=j*NX+i;if(blk[c])continue;if(d<=lim)out.push(c);if(d<bd){bd=d;bestC=c}}
       if(bestC>=0&&!out.includes(bestC)&&bd<S.rin)out.push(bestC)});return out};
     const starts=cellsIn(src),goals=cellsIn(dst);if(!starts.length||!goals.length)return null;
+    // ángulo agudo prohibido: en cada pata, las direcciones de las pistas que ya salen de ella
+    const ZN=0.9,padOf=new Int32Array(N).fill(-1),PD=[...src,...dst].map(S=>{if(S.k==null||!S.pts)return null;const u=[];
+      segs.forEach(G=>{if(G.jp||G.n!==n)return;const [a,b]=G.pts,ia=shapePtDist(S,a[0],a[1]),ib=shapePtDist(S,b[0],b[1]);
+        if(Math.min(ia,ib)>ZN||Math.max(ia,ib)<=0.05)return;const da=Math.hypot(a[0]-S.x,a[1]-S.y),db=Math.hypot(b[0]-S.x,b[1]-S.y);u.push(da<db?dirOf(a,b):dirOf(b,a))});
+      return u.length?{S,u}:null});
+    PD.forEach((P,pi)=>{if(!P)return;const S=P.S,m=S.rin+ZN+1.5;for(let j=cj(S.y-m);j<=cj(S.y+m);j++)for(let i=ci(S.x-m);i<=ci(S.x+m);i++){if(i<0||j<0||i>=NX||j>=NY)continue;if(shapePtDist(S,gx0+i*g,gy0+j*g)<ZN)padOf[j*NX+i]=pi}});
+    // un paso cerca de la pata no puede alejarse (o acercarse) formando menos de 90° con una pista que ya sale de ella
+    const acute=(pi,c,dx,dy)=>{const S=PD[pi].S,i=c%NX,x=gx0+i*g-S.x,y=gy0+(c-i)/NX*g-S.y,o=x*dx+y*dy;if(Math.abs(o)<1e-9)return false;
+      const L=Math.hypot(dx,dy)*(o>0?1:-1);return PD[pi].u.some(u=>(u[0]*dx+u[1]*dy)/L>0.05)};
     const isT=new Uint8Array(N),isS=new Uint8Array(N);goals.forEach(c=>isT[c]=1);starts.forEach(c=>isS[c]=1);
     const tg=dst.map(S=>[(S.x-gx0)/g,(S.y-gy0)/g,S.rin/g]);
     const h=c=>{const i=c%NX,j=(c-i)/NX;let m=1e9;for(const [x,y,r] of tg){const a=Math.abs(i-x),b=Math.abs(j-y);m=Math.min(m,Math.max(a,b)+0.414*Math.min(a,b)-r)}return Math.max(0,m)};
@@ -1153,6 +1170,7 @@ function autoroute(opt){
     while(H.length&&steps++<N*16){const [,gv,v]=pop();if(gv>G[v])continue;const used=v&1,cd=v>>1,c=cd>>3,d=cd&7;if(isT[c]){end=v;break}
       const i=c%NX,j=(c-i)/NX;
       for(const dd of [-1,0,1]){const nd=(d+dd+8)&7,ni=i+DX[nd],nj=j+DY[nd];if(ni<0||nj<0||ni>=NX||nj>=NY)continue;const c2=nj*NX+ni;if(blk[c2])continue;
+        if((padOf[c]>=0&&acute(padOf[c],c,DX[nd],DY[nd]))||(padOf[c2]>=0&&padOf[c2]!==padOf[c]&&acute(padOf[c2],c2,DX[nd],DY[nd])))continue;
         relax(v,((c2*8+nd)<<1)|used,gv+(nd&1?1.414:1)+(dd?TURN:0)+(near[c2]===2?COMF:near[c2]?NEAR:0),c2,0)}
       if(jumps&&!used&&!noJ[c]&&!isS[c])for(const nd of [0,2,4,6])for(const L of JL){const ni=i+DX[nd]*L,nj=j+DY[nd]*L;if(ni<0||nj<0||ni>=NX||nj>=NY)continue;const c2=nj*NX+ni;if(noJ[c2]||blk[c2]||isT[c2])continue;
         for(let d2=0;d2<8;d2++)relax(v,((c2*8+d2)<<1)|1,gv+JUMP+L*0.3,c2,1)}}
@@ -1694,7 +1712,7 @@ const DRC_WHY={
   'Ancho':'La pista es más fina que 0,5 mm. Con planchado casero se puede cortar.',
   'Borde':'Hay cobre a menos de 2 mm del borde. Al cortar o limar la placa se puede dañar.',
   'Agujero':'Hay cobre en la zona del tornillo. El tornillo o la arandela pueden hacer contacto.',
-  'Esquina':'La pista dobla más de 45° de golpe. En una esquina cerrada el percloruro come de más y la pista se corta.',
+  'Esquina':'La pista dobla más de 45° de golpe, o dos pistas salen del mismo punto con un ángulo menor a 90° (en T sí se puede). En un ángulo cerrado el percloruro se queda, come de más y la pista se corta.',
   'Sin rutear':'Esta conexión todavía no tiene pista.',
   'Corto':'Una pista une patas de dos conexiones que no van juntas: es un cortocircuito.'};
 const ROUTE_DEF={sigW:0.8,powW:1.5,powerFirst:true,comfort:true,effort:'normal',jumps:false,maxJ:2,jLen:'both'};
@@ -2533,7 +2551,7 @@ function openExample(f){pushUndo();f();sel.clear();trackSel=null;outlineSel=fals
 // 2 puentes de masa y "THIAGO RUSSO" en cobre.
 const EX_LDR={outline:{x:0,y:0,w:50,h:50},
   texts:[{s:'THIAGO RUSSO',x:25,y:46,h:2.5,w:0.6}],
-  tracks:[[0.8,[[23.495,33.02],[27.94,33.02],[33.02,27.94],[33.02,26.035]]],[0.8,[[32.385,25.4],[32.385,24.13],[22.86,14.605]]],[0.8,[[10.16,38.1],[13.97,41.91],[20.32,41.91],[22.86,39.37]]],[0.8,[[33.02,18.415],[34.925,18.415]]],[0.8,[[32.385,17.78],[32.385,15.24]]],[0.8,[[35.56,17.78],[35.56,13.97]]],[0.8,[[13.97,27.305],[13.335,27.94],[13.335,29.845]]],[0.8,[[15.24,27.305],[17.78,27.305]]],[0.8,[[10.16,13.97],[13.335,17.145],[13.97,17.145]]],[0.8,[[10.16,27.305],[10.795,27.94],[10.795,29.845]]],[0.8,[[8.89,26.67],[6.985,24.765],[5.08,24.765]]],[0.8,[[38.1,17.78],[40.005,15.875]]],[0.8,[[13.97,13.335],[11.43,10.795],[8.255,10.795],[6.35,12.7],[6.35,14.605],[8.89,17.145]]],[0.8,[[45.085,16.51],[45.085,14.605]]],[0.8,[[35.56,26.035],[35.56,27.94],[37.465,29.845]]],[0.8,[[38.735,30.48],[41.91,27.305],[44.45,27.305]]],[0.8,[[38.1,30.48],[38.1,37.465]]],[1,[[13.335,37.465],[13.335,36.83],[15.24,34.925],[16.51,34.925],[19.685,38.1]]],[1,[[39.37,5.08],[32.385,5.08]]],[1,[[12.7,3.81],[19.685,3.81]]],[1,[[38.1,25.4],[38.1,24.13],[35.56,21.59],[32.385,21.59],[29.845,19.05],[29.845,18.415]]],[1,[[31.115,5.08],[28.575,7.62],[24.13,7.62],[20.955,4.445]]],[1,[[31.75,5.715],[28.575,8.89],[28.575,16.51],[29.845,17.78]]],[0.8,[[19.685,4.445],[19.685,21.59],[20.955,22.86],[20.955,29.21],[13.335,36.83],[13.335,37.465]]],[0.8,[[19.685,33.02],[24.13,28.575],[24.13,21.59]]],[0.8,[[16.51,21.59],[17.78,22.86],[17.78,23.495]]],[0.8,[[17.78,23.495],[15.875,21.59],[5.715,21.59]]],[0.8,[[5.715,31.75],[7.62,29.845]]],[1,[[19.685,33.02],[26.67,26.035],[29.845,26.035]]]], // [ancho, puntos]
+  tracks:[[0.8,[[23.495,33.02],[27.94,33.02],[33.02,27.94],[33.02,26.035]]],[0.8,[[32.385,25.4],[32.385,24.13],[22.86,14.605]]],[0.8,[[10.16,38.1],[13.97,41.91],[20.32,41.91],[22.86,39.37]]],[0.8,[[33.02,18.415],[34.925,18.415]]],[0.8,[[32.385,17.78],[32.385,15.24]]],[0.8,[[35.56,17.78],[35.56,13.97]]],[0.8,[[13.97,27.305],[13.335,27.94],[13.335,29.845]]],[0.8,[[15.24,27.305],[17.78,27.305]]],[0.8,[[10.16,13.97],[13.335,17.145],[13.97,17.145]]],[0.8,[[10.16,27.305],[10.795,27.94],[10.795,29.845]]],[0.8,[[8.89,26.67],[6.985,24.765],[5.08,24.765]]],[0.8,[[38.1,17.78],[40.005,15.875]]],[0.8,[[13.97,13.335],[11.43,10.795],[8.255,10.795],[6.35,12.7],[6.35,14.605],[8.89,17.145]]],[0.8,[[45.085,16.51],[45.085,14.605]]],[0.8,[[35.56,26.035],[35.56,27.94],[37.465,29.845]]],[0.8,[[38.735,30.48],[41.91,27.305],[44.45,27.305]]],[0.8,[[38.1,30.48],[38.1,37.465]]],[1,[[15.875,34.29],[19.685,38.1]]],[1,[[39.37,5.08],[32.385,5.08]]],[1,[[12.7,3.81],[19.685,3.81]]],[1,[[38.1,25.4],[38.1,24.13],[35.56,21.59],[32.385,21.59],[29.845,19.05],[29.845,18.415]]],[1,[[31.115,5.08],[28.575,7.62],[25.4,7.62],[21.78,4.0],[20.955,4.0]]],[1,[[28.575,7.62],[28.575,16.51],[29.845,17.78]]],[0.8,[[19.685,4.445],[19.685,21.59],[20.955,22.86],[20.955,29.21],[13.335,36.83],[13.335,37.465]]],[0.8,[[26.67,26.035],[26.67,24.13],[24.13,21.59]]],[0.8,[[17.78,23.495],[17.78,22.86],[16.51,21.59],[5.715,21.59]]],[0.8,[[5.715,31.75],[7.62,29.845]]],[1,[[19.685,33.02],[26.67,26.035],[29.845,26.035]]]], // [ancho, puntos]
   jumpers:[[[24.13,21.59],[16.51,21.59]],[[5.715,21.59],[5.715,31.75]]],
   comps:[ // [ref, pieza de la biblioteca, valor, x, y (mm), giro]
     ['J1','Bornera 2 vías','+V / 0 V',42.5,6,0],
@@ -2579,7 +2597,7 @@ const EX_TIMER={name:'Temporizador con NE555',outline:{x:0,y:0,w:50,h:50},
   nets:[['J1.1','VR1.1','VR1.2','R1.1','IC1.4','IC1.8','R3.1','BZ1.1'],['J1.2','C1.2','C2.2','IC1.1','C3.2'],
     ['VR1.3','R2.1'],['R2.2','IC1.6','IC1.7','C1.1'],['R1.2','IC1.2','C2.1'],['IC1.5','C3.1'],['IC1.3','D1.1','BZ1.2'],['R3.2','D1.2']],
   texts:[{s:'THIAGO RUSSO 4° 3',x:25,y:5,h:2.5,w:0.6}],
-  tracks:[[0.8,[[28.575,24.13],[28.575,27.94]]],[0.8,[[18.415,19.05],[20.955,19.05]]],[0.8,[[17.145,19.05],[13.97,19.05],[12.7,17.78]]],[0.8,[[22.86,34.925],[24.765,33.02],[24.765,30.48]]],[0.8,[[20.955,21.59],[19.05,21.59],[17.78,22.86],[13.335,22.86]]],[0.8,[[13.335,22.86],[20.955,30.48]]],[0.8,[[28.575,20.955],[28.575,19.05]]],[0.8,[[41.91,23.495],[41.91,20.955],[38.735,17.78]]],[0.8,[[41.275,24.13],[35.56,24.13],[32.385,20.955],[29.21,20.955]]],[1,[[12.7,34.925],[12.7,31.115]]],[1,[[14.605,42.545],[14.605,38.1],[12.7,36.195]]],[1,[[31.115,37.465],[32.385,36.195],[40.005,36.195]]],[1,[[21.59,24.13],[22.86,24.13],[25.4,21.59],[25.4,17.145],[26.67,15.875],[28.575,15.875]]],[1,[[14.605,42.545],[18.415,38.735],[24.13,38.735],[27.305,35.56],[27.305,30.48],[20.955,24.13]]],[1,[[28.575,15.875],[21.59,8.89],[18.415,8.89]]],[1,[[14.605,42.545],[18.415,38.735],[29.845,38.735]]],[0.8,[[30.48,32.385],[30.48,26.035],[31.75,24.765]]]], // ruteado en 5 × 5: sin puentes, masa por el plano
+  tracks:[[0.8,[[28.575,24.13],[28.575,27.94]]],[0.8,[[18.415,19.05],[20.955,19.05]]],[0.8,[[17.145,19.05],[13.97,19.05],[12.7,17.78]]],[0.8,[[22.86,34.925],[24.765,33.02],[24.765,30.48]]],[0.8,[[20.955,21.59],[19.05,21.59],[17.78,22.86],[13.335,22.86]]],[0.8,[[12.7,22.88],[12.7,24.13],[19.05,30.48],[20.955,30.48]]],[0.8,[[28.575,20.955],[28.575,19.05]]],[0.8,[[41.91,23.495],[41.91,20.955],[38.735,17.78]]],[0.8,[[41.275,24.13],[35.56,24.13],[32.385,20.955],[29.21,20.955]]],[1,[[12.7,34.925],[12.7,31.115]]],[1,[[15.24,43.18],[13.97,43.18],[12.7,41.91],[12.7,36.195]]],[1,[[31.115,37.465],[32.385,36.195],[40.005,36.195]]],[1,[[21.59,24.13],[22.86,24.13],[25.4,21.59],[25.4,17.145],[26.67,15.875],[28.575,15.875]]],[1,[[27.305,38.735],[27.305,30.48],[24.13,27.305],[22.225,27.305],[21.19,26.27],[21.19,24.3]]],[1,[[28.81,16.11],[28.81,13.97],[23.73,8.89],[18.415,8.89]]],[1,[[14.605,42.545],[18.415,38.735],[29.845,38.735]]],[0.8,[[30.48,32.385],[30.48,26.035],[31.75,24.765]]]], // ruteado en 5 × 5: sin puentes, masa por el plano
   jumpers:[]};
 const exampleTimer=()=>loadExample(EX_TIMER);
 function example(){
