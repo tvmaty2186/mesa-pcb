@@ -2,7 +2,7 @@
 
 Este archivo es para que cualquier sesión de Claude retome el proyecto sin empezar de cero. **Leelo completo antes de tocar código.**
 
-Última actualización: 27/11/2026 (asistente con IA).
+Última actualización: 27/11/2026 (Mesa PCB 100 % libre).
 
 ## Dónde está todo
 
@@ -14,21 +14,18 @@ Este archivo es para que cualquier sesión de Claude retome el proyecto sin empe
 
 1. **Pads más grandes donde sobre lugar** (más fáciles de soldar y agujerear a mano) y **zonas prohibidas** (áreas donde no pasa ninguna pista, por ejemplo debajo de un disipador). Las alternativas de ruteo ya están (búsqueda de variantes).
    - Autorruteo en placas muy justas: con el detector LDR en 5 × 5 la búsqueda automática todavía deja islas de masa sin unir (lo mejor: 4 patas de masa sin rutear); en 7 × 6 sale completo solo. Ideas pendientes: medir "bolsillos" de masa ya en el reacomodo y reservar canales.
-2. **Asistente con IA: hecho el código (10/10/2026), falta activarlo.** Matías tiene que hacer `docs/configurar_asistente.md`: plan Blaze, clave de Anthropic como secreto y subir `functions/` desde Google Cloud Shell. Después: **cobrar con Mercado Pago y paquetes de créditos** (decidido). Plan:
-   - Una función crea una preferencia de Checkout Pro → el usuario paga → el webhook de Mercado Pago avisa a otra función, que suma `creditos` en `users/{uid}` (solo el servidor los cambia).
-   - Falta que Matías pase las credenciales de producción de Mercado Pago (como secreto del servidor, nunca en el chat) y decida precios y paquetes.
-3. **Publicidad (en curso, 10/10/2026):** el código ya está (`publicidad.js` con `ADS_CONFIG`, `adsInit`, `rewardedAd`, `withAd`); faltan los datos de las cuentas. Pasos y dónde sale cada dato: `docs/configurar_publicidad.md`. Banner con AdSense; pantalla completa con Ad Manager, anuncio con recompensa (GPT `OutOfPageFormat.REWARDED`); si no hay aviso, cuenta regresiva en el espacio reservado. Requisitos de Google: dominio propio (AdSense casi nunca aprueba `github.io`). **Matías no quiere comprar dominio (10/10/2026)**: se le propuso probar AdSense igual con un repositorio `tvmaty2186.github.io` (para el `ads.txt` en la raíz), sumar colaboraciones (Cafecito o Mercado Pago) y un botón de afiliado "Fabricá tu placa" (JLCPCB/PCBWay), y como respaldo redes que no piden dominio (Adsterra, Monetag); falta su respuesta. Otros requisitos: política de privacidad y términos (hechos: `privacidad.html`, `terminos.html`), contenido con texto (`guia.html`), y AdSense aprobado antes de Ad Manager. Al conectar el dominio: CNAME en GitHub Pages, agregar el dominio en Firebase → Authentication → Dominios autorizados, y `ads.txt` en la raíz. El correo público de contacto es tvmaty2186@gmail.com (lo eligió Matías).
+2. **Mesa PCB es 100 % libre (decisión de Matías, 27/11/2026):** sin publicidad, sin pagos, sin créditos y sin pedir cuenta para guardar, imprimir o exportar. Se sacaron la publicidad (`publicidad.js`, `withAd`, franja de abajo) y el asistente con IA de la página. **No volver a agregarlos** salvo que Matías lo pida. El código del servidor del asistente sigue en `functions/` (no se usa); está en el historial de git (antes del commit "Mesa PCB 100 % libre") si algún día se retoma.
 
 Pendientes chicos:
-- "Entrada de audio lejos de la salida" al reacomodar: falta marcar en la biblioteca qué pata es entrada o salida de audio. Hoy lo puede indicar el asistente con `separados`.
+- "Entrada de audio lejos de la salida" al reacomodar: falta marcar en la biblioteca qué pata es entrada o salida de audio. Hoy no hay forma de indicarlo (antes lo hacía el asistente con `separados`; `o.apart` sigue en `placeComps`).
 
 ## Quién y qué
 
 - Dueño: Matías. Técnico electrónico con casi 20 años en mantenimiento y electromecánica.
-- Producto: **Mesa PCB**, un programa web para diseñar plaquetas de circuito impreso, gratis y con publicidad (banner).
+- Producto: **Mesa PCB**, un programa web para diseñar plaquetas de circuito impreso, **gratis y 100 % libre** (sin publicidad ni pagos).
 - Público: **adultos** (mayores de 18). Aficionados y técnicos que hacen placas en casa.
 - Gran diferencia con KiCad o EasyEDA: **cero librerías para descargar**. Las huellas se calculan desde encapsulados estándar y vienen en una biblioteca propia.
-- A futuro: asistente con IA, modo esquema y 3D.
+- A futuro: modo esquema y 3D.
 
 ## Cómo hablar con Matías
 
@@ -78,9 +75,7 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 - **Sin textos de ayuda automáticos** (nada de carteles que expliquen cómo usar una herramienta). Solo avisos cortos de confirmación.
 - **Sin barra de estado** abajo.
 - **Celular** (≤ 820 px): la página entra justa en la pantalla (`.app` con `grid-template-columns:minmax(0,1fr)`); menús y barra de herramientas se deslizan de costado, sin logo; el botón de la cuenta queda fijo a la derecha; los menús se abren con `position:fixed`.
-- **Franja publicitaria reservada abajo de todo**: 468 × 60 en computadora, 320 × 50 en celular (comentario en `index.html` donde va el código del aviso).
-- **Publicidad de pantalla completa antes de guardar, imprimir (una o varias), exportar (PDF, Gerber, diseño), importar y autorrutear** (también el rerruteo de la revisión de reglas), pedido de Matías (`withAd`, `AD_SECONDS`=5). Va después del pedido de cuenta: primero "Entrá con Google", después el aviso, después la acción. Cuenta regresiva "Podés seguir en N" → "Continuar"; la ✕ cancela la acción. Con `ADS_CONFIG.rewardedUnit` pide un **anuncio con recompensa de Ad Manager** ("Ver aviso y seguir"; si lo cierra antes, se cancela); sin dato o sin aviso, queda el espacio reservado con la cuenta regresiva (AdSense no permite obligar a ver un aviso para seguir).
-- **Botón "Asistente con IA"** abajo del panel izquierdo, en lugar de "Colocar en el tablero" (para colocar: arrastrar, o doble clic en la lista). Abre la ventana del asistente (`aiDlg`): flotante abajo a la derecha de la mesa (en celular, abajo de todo), no mueve el dibujo. Sin publicidad (es pago).
+- Abajo del panel izquierdo queda la vista previa (para colocar: arrastrar, o doble clic en la lista).
 - **Botón dividido "Pista ▾"**: se elige Pista o Conectar con la flechita.
 - Tres vistas: componentes (arriba), cobre visto de abajo (espejado), hoja para planchar (negro, **sin espejar** porque el cobre va abajo).
 - **Lado componentes**: cada pieza muestra en el centro su nomenclador (R1, IC1…) y abajo su valor, como la serigrafía (`drawCompLabel`, pedido de Matías). Con borde del color del fondo para leerse sobre las patas; en piezas angostas y altas va de costado. En la vista de cobre queda solo el nomenclador arriba a la izquierda.
@@ -128,19 +123,9 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 - **Exportar Gerber** (`exportGerber`): ZIP con cobre `.gbl` (plano y alivios incluidos), contorno `.gko` y agujeros `.drl`.
 - **Exportar diseño** a `.json` (descargar o copiar) e importarlo.
 
-**Asistente con IA** (`aiDlg`, `aiSend`, `aiApply`; servidor en `functions/`)
-- Chat con texto, **dictado por voz** (es-AR, si el navegador lo permite), **imágenes y PDF** (adjuntar, pegar o arrastrar; las imágenes se achican a 1568 px) y **links** (el servidor baja el contenido; los de GitHub van a la versión cruda; no entra a redes internas).
-- Atajos: Autorrutear con IA, Revisar el diseño, Explicar lo seleccionado.
-- La IA **no dibuja**: devuelve JSON (`functions/nucleo.js`, `ESQUEMA`) con `respuesta`, `pregunta` (con opciones), `agregar` (nombre exacto de la biblioteca), `redes` (patas `REF.NÚMERO`, `amperes`), `desconectar`, `quitar`, `valores`, `contorno`, `ruteo` y `marcar`. La página muestra el plan en una línea con **Aplicar / Descartar**; aplicar es un solo paso de deshacer (`aiEdit`). Lo que no existe (pieza fuera de la biblioteca, pata inválida) no se aplica y se avisa.
-- **Autorruteo asistido** (`aiRoute`): la IA indica reacomodar, tamaño, `juntos` / `separados` / `borde` (entran al costo de `placeComps` como `o.near`, `o.apart`, `o.edge`), `primero` (redes que se rutean antes, `opt.first` en `autoroute`), puentes, anchos y plano. Si quedan conexiones sin rutear prueba variantes sin gastar tokens (más esfuerzo, otras semillas de acomodo `o.seed`, un puente más si se permiten) y se queda con la mejor.
-- Instrucciones de honestidad en el servidor: no inventar piezas, valores ni patas; si duda, pregunta con opciones; si la pieza no tiene tabla de pines, no supone el orden.
-- **Ahorro de tokens**: instrucciones + biblioteca resumida (`functions/catalogo.txt`, la genera `build_lib.py`) en caché; el diseño va como texto corto (`aiDesign`); el historial (8 mensajes) solo como texto; esfuerzo `low` para preguntas y `medium` con archivos o ruteo; salida estructurada.
-- **Créditos** en `users/{uid}`: `gratisMes`, `gratisUsadas` (5 gratis por mes, `GRATIS_POR_MES`) y `creditos` (comprados). Se descuentan antes de llamar a la IA y se devuelven si falla. Costo: 1 por mensaje, +1 con imágenes, +1 cada 10 páginas de PDF, +1 con link. Consumo de tokens en `users/{uid}/consumo`. **Consultas ilimitadas** para las cuentas de `ILIMITADOS` en `nucleo.js` (hoy tvmaty2186@gmail.com, pedido de Matías para probar); no descuentan nada y la ventana dice "Consultas ilimitadas". Funciones: `asistente` y `saldo` (llamables, exigen cuenta).
-- Modelo: `claude-opus-5-5` (`MODELO` en `nucleo.js`), con `fallbacks: "default"`.
-
 **Cuentas con Google** (Firebase, `firebase-config.js`)
 - Botón **Entrar con Google** arriba a la derecha; con sesión muestra foto o inicial, nombre y menú (Mis proyectos, Guardar, Salir).
-- **Sin cuenta solo se dibuja y diseña**: guardar, abrir, imprimir y exportar piden entrar (`needAccount`).
+- **Sin cuenta se puede todo**: guardar y abrir van al navegador; imprimir y exportar, directo. Con cuenta, guardar y abrir van a la nube (`usingCloud()` = servicio listo y sesión iniciada).
 - Proyectos en Firestore `users/{uid}/projects/{id}` = `{name, data (JSON del diseño), comps, updated}` (`cloudSave`, `cloudOpen`). `doc.cloudId` recuerda el proyecto abierto. Cada usuario ve solo los suyos (reglas en `firestore.rules`).
 - Los diseños viejos guardados en el navegador aparecen en Mis proyectos para pasarlos a la cuenta.
 - Si `FIREBASE_CONFIG` es `null`, la página funciona sin cuentas y guarda en el navegador.
@@ -154,15 +139,13 @@ Detalle y fuentes en `docs/investigacion_ruteo.md`.
 | `biblioteca/build_lib.py` | **Fuente de verdad de la biblioteca.** Genera `componentes.json` y `componentes.js`. Verifica pines por huella y separación mínima. |
 | `biblioteca/componentes.json` / `.js` | Biblioteca generada. **No editar a mano**: cambiar `build_lib.py` y correr `python3 build_lib.py` dentro de `biblioteca/`. `componentes.js` existe para abrir la página con doble clic (sin servidor). |
 | `firebase-config.js` | Datos del proyecto Firebase `mesa-pcb` (no son secretos). |
-| `publicidad.js` | Datos de AdSense y Ad Manager (`ADS_CONFIG`). En `null` = espacios reservados. |
-| `docs/configurar_publicidad.md` | Cómo conectar la publicidad, paso a paso. |
 | `firestore.rules` | Reglas de seguridad de Firestore. `users/{uid}` (créditos) solo se lee; lo cambia el servidor. Se publican con `firebase deploy --only firestore:rules`. |
-| `functions/` | Servidor del asistente (Firebase Functions): `index.js` (cuenta, créditos, llamada a Claude), `nucleo.js` (instrucciones, formato de respuesta, validación, links; se prueba con `node prueba.js`), `catalogo.txt` (generado). |
+| `functions/` | **Sin uso hoy.** Servidor del asistente con IA que se sacó de la página (Firebase Functions): `index.js` (cuenta, créditos, llamada a Claude), `nucleo.js` (instrucciones, formato de respuesta, validación, links; se prueba con `node prueba.js`), `catalogo.txt` (generado). |
 | `firebase.json`, `.firebaserc` | Configuración para subir el servidor y las reglas. |
-| `docs/configurar_asistente.md` | Cómo activar el asistente (Blaze, clave de Anthropic, subir el servidor) y cuánto cuesta. |
+| `docs/configurar_asistente.md` | Sin uso hoy. Cómo se activaba el asistente (Blaze, clave de Anthropic, subir el servidor) y cuánto cuesta. |
 | `docs/configurar_firebase.md` | Cómo se configuró Firebase, paso a paso. |
 | `docs/investigacion_ruteo.md` | Investigación de reglas y algoritmos de ruteo, con fuentes. |
-| `guia.html`, `privacidad.html`, `terminos.html` | Guía para hacer la plaqueta, política de privacidad y términos de uso (los pide Google para la publicidad). Enlazadas desde el menú Ayuda. |
+| `guia.html`, `privacidad.html`, `terminos.html` | Guía para hacer la plaqueta, política de privacidad y términos de uso (dicen que es gratis, sin publicidad ni pagos). Enlazadas desde el menú Ayuda. |
 | `README.md` | Presentación corta para quien entra al repositorio. |
 | `PASOS.md` | Cómo seguir trabajando con Claude en la nube. |
 

@@ -6,7 +6,6 @@
 <style>[hidden]{display:none!important}img{max-width:100%}</style>
 <script src="biblioteca/componentes.js"></script>
 <script src="firebase-config.js"></script>
-<script src="publicidad.js"></script>
 <title>Mesa de Diseño PCB</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Chakra+Petch:wght@700&family=JetBrains+Mono:wght@400;600&display=swap">
@@ -38,7 +37,7 @@ html,body{height:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;margin:0;overflow:hidden}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.app{height:100%;display:grid;grid-template-rows:auto auto 1fr auto;grid-template-columns:minmax(0,1fr)} /* la columna no crece con la barra de herramientas: en celular la barra se desliza */
+.app{height:100%;display:grid;grid-template-rows:auto auto 1fr;grid-template-columns:minmax(0,1fr)} /* la columna no crece con la barra de herramientas: en celular la barra se desliza */
 
 /* menús */
 .menubar{display:flex;align-items:center;gap:2px;padding-inline:10px;background:var(--panel);border-bottom:1px solid var(--line);min-height:36px;position:relative;z-index:30}
@@ -122,58 +121,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .pvpkg{font-family:var(--f-mono);font-size:.75rem;color:var(--muted)}
 .place{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:8px;font-weight:700}
 .place:disabled{opacity:.4}
-.place.ai{display:flex;align-items:center;justify-content:center;gap:8px}
-.place.ai svg{width:18px;height:18px}
-/* asistente con IA: ventana flotante sobre la mesa (no mueve el dibujo) */
-.aip{position:absolute;right:12px;bottom:12px;width:min(380px,calc(100% - 24px));height:min(560px,calc(100% - 24px));display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 36px rgba(0,0,0,.22);z-index:15;overflow:hidden}
-.aih{display:flex;align-items:center;gap:6px;padding:7px 8px 7px 12px;border-bottom:1px solid var(--line)}
-.aih b{font-size:.92rem}
-.aisal{flex:1;font-family:var(--f-mono);font-size:.7rem;color:var(--muted);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.aiic{background:none;border:0;border-radius:8px;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);flex:none}
-.aiic:hover{background:var(--panel2);color:var(--ink)}
-.aiic svg{width:18px;height:18px}
-.aiic.on{color:var(--err)}
-.aim{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
-.msg{max-width:90%;padding:8px 10px;border-radius:12px;font-size:.9rem;line-height:1.38;white-space:pre-wrap;overflow-wrap:anywhere}
-.msg.u{align-self:flex-end;background:var(--accent-soft);border-bottom-right-radius:4px}
-.msg.a{align-self:flex-start;background:var(--panel2);border:1px solid var(--line);border-bottom-left-radius:4px}
-.msg.e{align-self:stretch;max-width:none;color:var(--err);border:1px solid var(--err);background:none;font-size:.85rem}
-.mfile,.mnote{font-size:.75rem;color:var(--muted);margin-top:4px}
-.mq{margin-top:6px;font-weight:700}
-.mplan{margin-top:7px;padding-top:6px;border-top:1px dashed var(--line);font-family:var(--f-mono);font-size:.74rem;color:var(--sel)}
-.mopts{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
-.mopts button,.aichips button{border:1px solid var(--line);background:var(--ws-bg);border-radius:999px;padding:4px 11px;font-size:.8rem}
-.mopts button:hover,.aichips button:hover{background:var(--accent-soft)}
-.mopts button.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
-.msg.busy{display:flex;gap:4px;padding:11px 12px}
-.msg.busy span{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:aib 1s infinite ease-in-out}
-.msg.busy span:nth-child(2){animation-delay:.15s}.msg.busy span:nth-child(3){animation-delay:.3s}
-@keyframes aib{0%,80%,100%{opacity:.25}40%{opacity:1}}
-@media (prefers-reduced-motion:reduce){.msg.busy span{animation:none;opacity:.6}}
-.aichips{display:flex;gap:6px;flex-wrap:wrap;padding:0 10px 8px}
-.aiin{border-top:1px solid var(--line);padding:8px;display:flex;flex-direction:column;gap:6px;background:var(--panel2)}
-.aiin textarea{font:inherit;font-size:.9rem;resize:none;border:1px solid var(--line);border-radius:10px;padding:7px 9px;background:var(--ws-bg);color:var(--ink);max-height:120px}
-.aiin textarea:focus-visible{outline:2px solid var(--accent);outline-offset:0}
-.aiadj{display:flex;flex-wrap:wrap;gap:5px}.aiadj:empty{display:none}
-.achip{border:1px solid var(--line);background:var(--ws-bg);border-radius:8px;padding:2px 8px;font-size:.75rem;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.aibar{display:flex;align-items:center;gap:2px}.aisp{flex:1}
-.aisend{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;width:40px;height:34px;display:inline-flex;align-items:center;justify-content:center}
-.aisend svg{width:18px;height:18px}.aisend:disabled{opacity:.45}
-@media (max-width:820px){.aip{right:0;left:0;bottom:0;width:auto;height:min(70%,560px);border-radius:14px 14px 0 0}}
 /* alternativas del autorruteador */
 .alts{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
 .alt{display:flex;flex-direction:column;gap:4px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:8px;text-align:left}
 .alt img{width:100%;aspect-ratio:1;object-fit:contain;background:#fff;border-radius:6px}
 .alt span{font-size:.8rem;color:var(--muted)}
 .alt[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
-/* publicidad de pantalla completa */
-.adov{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px;z-index:80}
-.adfull{background:var(--panel);border-radius:14px;width:min(760px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;gap:12px;padding:12px 14px 14px}
-.adtop{display:flex;justify-content:space-between;align-items:center;font-family:var(--f-mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.adx{background:none;border:0;font-size:1rem;color:var(--muted);padding:2px 6px}
-.adslotfull{flex:1;min-height:min(60vh,480px);border:1px dashed var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-family:var(--f-mono);font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;background:var(--panel2);text-align:center;padding:12px}
-.adgo{align-self:flex-end;background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:9px 18px;font-weight:700;min-width:170px}
-.adgo:disabled{background:var(--panel2);color:var(--muted);cursor:default}
 
 .stage{flex:1;position:relative;min-width:0;min-height:0;overflow:hidden;background:var(--ws-bg);touch-action:none}
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -204,12 +157,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .status b{color:var(--ink);font-weight:600}
 .status .msg{margin-left:auto;font-family:var(--f-body);overflow:hidden;text-overflow:ellipsis}
 
-/* franja publicitaria reservada */
-.adslot{height:64px;display:flex;align-items:center;justify-content:center;background:var(--panel2);border-top:1px solid var(--line);padding-inline:16px}
-.adbox ins{display:block;width:100%;height:100%}
-.adbox.on{border:0}
-.adbox{width:468px;max-width:100%;height:60px;border:1px dashed var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:.78rem;font-family:var(--f-mono);letter-spacing:.04em;text-transform:uppercase}
-@media (max-width:820px){.adslot{height:54px}.adbox{width:320px;height:50px}}
 
 /* diálogos */
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
@@ -289,7 +236,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
       <div class="preview">
         <canvas id="pv" draggable="true" aria-label="Vista previa de la huella. Arrastrala al tablero" title="Arrastrá la huella al tablero"></canvas>
         <div><div class="pvname" id="pvname">Elegí un componente</div><div class="pvpkg" id="pvpkg"></div></div>
-        <button class="place ai" id="aiBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>Asistente con IA</button>
       </div>
     </aside>
     <div class="handle" id="lh" role="separator" aria-orientation="vertical" aria-label="Cambiar el ancho del panel" title="Arrastrá para cambiar el ancho · doble clic para volver al tamaño normal" tabindex="0"></div>
@@ -302,8 +248,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
     </main>
     </div>
   </div>
-  <!-- Banner de abajo. Escritorio: 468 × 60 · Celular: 320 × 50. Con ADS_CONFIG (publicidad.js) se carga AdSense acá (adsInit). -->
-  <aside class="adslot" id="ad-slot" aria-label="Espacio publicitario"><div class="adbox">Espacio publicitario · <span id="adsize">468 × 60</span></div></aside>
 </div>
 <input type="file" id="fileIn" accept=".json,application/json" hidden>
 
@@ -972,8 +916,6 @@ function openLocal(){
 }
 function newDoc(){dialog('Diseño nuevo','<p class="muted">Se va a vaciar el tablero. Podés recuperarlo con Deshacer.</p>',[{t:'Cancelar'},{t:'Empezar de cero',pri:1,f:()=>{pushUndo();doc=docFrom({comps:[]},null);sel.clear();trackSel=null;outlineSel=false;changed();fit()}}])}
 function exportDlg(){
-  if(needAccount('exportar el diseño,'))return;
-  if(!adOk){withAd(()=>{adOk=true;try{exportDlg()}finally{adOk=false}});return}
   const txt=JSON.stringify({app:'Mesa PCB',version:1,nombre:doc.name,...docData()},null,1);
   const ov=dialog('Exportar diseño',`<p class="muted">Descargá el archivo .json o copiá el texto. Después lo abrís con Archivo → Abrir → Importar archivo.</p><textarea id="ex" readonly></textarea>`,[{t:'Descargar archivo',f:()=>{download(fileBase()+'.json',document.getElementById('ex').value,'application/json');toast('Diseño descargado');return false}},{t:'Copiar',f:()=>{const t=document.getElementById('ex');navigator.clipboard.writeText(t.value).then(()=>toast('Copiado'),()=>{t.select();toast('Seleccionado: usá Ctrl+C')});return false}},{t:'Cerrar',pri:1}]);
   ov.querySelector('#ex').value=txt;
@@ -1372,7 +1314,7 @@ function routeDlg(){
       ${seg('keep','Pistas dibujadas',[['all','Conservar','Conservar todas las pistas que ya dibujaste'],['locked','Solo fijas','Conservar solo las pistas con candado y rehacer el resto']])}
       ${seg('effort','Esfuerzo',[['fast','Rápido'],['normal','Normal'],['deep','A fondo']])}</section>
   </div>`,
-   [{t:'Cancelar'},{t:'Rutear',pri:1,f:()=>{prefs.route=o;LS.set('pcb.prefs',prefs);withAd(()=>{if(o.place&&o.variants){routeVariants(o);return}toast('Ruteando…');setTimeout(()=>runRoute(o),30)})}}]);
+   [{t:'Cancelar'},{t:'Rutear',pri:1,f:()=>{prefs.route=o;LS.set('pcb.prefs',prefs);(()=>{if(o.place&&o.variants){routeVariants(o);return}toast('Ruteando…');setTimeout(()=>runRoute(o),30)})()}}]);
   ov.querySelector('.dlg').classList.add('wide');
   const NUM=new Set(['sigW','powW','maxJ']),BOOL=new Set(['comfort','planeIso']);
   const val=(k,v)=>NUM.has(k)?+v:BOOL.has(k)?v==='1':v;
@@ -1719,7 +1661,6 @@ const ROUTE_DEF={sigW:0.8,powW:0.8,powerFirst:true,comfort:true,effort:'normal',
 function drcAt(sx,sy){if(!prefs.drc||view==='plancha')return null;if(drcDirty)runDrc();let best=null,bd=14;
   drcList.forEach(e=>{const [x,y]=toS(e.x,e.y),d=Math.hypot(x-sx,y-sy);if(d<bd){bd=d;best=e}});return best}
 function rerouteFix(tids,msg,jids=[]){
-  if(!adOk){withAd(()=>{adOk=true;try{rerouteFix(tids,msg,jids)}finally{adOk=false}});return} // saca esas pistas (si no tienen candado) y rutea lo que falte respetando todo lo demás
   const o={...ROUTE_DEF,...(prefs.route||{}),keep:'all',place:false,size:'none'};
   pushUndo();linksFromTracks();doc.tracks=doc.tracks.filter(t=>t.lock||!tids.includes(t.id));doc.jumpers=(doc.jumpers||[]).filter(j=>!jids.includes(j.id));
   const r=autoroute(o);doc.tracks=r.tracks;doc.jumpers=r.jumpers;trackSel=null;changed();r.done=Math.max(0,r.total-ratsnest().length);
@@ -1842,8 +1783,6 @@ function renderSheet(type,q){
 const boardSize=(w,h)=>doc.outline?`${cm(doc.outline.w)} × ${cm(doc.outline.h)} cm`:`${cm(w)} × ${cm(h)} cm`; // medida de la placa, sin el margen de la hoja
 const sheetTitle=()=>`Mesa PCB${doc.name?' · '+doc.name:''}`;
 function printSheet(){
-  if(needAccount('imprimir,'))return;
-  if(!adOk){withAd(()=>{adOk=true;try{printSheet()}finally{adOk=false}});return}
   const s=renderSheet('image/png');if(!s){toast('No hay nada para imprimir');return}
   const land=s.wmm>s.hmm&&s.wmm>185;const fr=document.createElement('iframe');fr.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0';document.body.appendChild(fr);
   const d=fr.contentDocument;d.open();d.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(sheetTitle())}</title><style>
@@ -1877,8 +1816,6 @@ function buildPdf({url,px,pw,ph,places,barY,title}){
   return new Blob(parts,{type:'application/pdf'});
 }
 function exportPdf(){
-  if(needAccount('exportar el PDF,'))return;
-  if(!adOk){withAd(()=>{adOk=true;try{exportPdf()}finally{adOk=false}});return}
   const s=renderSheet('image/jpeg',0.95);if(!s){toast('No hay nada para exportar');return}
   const M=15;let pw=210,ph=297;if(s.wmm>s.hmm&&s.wmm>pw-2*M)[pw,ph]=[ph,pw];pw=Math.max(pw,s.wmm+2*M);ph=Math.max(ph,s.hmm+2*M+20);
   download(fileBase()+'-planchado.pdf',buildPdf({url:s.url,px:s.px,pw,ph,places:[{x:M,y:M,w:s.wmm,h:s.hmm}],barY:M+s.hmm+5,
@@ -1912,12 +1849,11 @@ async function multiOut(o,kind){
   Promise.all(imgs.map(i=>i.complete?0:new Promise(r=>i.onload=r))).then(()=>setTimeout(go,50));
 }
 function multiDlg(){
-  if(needAccount('imprimir,'))return;
   const B=sheetBox();if(!B){toast('No hay nada para imprimir');return}const w=B[2]-B[0],h=B[3]-B[1];
   const o=Object.assign({n:0,gap:5},prefs.multi||{});
   const seg=(k,label,opts)=>`<div class="rrow"><span>${label}</span><div class="seg" data-k="${k}">${opts.map(([v,t])=>`<button data-v="${v}">${t}</button>`).join('')}</div></div>`;
   const ov=dialog('Varias placas por hoja',`<section class="rsec">${seg('n','Copias',[[2,'2'],[4,'4'],[6,'6'],[8,'8'],[0,'Todas las que entren']])}${seg('gap','Separación',[[2,'2 mm'],[5,'5 mm'],[10,'10 mm']])}</section><p class="muted" id="mcap"></p>`,
-    [{t:'Cancelar'},{t:'Exportar PDF',f:()=>{prefs.multi=o;LS.set('pcb.prefs',prefs);withAd(()=>multiOut(o,'pdf'))}},{t:'Imprimir',pri:1,f:()=>{prefs.multi=o;LS.set('pcb.prefs',prefs);withAd(()=>multiOut(o,'print'))}}]);
+    [{t:'Cancelar'},{t:'Exportar PDF',f:()=>{prefs.multi=o;LS.set('pcb.prefs',prefs);multiOut(o,'pdf')}},{t:'Imprimir',pri:1,f:()=>{prefs.multi=o;LS.set('pcb.prefs',prefs);multiOut(o,'print')}}]);
   const paint=()=>{ov.querySelectorAll('.seg').forEach(g=>g.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.v===o[g.dataset.k]))));
     const L=sheetLayout(w,h,o.gap,o.n||Infinity),cap=ov.querySelector('#mcap');
     cap.textContent=!L.cap?'La placa no entra en una hoja A4.':`En una A4 ${L.land?'acostada':'parada'} entran hasta ${L.cap} placas de ${boardSize(w,h)}${L.r?' (giradas)':''}. Se van a imprimir ${L.n}.`;
@@ -1927,8 +1863,6 @@ function multiDlg(){
 // Gerber RS-274X (cobre de abajo, contorno) y taladrado Excellon, en un ZIP. El plano se arma igual que en pantalla:
 // zona oscura, se limpia lo ajeno con su separación (polaridad clara) y se vuelve a dibujar el cobre.
 function exportGerber(){
-  if(needAccount('exportar el Gerber,'))return;
-  if(!adOk){withAd(()=>{adOk=true;try{exportGerber()}finally{adOk=false}});return}
   if(!doc.comps.length){toast('No hay nada para exportar');return}
   const f=v=>Math.round(v*1e6).toString(),X=x=>'X'+f(x),Y=y=>'Y'+f(-y); // Gerber tiene Y hacia arriba
   const ap=new Map(),body=[];let dn=10;const D=def=>{if(!ap.has(def))ap.set(def,dn++);return 'D'+ap.get(def)+'*'};
@@ -2008,9 +1942,7 @@ function signIn(){if(!Cloud.ready){toast('El servicio de cuentas no está dispon
 function signOut(){if(!Cloud.ready)return;firebase.auth().signOut().then(()=>toast('Sesión cerrada'))}
 const projCol=()=>Cloud.db.collection('users').doc(Cloud.user.uid).collection('projects');
 function loginDlg(why){dialog('Entrá con tu cuenta de Google',`<p class="muted">${esc(why)}</p>`,[{t:'Ahora no'},{t:'Entrar con Google',pri:1,f:signIn}])}
-const usingCloud=()=>Cloud.ready; // con el servicio andando, guardar y abrir van a la cuenta
-// sin cuenta solo se dibuja y diseña: guardar, abrir, imprimir y exportar piden entrar (pedido de Matías)
-function needAccount(what){if(!usingCloud()||Cloud.user)return false;loginDlg(`Para ${what} entrá con tu cuenta de Google. Sin cuenta podés dibujar y diseñar, pero no guardar, imprimir ni exportar.`);return true}
+const usingCloud=()=>Cloud.ready&&!!Cloud.user; // con cuenta, guardar y abrir van a la cuenta; sin cuenta, al navegador
 // botón de la cuenta, a la derecha del menú
 function paintUser(){
   const b=document.getElementById('userBtn');if(!b)return;b.hidden=!Cloud.ready;if(!Cloud.ready)return;
@@ -2042,312 +1974,16 @@ async function cloudOpen(){
   ov.querySelectorAll('[data-l]').forEach(b=>{const n=ln[+b.dataset.l];b.querySelector('span').textContent=n;
     b.onclick=()=>{pushUndo();doc=docFrom(local[n],n);doc.cloudId=null;sel.clear();outlineSel=false;ov.remove();changed();fit();toast(`Abierto: ${n} · guardalo para pasarlo a tu cuenta`)}});
 }
-let adOk=false; // ya se vio la publicidad de esta acción
 function save(asNew){
-  if(needAccount('guardar tus proyectos y abrirlos desde cualquier computadora,'))return;
-  if(!adOk){withAd(()=>{adOk=true;try{save(asNew)}finally{adOk=false}});return}
   if(!doc.name||asNew){dialog('Guardar diseño',`<div class="field"><label for="dn">Nombre del diseño</label><input id="dn" value="${esc(doc.name||'Mi plaqueta')}"></div>`,
     [{t:'Cancelar'},{t:'Guardar',pri:1,f:()=>{const v=document.getElementById('dn').value.trim();if(!v)return false;doc.name=v;usingCloud()?cloudSave(asNew):saveLocal()}}]);setTimeout(()=>{const i=document.getElementById('dn');i&&i.select()},30);return}
   usingCloud()?cloudSave(false):saveLocal();
 }
 function openDlg(){
-  if(needAccount('abrir tus proyectos,'))return;
   usingCloud()?cloudOpen():openLocal();
 }
 
-/* ================= publicidad ================= */
-// Banner de abajo: AdSense. Pantalla completa antes de guardar, imprimir, exportar, importar y autorrutear
-// (pedido de Matías): Google Ad Manager con anuncio con recompensa (AdSense no permite obligar a ver un
-// aviso para seguir). Los datos van en publicidad.js; mientras estén en null se ven los espacios reservados.
-// Si Ad Manager no tiene aviso para dar (o el navegador lo bloquea), se muestra el espacio reservado con la
-// cuenta regresiva de siempre: la acción nunca queda trabada.
-const ADS=window.ADS_CONFIG||{};
-function adScript(src,attrs){return new Promise((ok,ko)=>{const e=document.createElement('script');e.async=true;e.src=src;
-  Object.entries(attrs||{}).forEach(([k,v])=>e.setAttribute(k,v));e.onload=ok;e.onerror=ko;document.head.appendChild(e)})}
-let gptReady=null;
-function gptLoad(){
-  if(!gptReady){window.googletag=window.googletag||{cmd:[]};
-    gptReady=adScript('https://securepubads.g.doubleclick.net/tag/js/gpt.js').then(()=>new Promise(ok=>googletag.cmd.push(()=>{googletag.enableServices();ok()})))}
-  return gptReady;
-}
-function adsInit(){
-  if(ADS.adsenseClient&&ADS.bannerSlot){
-    const box=document.querySelector('#ad-slot .adbox');
-    adScript('https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client='+encodeURIComponent(ADS.adsenseClient),{crossorigin:'anonymous'}).then(()=>{
-      box.classList.add('on');box.innerHTML=`<ins class="adsbygoogle" data-ad-client="${ADS.adsenseClient}" data-ad-slot="${ADS.bannerSlot}"></ins>`;
-      (window.adsbygoogle=window.adsbygoogle||[]).push({});
-    }).catch(()=>{});
-  }
-  if(ADS.rewardedUnit)gptLoad().catch(()=>{});
-}
-// Pide un aviso con recompensa. Llama a ready(show) cuando hay aviso (show() lo muestra; tiene que ser por un
-// clic del usuario), a done(true/false) cuando se cierra (true = lo vio entero) y a none() si no hay aviso.
-function rewardedAd(ready,done,none){
-  let slot=null,granted=false,over=false;
-  const end=f=>{if(over)return;over=true;clearTimeout(to);
-    try{if(slot)googletag.destroySlots([slot])}catch(e){}f()};
-  const to=setTimeout(()=>end(none),6000);
-  gptLoad().then(()=>googletag.cmd.push(()=>{
-    slot=googletag.defineOutOfPageSlot(ADS.rewardedUnit,googletag.enums.OutOfPageFormat.REWARDED);
-    if(!slot)return end(none);   // esta página o este navegador no admiten el formato
-    slot.addService(googletag.pubads());
-    const pa=googletag.pubads();
-    pa.addEventListener('rewardedSlotReady',e=>{if(e.slot!==slot||over)return;clearTimeout(to);ready(()=>e.makeRewardedVisible())});
-    pa.addEventListener('rewardedSlotGranted',e=>{if(e.slot===slot)granted=true});
-    pa.addEventListener('rewardedSlotClosed',e=>{if(e.slot===slot)end(()=>done(granted))});
-    pa.addEventListener('slotRenderEnded',e=>{if(e.slot===slot&&e.isEmpty)end(none)});
-    googletag.display(slot);
-  })).catch(()=>end(none));
-}
-const AD_SECONDS=5;let adBusy=false;
-function withAd(fn){
-  if(adBusy)return;adBusy=true;let left=AD_SECONDS,t=null;const real=!!ADS.rewardedUnit;
-  const ov=document.createElement('div');ov.className='adov';ov.innerHTML=`<div class="adfull" role="dialog" aria-modal="true" aria-label="Publicidad">
-    <div class="adtop"><span>Publicidad</span><button class="adx" aria-label="Cancelar" title="Cancelar">✕</button></div>
-    <div class="adslotfull" id="adFull">${real?'Cargando aviso…':'Espacio publicitario · pantalla completa'}</div>
-    <button class="adgo" disabled></button></div>`;
-  document.body.appendChild(ov);const go=ov.querySelector('.adgo'),slotEl=ov.querySelector('#adFull');
-  let closed=false;
-  const close=()=>{closed=true;clearInterval(t);ov.remove();adBusy=false};
-  const countdown=()=>{   // espacio reservado con cuenta regresiva (sin Ad Manager o sin aviso para dar)
-    if(closed)return;slotEl.textContent='Espacio publicitario · pantalla completa';
-    const paint=()=>{go.disabled=left>0;go.textContent=left>0?`Podés seguir en ${left}`:'Continuar'};paint();
-    t=setInterval(()=>{left--;paint();if(left<=0){clearInterval(t);go.focus()}},1000);
-    go.onclick=()=>{if(left>0)return;close();fn()};
-  };
-  ov.querySelector('.adx').onclick=close;
-  ov.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();close()}});
-  if(!real)return countdown();
-  go.textContent='Cargando…';
-  rewardedAd(show=>{
-    if(closed)return;slotEl.textContent='Mirá un aviso corto para seguir';
-    go.disabled=false;go.textContent='Ver aviso y seguir';go.focus();
-    go.onclick=()=>{ov.style.visibility='hidden';show()};
-  },ok=>{
-    if(closed)return;
-    if(ok){close();fn()}else close();   // si cerró el aviso antes de terminarlo, la acción se cancela
-  },countdown);
-}
-const importFile=()=>withAd(()=>document.getElementById('fileIn').click());
-/* ================= asistente con IA ================= */
-// Ventana de chat sobre la mesa. Cada pedido va al servidor (functions/: Firebase + API de Claude), que exige
-// cuenta de Google y descuenta consultas (gratis del mes o créditos comprados). La IA no dibuja: devuelve
-// cambios (agregar, redes, quitar, valores, contorno, ruteo, marcar) que se muestran antes y se aplican de
-// una vez (Ctrl+Z los deshace). Para gastar pocos tokens: el diseño va resumido en texto (aiDesign), el
-// historial solo como texto (las imágenes no se reenvían) y las imágenes se achican antes de mandarlas.
-const AI={open:false,msgs:[],adj:[],busy:false,saldo:null,rec:null,remap:new Map()};
-const AI_IMG=1568,AI_PDF=8e6,AI_MAXADJ=4;
-const AI_IC={
-  clip:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5l-8.6 8.6a5 5 0 0 1-7-7L14 4.5a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4L15.5 7.6"/></svg>',
-  mic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
-  nueva:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
-  send:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'};
-const AI_CHIPS=[['Autorrutear con IA','Autorruteá la placa con IA: decime qué priorizás y dejala lo mejor posible.'],
-  ['Revisar el diseño','Revisá mi diseño y sugerime mejoras concretas.'],
-  ['Explicar lo seleccionado','Explicame el componente seleccionado: para qué sirve y cómo se conecta.']];
-function aiDlg(){
-  if(!Cloud.ready){toast('El asistente necesita el servicio de cuentas');return}
-  if(needAccount('usar el asistente,'))return;
-  AI.open=!AI.open;if(AI.open&&innerWidth<=820&&prefs.left){prefs.left=false;refreshUI()}aiPaint();if(AI.open){aiSaldo();setTimeout(()=>document.getElementById('aiTxt').focus(),30)}
-}
-async function aiCall(name,data){
-  if(!firebase.functions)await loadScript(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-functions-compat.js`);
-  return (await firebase.functions().httpsCallable(name,{timeout:310000})(data)).data;
-}
-function aiSaldo(){aiCall('saldo',{}).then(d=>{AI.saldo=d.saldo;aiPaint()}).catch(()=>{})}
-function aiErr(e){const c=String(e&&e.code||'').replace('functions/',''),m=e&&e.message||'';
-  if(c==='resource-exhausted')return 'Te quedaste sin consultas. Las gratis se renuevan cada mes; muy pronto vas a poder comprar más.';
-  if(c==='unauthenticated')return 'Entrá con tu cuenta de Google para usar el asistente.';
-  if(c==='deadline-exceeded')return 'Tardó demasiado. Probá con un pedido más chico.';
-  if(!m||m==='internal'||c==='not-found')return 'El asistente todavía no está activado o no responde. Probá más tarde.';
-  return m}
-
-// el diseño resumido en texto: lo que la IA necesita saber, sin coordenadas de pistas
-function aiDesign(){
-  const o=doc.outline,X=o?o.x:0,Y=o?o.y:0,r1=v=>Math.round(v*10)/10,L=[];
-  L.push(o?`Placa: ${r1(o.w)} × ${r1(o.h)} mm`:'Placa: sin contorno');
-  if(!doc.comps.length)L.push('Sin componentes.');
-  else{L.push('Componentes (ref|parte|valor|x,y mm|rot|fijo):');
-    doc.comps.forEach(c=>L.push(`${c.ref}|${c.name}${c.name==='Tira de pines'?` (${c.enc.slice(4)} pines)`:''}|${c.val||''}|${r1(c.x-X)},${r1(c.y-Y)}|${c.rot}${c.lock?'|fijo':''}`))}
-  const N=nets();
-  if(N.length){L.push('Redes:');N.forEach(ks=>{const a=Math.max(0,...doc.links.filter(l=>ks.includes(l.a)).map(l=>l.amps||0));L.push(ks.map(padName).join(' ')+(a?` (${a} A)`:''))})}
-  if(doc.links.length)L.push(`Ruteo: ${doc.tracks.length} pistas, ${(doc.jumpers||[]).length} puentes, ${ratsnest().length} conexiones sin rutear.`);
-  if(doc.plane)L.push(doc.plane.iso?'Relleno de cobre sin conectar (no toca pistas ni pads): sí.':'Plano de masa: sí.');
-  if(doc.comps.length){const d=drcDirty?runDrc():drcList,g=new Map();d.forEach(x=>{if(!g.has(x.t))g.set(x.t,[]);g.get(x.t).push(x.m)});
-    if(d.length)L.push('Revisión de reglas: '+[...g].map(([t,ms])=>`${t} ×${ms.length} (${ms.slice(0,3).join('; ')})`).join(' · '))}
-  const s=selComps();if(s.length)L.push('Seleccionado: '+s.map(c=>c.ref).join(', '));
-  return L.join('\n');
-}
-
-async function aiSend(texto){
-  if(AI.busy)return;texto=(texto||'').trim();if(!texto&&!AI.adj.length)return;
-  const link=(texto.match(/https?:\/\/[^\s<>"]+/)||[])[0]||null,adj=AI.adj;AI.adj=[];
-  const hist=AI.msgs.filter(m=>m.rol!=='error').slice(-8).map(m=>({rol:m.rol,texto:(m.hist||m.texto).slice(0,2000)}));
-  const names=adj.map(a=>a.nombre);
-  AI.msgs.push({rol:'user',texto:texto||'(archivo adjunto)',adj:names,hist:(texto||'')+(names.length?` [adjunté: ${names.join(', ')}]`:'')});
-  AI.busy=true;aiPaint();
-  try{
-    const res=await aiCall('asistente',{texto,diseno:aiDesign(),historial:hist,adjuntos:adj.map(({tipo,datos})=>({tipo,datos})),link});
-    const r=res.r||{respuesta:''},plan=aiPlan(r);AI.saldo=res.saldo||AI.saldo;
-    AI.msgs.push({rol:'assistant',texto:r.respuesta,r,estado:plan?'pendiente':null,
-      hist:r.respuesta+(plan?` [Propuse: ${plan}]`:'')+(r.pregunta?` [Pregunté: ${r.pregunta.texto} (${(r.pregunta.opciones||[]).join(' / ')})]`:'')});
-    if(r.marcar&&r.marcar.length)aiMark(r.marcar);
-  }catch(e){AI.msgs.push({rol:'error',texto:aiErr(e)});if(e&&e.details&&e.details.saldo)AI.saldo=e.details.saldo}
-  AI.busy=false;aiPaint();
-}
-
-// lo que propone, en una línea
-function aiPlan(r){const t=[],n=a=>Array.isArray(a)?a.length:0,s=(k,a,b)=>k>1?b:a;
-  if(n(r.agregar))t.push(`agregar ${n(r.agregar)} ${s(n(r.agregar),'componente','componentes')}`);
-  if(n(r.quitar))t.push(`quitar ${r.quitar.join(', ')}`);
-  if(n(r.valores))t.push(`cambiar ${n(r.valores)} ${s(n(r.valores),'valor','valores')}`);
-  if(n(r.desconectar))t.push(`desconectar ${n(r.desconectar)} ${s(n(r.desconectar),'pata','patas')}`);
-  if(n(r.redes))t.push(`${n(r.redes)} ${s(n(r.redes),'conexión','conexiones')}`);
-  if(r.contorno)t.push(`placa de ${cm(r.contorno.ancho)} × ${cm(r.contorno.alto)} cm`);
-  if(r.ruteo)t.push(r.ruteo.reacomodar?'reacomodar y rutear':'rutear');
-  return t.join(' · ')}
-
-const aiRef=ref=>{const R=String(ref||'').trim().toUpperCase();return AI.remap.get(R)||doc.comps.find(c=>c.ref.toUpperCase()===R)||null};
-function aiPad(pt){const s=String(pt||'').trim(),i=s.lastIndexOf('.');if(i<1)return null;const c=aiRef(s.slice(0,i)),n=s.slice(i+1),fp=c&&fpOf(c);
-  return fp&&fp.pads.some(p=>String(p.n)===n)?pkey(c.id,n):null}
-function aiPart(name){const n=norm(String(name||'').trim());return DB.find(d=>d.nombre===name)||DB.find(d=>norm(d.nombre)===n)||null}
-// lugar para lo nuevo: dentro del contorno, o en un bloque a la derecha de lo que ya estaba; con 1,5 mm de aire entre piezas
-function aiRegion(nw){
-  const o=doc.outline,old=doc.comps.filter(c=>!nw.includes(c)).map(compBox);
-  const area=nw.reduce((s,c)=>{const b=compBox(c);return s+(b[2]-b[0]+4)*(b[3]-b[1]+4)},0),w=Math.max(40,Math.sqrt(area)*1.4);
-  if(o)return {x0:o.x+DRC.edge+4,y0:o.y+DRC.edge+4,x1:o.x+o.w-4};
-  if(old.length){const x=Math.max(...old.map(b=>b[2]))+8;return {x0:x,y0:Math.min(...old.map(b=>b[1])),x1:x+w}}
-  return {x0:10,y0:10,x1:10+w};
-}
-function aiSpot(c,R){
-  const busy=()=>{const b=compBox(c),B=[b[0]-1.5,b[1]-1.5,b[2]+1.5,b[3]+1.5];return doc.comps.some(o=>o!==c&&boxHit(B,compBox(o)))||holeList().some(h=>boxCircle(B,h.x,h.y,h.keep))};
-  for(let y=R.y0;y<R.y0+500;y+=2.54)for(let x=R.x0;x<=R.x1;x+=2.54){c.x=x;c.y=y;snapComp(c);if(!busy())return}
-}
-// encuadra el dibujo en la parte de la mesa que no tapa la ventana del asistente
-function aiFit(){const p=document.getElementById('aiP');if(!AI.open||!p){fit();return}
-  const W0=W,H0=H;if(innerWidth>820)W=Math.max(200,W-p.offsetWidth-24);else H=Math.max(150,H-p.offsetHeight);fit();W=W0;H=H0;draw()}
-function aiMark(refs){const ids=refs.map(aiRef).filter(Boolean).map(c=>c.id);if(!ids.length)return;sel=newSel(ids);refreshUI();draw()}
-
-// aplica los cambios de una respuesta; devuelve las cosas que no se pudieron hacer
-function aiEdit(r){
-  const notes=[];AI.remap=new Map();
-  if(r.contorno){const w=Math.max(10,Math.min(300,+r.contorno.ancho||0)),h=Math.max(10,Math.min(300,+r.contorno.alto||0));doc.outline=doc.outline?{...doc.outline,w,h}:{x:0,y:0,w,h}}
-  const X=doc.outline?doc.outline.x:0,Y=doc.outline?doc.outline.y:0;
-  for(const ref of r.quitar||[]){const c=aiRef(ref);if(!c){notes.push(`no encontré ${ref}`);continue}if(c.lock){notes.push(`${c.ref} tiene candado`);continue}
-    doc.comps=doc.comps.filter(x=>x!==c);doc.links=doc.links.filter(l=>l.a.split(':')[0]!==c.id&&l.b.split(':')[0]!==c.id)}
-  const free=[];
-  for(const a of r.agregar||[]){const comp=aiPart(a.parte);if(!comp){notes.push(`“${a.parte}” no está en la biblioteca`);continue}
-    const c=makeComp(comp,0,0,(((a.rot|0)%4)+4)%4),want=String(a.ref||'').trim().toUpperCase();
-    if(comp.enc==='SIP-n'&&a.pines)c.enc='SIP-'+Math.max(1,Math.min(40,a.pines|0));
-    if(/^[A-Z]{1,4}\d{1,4}$/.test(want)&&!aiRef(want))c.ref=want;
-    if(want)AI.remap.set(want,c);
-    if(a.valor)c.val=String(a.valor).slice(0,40);
-    c.x=c.y=-1e5;doc.comps.push(c); // lejos hasta tener lugar, así no estorba
-    if(Number.isFinite(a.x)&&Number.isFinite(a.y)){c.x=X+a.x;c.y=Y+a.y;snapComp(c);if(compBlocked(c)){c.x=c.y=-1e5;free.push(c)}}else free.push(c)}
-  const R=aiRegion(free);free.forEach(c=>aiSpot(c,R));
-  for(const v of r.valores||[]){const c=aiRef(v.ref);if(c)c.val=String(v.valor).slice(0,40);else notes.push(`no encontré ${v.ref}`)}
-  const off=new Set((r.desconectar||[]).map(aiPad).filter(Boolean));if(off.size)doc.links=doc.links.filter(l=>!off.has(l.a)&&!off.has(l.b));
-  const uf=UF();doc.links.forEach(l=>uf.u(l.a,l.b));
-  for(const red of r.redes||[]){const ks=[];
-    (red.patas||[]).forEach(pt=>{const k=aiPad(pt);if(!k)notes.push(`la pata ${pt} no existe`);else if(!ks.includes(k))ks.push(k)});
-    for(let i=1;i<ks.length;i++)if(uf.f(ks[i])!==uf.f(ks[0])){doc.links.push({id:uid(),a:ks[i-1],b:ks[i]});uf.u(ks[i-1],ks[i])}
-    if([1,2,3].includes(red.amperes)){const S=new Set(ks);doc.links.forEach(l=>{if(S.has(l.a)||S.has(l.b))l.amps=red.amperes})}}
-  return notes;
-}
-// autorruteo con las indicaciones de la IA; si quedan conexiones sin rutear prueba variantes y se queda con la mejor
-function aiRoute(h){
-  if(!doc.links.length&&!linksFromTracks(true).added){toast('No hay conexiones para rutear');return}
-  const ids=L=>(L||[]).map(aiRef).filter(Boolean).map(c=>c.id),pairs=L=>(L||[]).map(p=>ids(p)).filter(p=>p.length===2);
-  const o=routeOpts();o.place=!!h.reacomodar;if(h.tamano)o.size=h.tamano;if(o.place)o.keep='locked';
-  if(Number.isInteger(h.puentes)){o.jumps=h.puentes>0;if(h.puentes>0)o.maxJ=Math.min(5,h.puentes)}
-  if(h.ancho_senal)o.sigW=Math.max(.5,Math.min(2.5,+h.ancho_senal));if(h.ancho_potencia)o.powW=Math.max(.5,Math.min(2.5,+h.ancho_potencia));
-  if(typeof h.plano==='boolean')o.plane=h.plano;
-  o.near=pairs(h.juntos);o.apart=pairs(h.separados);o.edge=ids(h.borde);o.first=(h.primero||[]).map(aiPad).filter(Boolean);
-  if(o.place){routeVariants({...o,variants:true});return}
-  pushUndo();const base=snapshot(),tries=[o,{...o,effort:'deep'}];
-  if(o.place)[23,37,53].forEach(seed=>tries.push({...o,effort:'deep',seed}));if(o.jumps)tries.push({...o,effort:'deep',maxJ:Math.min(5,o.maxJ+1)});
-  let best=null,bestS=null;
-  for(const t of tries){if(best)restore(base);const res=routeCore(t),f=res.r.total-res.r.done;
-    if(!best||f<best.f||(f===best.f&&res.r.nj<best.res.r.nj)){best={f,res};bestS=snapshot()}if(!f)break}
-  if(snapshot()!==bestS)restore(bestS);routeReport(best.res);aiFit();
-}
-function aiApply(m){
-  const r=m.r,edit=['agregar','quitar','valores','desconectar','redes'].some(k=>r[k]&&r[k].length)||r.contorno;m.estado='hecho';
-  if(edit){pushUndo();m.notas=aiEdit(r);changed();if(r.agregar&&r.agregar.length)aiFit()}
-  aiPaint();
-  if(r.ruteo){toast('Ruteando…');setTimeout(()=>aiRoute(r.ruteo),40)}else toast('Listo. Ctrl+Z deshace');
-}
-
-// archivos: las imágenes se achican a 1568 px (lo que la IA aprovecha) y los PDF van como están
-function aiImg(file){return new Promise((ok,ko)=>{const u=URL.createObjectURL(file),im=new Image();
-  im.onload=()=>{const k=Math.min(1,AI_IMG/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
-    const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);
-    ok({nombre:file.name||'imagen',tipo:'image/jpeg',datos:c.toDataURL('image/jpeg',.85).split(',')[1]})};
-  im.onerror=()=>{URL.revokeObjectURL(u);ko()};im.src=u})}
-function aiPdf(file){return new Promise((ok,ko)=>{const fr=new FileReader();fr.onload=()=>ok({nombre:file.name,tipo:'application/pdf',datos:String(fr.result).split(',')[1]});fr.onerror=ko;fr.readAsDataURL(file)})}
-async function aiAddFiles(files){
-  for(const f of files){if(AI.adj.length>=AI_MAXADJ){toast(`Hasta ${AI_MAXADJ} archivos por mensaje`);break}
-    try{if(f.type==='application/pdf'){if(f.size>AI_PDF){toast('El PDF pesa más de 8 MB');continue}AI.adj.push(await aiPdf(f))}
-      else if(/^image\//.test(f.type))AI.adj.push(await aiImg(f));else toast('Solo imágenes o PDF')}catch(e){toast('No se pudo leer '+f.name)}}
-  aiPaint()}
-function aiMic(){const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return;
-  if(AI.rec){AI.rec.stop();return}
-  const r=new R(),t=document.getElementById('aiTxt'),base=t.value?t.value.replace(/\s*$/,' '):'';r.lang='es-AR';r.interimResults=true;
-  r.onresult=e=>{let s='';for(const x of e.results)s+=x[0].transcript;t.value=base+s};
-  r.onend=()=>{AI.rec=null;aiPaint()};r.onerror=()=>{};AI.rec=r;r.start();aiPaint()}
-
-function aiPanel(){
-  let p=document.getElementById('aiP');if(p)return p;
-  p=document.createElement('section');p.id='aiP';p.className='aip';p.setAttribute('aria-label','Asistente con IA');
-  p.innerHTML=`<header class="aih"><b>Asistente con IA</b><span class="aisal" id="aiSal"></span>
-      <button class="aiic" id="aiNew" title="Conversación nueva" aria-label="Conversación nueva">${AI_IC.nueva}</button>
-      <button class="aiic" id="aiX" title="Cerrar" aria-label="Cerrar">✕</button></header>
-    <div class="aim" id="aiM" aria-live="polite"></div>
-    <div class="aichips" id="aiChips"></div>
-    <div class="aiin"><div class="aiadj" id="aiAdj"></div>
-      <textarea id="aiTxt" rows="2" placeholder="¿Qué necesitás?" aria-label="Mensaje para el asistente"></textarea>
-      <div class="aibar"><button class="aiic" id="aiFile" title="Adjuntar imagen o PDF" aria-label="Adjuntar imagen o PDF">${AI_IC.clip}</button>
-        <button class="aiic" id="aiMic" title="Dictar" aria-label="Dictar">${AI_IC.mic}</button><span class="aisp"></span>
-        <button class="aisend" id="aiSend" title="Enviar" aria-label="Enviar">${AI_IC.send}</button></div></div>
-    <input type="file" id="aiFileIn" accept="image/*,application/pdf" multiple hidden>`;
-  stage.appendChild(p);
-  const t=p.querySelector('#aiTxt'),fi=p.querySelector('#aiFileIn');
-  p.querySelector('#aiX').onclick=()=>{AI.open=false;aiPaint()};
-  p.querySelector('#aiNew').onclick=()=>{if(AI.busy)return;AI.msgs=[];AI.adj=[];aiPaint()};
-  p.querySelector('#aiSend').onclick=()=>{const v=t.value;t.value='';aiSend(v)};
-  t.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();p.querySelector('#aiSend').click()}});
-  t.addEventListener('paste',e=>{const f=[...(e.clipboardData||{}).files||[]];if(f.length){e.preventDefault();aiAddFiles(f)}});
-  p.querySelector('#aiFile').onclick=()=>fi.click();fi.onchange=()=>{aiAddFiles([...fi.files]);fi.value=''};
-  p.querySelector('#aiMic').onclick=aiMic;p.querySelector('#aiMic').hidden=!(window.SpeechRecognition||window.webkitSpeechRecognition);
-  p.addEventListener('dragover',e=>{e.preventDefault()});p.addEventListener('drop',e=>{e.preventDefault();aiAddFiles([...e.dataTransfer.files])});
-  return p;
-}
-function aiPaint(){
-  const p=aiPanel();p.hidden=!AI.open;if(!AI.open)return;
-  const s=AI.saldo;p.querySelector('#aiSal').textContent=!s?'':s.ilimitado?'Consultas ilimitadas':`${s.gratis} gratis este mes${s.creditos?` · ${s.creditos} créditos`:''}`;
-  const M=p.querySelector('#aiM'),last=AI.msgs.length-1;M.innerHTML='';
-  AI.msgs.forEach((m,i)=>{const d=document.createElement('div');d.className='msg '+({user:'u',assistant:'a',error:'e'}[m.rol]);d.textContent=m.texto;
-    if(m.adj&&m.adj.length){const a=document.createElement('div');a.className='mfile';a.textContent='📎 '+m.adj.join(', ');d.appendChild(a)}
-    const r=m.r;
-    if(r&&r.pregunta){const q=document.createElement('div');q.className='mq';q.textContent=r.pregunta.texto;d.appendChild(q);
-      if(i===last&&(r.pregunta.opciones||[]).length){const o=document.createElement('div');o.className='mopts';
-        r.pregunta.opciones.forEach(t=>{const b=document.createElement('button');b.textContent=t;b.onclick=()=>aiSend(t);o.appendChild(b)});d.appendChild(o)}}
-    const plan=r&&aiPlan(r);
-    if(plan){const w=document.createElement('div');w.className='mplan';w.textContent=(m.estado==='hecho'?'✓ ':m.estado==='no'?'✕ ':'')+plan;d.appendChild(w);
-      if(m.estado==='pendiente'){const o=document.createElement('div');o.className='mopts';
-        const ap=document.createElement('button');ap.className='pri';ap.textContent='Aplicar';ap.onclick=()=>aiApply(m);
-        const no=document.createElement('button');no.textContent='Descartar';no.onclick=()=>{m.estado='no';aiPaint()};o.append(ap,no);d.appendChild(o)}
-      if(m.notas&&m.notas.length){const n=document.createElement('div');n.className='mnote';n.textContent='No se pudo: '+m.notas.join('; ');d.appendChild(n)}}
-    M.appendChild(d)});
-  if(AI.busy){const d=document.createElement('div');d.className='msg a busy';d.innerHTML='<span></span><span></span><span></span>';d.setAttribute('aria-label','Pensando');M.appendChild(d)}
-  M.scrollTop=M.scrollHeight;
-  const C=p.querySelector('#aiChips');C.innerHTML='';C.hidden=AI.busy;
-  AI_CHIPS.forEach(([t,q])=>{const b=document.createElement('button');b.textContent=t;
-    b.onclick=()=>{if(/seleccionado/.test(q)&&!selComps().length){toast('Seleccioná un componente');return}aiSend(q)};C.appendChild(b)});
-  const A=p.querySelector('#aiAdj');A.innerHTML='';AI.adj.forEach((a,i)=>{const b=document.createElement('button');b.className='achip';b.title='Quitar';b.textContent=`${a.nombre} ✕`;b.onclick=()=>{AI.adj.splice(i,1);aiPaint()};A.appendChild(b)});
-  p.querySelector('#aiSend').disabled=AI.busy;p.querySelector('#aiMic').classList.toggle('on',!!AI.rec);
-}
-
+const importFile=()=>document.getElementById('fileIn').click();
 /* ================= menús ================= */
 const MENUS=[
  ['Archivo',[
@@ -2370,7 +2006,7 @@ const MENUS=[
  ['Herramientas',[
    ...TOOLS.map(t=>t.soon?{t:t.name+' (próximamente)',f:soon(t.name),soon:1}:{t:t.name,k:t.key,c:()=>tool===t.id,f:()=>setTool(t.id)}),'-',
    {t:'Enganche a la grilla',c:()=>prefs.snap,f:()=>toggle('snap','Enganche')},'-',
-   {t:'Autorruteador…',k:'A',f:routeDlg},{t:'Lágrimas en los pads',c:()=>!!doc.tears,f:tearsToggle},{t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},{t:'Alivio térmico en el plano',c:()=>!!doc.plane&&doc.plane.thermal!==false,d:()=>!doc.plane,f:thermalToggle},{t:'Rellenar espacios vacíos',c:()=>!!doc.plane&&doc.plane.fill!==false,d:()=>!doc.plane,f:fillToggle},{t:'Relleno sin conectar (no toca nada)',c:()=>!!doc.plane&&!!doc.plane.iso,d:()=>!doc.plane,f:isoToggle},{t:'Agujeros de fijación',c:hasHoles,f:holesToggle},{t:'Revisar reglas de diseño',k:'D',f:drcDlg},{t:'Asistente con IA',f:aiDlg}]],
+   {t:'Autorruteador…',k:'A',f:routeDlg},{t:'Lágrimas en los pads',c:()=>!!doc.tears,f:tearsToggle},{t:'Plano de masa',c:()=>!!doc.plane,f:planeToggle},{t:'Alivio térmico en el plano',c:()=>!!doc.plane&&doc.plane.thermal!==false,d:()=>!doc.plane,f:thermalToggle},{t:'Rellenar espacios vacíos',c:()=>!!doc.plane&&doc.plane.fill!==false,d:()=>!doc.plane,f:fillToggle},{t:'Relleno sin conectar (no toca nada)',c:()=>!!doc.plane&&!!doc.plane.iso,d:()=>!doc.plane,f:isoToggle},{t:'Agujeros de fijación',c:hasHoles,f:holesToggle},{t:'Revisar reglas de diseño',k:'D',f:drcDlg}]],
  ['Preferencias',[{t:'Preferencias…',f:prefsDlg},'-',{t:'Grilla fina 2,54 mm',c:()=>prefs.grid===2.54,f:()=>{prefs.grid=2.54;LS.set('pcb.prefs',prefs);draw();refreshUI()}},{t:'Grilla fina 1,27 mm',c:()=>prefs.grid===1.27,f:()=>{prefs.grid=1.27;LS.set('pcb.prefs',prefs);draw();refreshUI()}}]],
  ['Ayuda',[{t:'Guía para hacer tu plaqueta',f:()=>window.open('guia.html','_blank')},{t:'Atajos de teclado',f:keysDlg},'-',{t:'Política de privacidad',f:()=>window.open('privacidad.html','_blank')},{t:'Términos de uso',f:()=>window.open('terminos.html','_blank')},'-',{t:'Acerca de Mesa PCB',f:aboutDlg}]]
 ];
@@ -2625,11 +2261,10 @@ function example(){
 
 /* ================= arranque ================= */
 document.getElementById('libq').addEventListener('input',buildLib);
-document.getElementById('aiBtn').onclick=aiDlg;
+
 {const pv=document.getElementById('pv');pv.addEventListener('dragstart',e=>{if(!pvComp){e.preventDefault();return}beginDrag(e,pvComp)});pv.addEventListener('dragend',endDrag);}
 new ResizeObserver(queueResize).observe(stage);
-adsInit();
-{const as=document.getElementById('adsize'),mq=matchMedia('(max-width:820px)');const f=()=>as.textContent=mq.matches?'320 × 50':'468 × 60';f();try{mq.addEventListener('change',f)}catch(e){}}
+
 buildMenus();buildToolbar();readColors();applyTheme();cloudInit();
 (window.COMPONENTES?Promise.resolve(window.COMPONENTES):fetch('biblioteca/componentes.json').then(r=>{if(!r.ok)throw 0;return r.json()})).then(j=>{
   LIB=j;DB=j.componentes;document.getElementById('libn').textContent=`· ${DB.length}`;buildLib();
